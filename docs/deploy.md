@@ -60,6 +60,36 @@ docker compose up -d
 - `SYNAP_DB_PATH`（默认 `./data/synap.db`，容器内建议 `/data/synap.db`）
 - `SYNAP_STATIC_DIR`（一体化镜像用于前端静态资源，默认 `/public`）
 
+## 使用自有 Nginx（双层反代或仅 Nginx）
+
+- 一键脚本支持禁用 Caddy 并自定义端口：
+
+```
+curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
+  | sudo bash -s -- --channel latest --edge none --port 9000 --dir /opt/synap
+```
+
+- 生成的 compose 会绑定 `127.0.0.1:9000 -> synap:8080`，你可以在 Nginx 中反代到 `http://127.0.0.1:9000`。
+
+示例 Nginx 片段（HTTP）：
+
+```
+server {
+    listen 80;
+    server_name your.domain.com;
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_pass http://127.0.0.1:9000;
+    }
+}
+```
+
 ## 注意
 
 - 当前镜像仅包含后端。前端可在构建完成后使用独立镜像（Nginx 提供静态文件）或 Vercel/Netlify。
