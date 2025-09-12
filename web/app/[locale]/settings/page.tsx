@@ -1,5 +1,6 @@
 "use client"
 import { useTranslations } from 'next-intl'
+export const dynamic = 'force-dynamic'
 import { useThemeStore } from '../../../features/theme/store'
 
 export default function SettingsPage() {
@@ -33,4 +34,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-

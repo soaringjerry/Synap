@@ -12,7 +12,8 @@ DOMAIN=""
 EMAIL=""
 TARGET_DIR="/opt/synap"
 PORT="8080"         # host port when not using caddy (backend -> 8080)
-FRONT_PORT="5173"   # host port for frontend dev server (maps -> 5173)
+WEB_PORT="3000"     # host port for Next.js web when EDGE=none
+FRONT_PORT="5173"   # legacy dev server port (kept for compatibility)
 WATCH_INTERVAL="60"  # seconds for Watchtower polling (default dev-friendly)
 EDGE="caddy"        # caddy|none (none = expose 127.0.0.1:$PORT)
 
@@ -26,6 +27,7 @@ while [[ $# -gt 0 ]]; do
     -p|--port) PORT="$2"; shift 2 ;;
     --edge) EDGE="$2"; shift 2 ;;
     --front-port) FRONT_PORT="$2"; shift 2 ;;
+    --web-port) WEB_PORT="$2"; shift 2 ;;
     --watch-interval) WATCH_INTERVAL="$2"; shift 2 ;;
     -h|--help)
       echo "Options: --owner <ghcr-owner> --channel <dev|latest|tag> --domain <host> --email <email> --dir <path>";
@@ -69,12 +71,13 @@ prepare_files() {
   cd "$TARGET_DIR"
 
   # Decide image
-  local image synap_tag
+  local image web_image synap_tag
   if [[ "$CHANNEL" == "dev" ]]; then
-    image="ghcr.io/${OWNER}/synap-dev"; synap_tag="latest"
+    image="ghcr.io/${OWNER}/synap-backend"; synap_tag="latest"
   else
-    image="ghcr.io/${OWNER}/synap"; synap_tag="$CHANNEL"
+    image="ghcr.io/${OWNER}/synap-backend"; synap_tag="$CHANNEL"
   fi
+  web_image="ghcr.io/${OWNER}/synap-web:${synap_tag}"
 
   # Dev frontend URL (in-container) for proxying / to Vite dev server
   local dev_front_url=""
@@ -92,6 +95,8 @@ WATCH_INTERVAL=${WATCH_INTERVAL}
 PORT=${PORT}
 FRONT_PORT=${FRONT_PORT}
 DEV_FRONTEND_URL=${dev_front_url}
+WEB_IMAGE=${web_image}
+BACKEND_IMAGE=${image}:${synap_tag}
 EOF
 
   # Write compose file
@@ -101,15 +106,24 @@ name: synap
 
 services:
   synap:
-    image: ${SYNAP_IMAGE:-ghcr.io/${GHCR_OWNER:-soaringjerry}/synap}:${SYNAP_TAG:-latest}
+    image: ${BACKEND_IMAGE}
     env_file: .env
     environment:
       - SYNAP_ADDR=:8080
       - SYNAP_DB_PATH=/data/synap.db
-      - SYNAP_STATIC_DIR=/public
-      - SYNAP_DEV_FRONTEND_URL=${DEV_FRONTEND_URL}
+      - SYNAP_STATIC_DIR=
+      - SYNAP_DEV_FRONTEND_URL=
     volumes:
       - synap-data:/data
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  web:
+    image: ${WEB_IMAGE}
+    env_file: .env
+    environment:
+      - NODE_ENV=production
     restart: unless-stopped
     labels:
       - com.centurylinklabs.watchtower.enable=true
@@ -126,6 +140,7 @@ services:
       - caddy-config:/config
     depends_on:
       - synap
+      - web
     restart: unless-stopped
     labels:
       - com.centurylinklabs.watchtower.enable=true
@@ -149,21 +164,29 @@ name: synap
 
 services:
   synap:
-    image: ${SYNAP_IMAGE:-ghcr.io/${GHCR_OWNER:-soaringjerry}/synap}:${SYNAP_TAG:-latest}
+    image: ${BACKEND_IMAGE}
     env_file: .env
     environment:
       - SYNAP_ADDR=:8080
       - SYNAP_DB_PATH=/data/synap.db
-      - SYNAP_STATIC_DIR=/public
-      - SYNAP_DEV_FRONTEND_URL=${DEV_FRONTEND_URL}
+      - SYNAP_STATIC_DIR=
+      - SYNAP_DEV_FRONTEND_URL=
     ports:
       - "127.0.0.1:${PORT}:8080"
-      - "127.0.0.1:${FRONT_PORT}:5173"
     volumes:
       - synap-data:/data
     restart: unless-stopped
     labels:
       - com.centurylinklabs.watchtower.enable=true
+
+  web:
+    image: ${WEB_IMAGE}
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "127.0.0.1:${WEB_PORT}:3000"
+    restart: unless-stopped
 
   watchtower:
     image: containrrr/watchtower:latest
@@ -186,12 +209,31 @@ YAML
 
 {$DOMAIN} {
   encode zstd gzip
-  reverse_proxy synap:8080
+  # Global no-store headers (in addition to Next/Go responses)
+  header Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  header Pragma "no-cache"
+  header Expires "0"
+  @api path /api*
+  route @api {
+    reverse_proxy synap:8080
+  }
+  route {
+    reverse_proxy web:3000
+  }
 }
 
 :80 {
   encode zstd gzip
-  reverse_proxy synap:8080
+  header Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  header Pragma "no-cache"
+  header Expires "0"
+  @api path /api*
+  route @api {
+    reverse_proxy synap:8080
+  }
+  route {
+    reverse_proxy web:3000
+  }
 }
 CADDY
   fi

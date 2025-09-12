@@ -17,10 +17,9 @@ export function Navbar() {
       <div className="brand text-xl">Synap</div>
       <div className="flex items-center gap-2">
         {nav.map(i => (
-          <Link key={i.href} href={i.href} className={`btn btn-ghost ${pathname===i.href? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}>{i.label}</Link>
+          <Link key={i.href} href={i.href as any} className={`btn btn-ghost ${pathname===i.href? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}>{i.label}</Link>
         ))}
       </div>
     </nav>
   )
 }
-
