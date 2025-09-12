@@ -2,7 +2,19 @@
   "common": {
     "ok": "OK",
     "submit": "Submit",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "seed_sample": "Seed Sample",
+    "language": "Language",
+    "no_items_click_seed": "No items. Click Seed Sample.",
+    "quick_survey": "Quick Survey",
+    "status": "Status",
+    "backend_health": "Backend health",
+    "total_score": "Total score",
+    "export_long_csv": "Export Long CSV",
+    "export_wide_csv": "Export Wide CSV",
+    "export_score_csv": "Export Score CSV",
+    "reload": "Reload",
+    "title": "Synap — Cyber Survey",
+    "tagline": "Neon vibes · subtle chaos · focused research"
   }
 }
-

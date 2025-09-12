@@ -2,7 +2,19 @@
   "common": {
     "ok": "好的",
     "submit": "提交",
-    "cancel": "取消"
+    "cancel": "取消",
+    "seed_sample": "载入示例",
+    "language": "语言",
+    "no_items_click_seed": "暂无题目，请点击“载入示例”。",
+    "quick_survey": "快速问卷",
+    "status": "状态",
+    "backend_health": "后端健康",
+    "total_score": "总分",
+    "export_long_csv": "导出 长表 CSV",
+    "export_wide_csv": "导出 宽表 CSV",
+    "export_score_csv": "导出 分数 CSV",
+    "reload": "刷新",
+    "title": "Synap — 赛博问卷",
+    "tagline": "霓虹氛围 · 轻微混乱 · 专注研究"
   }
 }
-
