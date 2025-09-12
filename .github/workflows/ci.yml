@@ -68,12 +68,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Setup Node (cache web)
-        if: ${{ hashFiles('web/package.json') != '' }}
+        if: ${{ hashFiles('web/package-lock.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - name: Setup Node (no cache web)
+        if: ${{ hashFiles('web/package.json') != '' && hashFiles('web/package-lock.json') == '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
       - name: Setup Node (no cache frontend)
         if: ${{ hashFiles('frontend/package.json') != '' && hashFiles('frontend/package-lock.json') == '' }}
         uses: actions/setup-node@v4
