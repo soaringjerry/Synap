@@ -26,7 +26,7 @@
 
 ### Requirements
 
-* Go 1.22+
+* Go 1.23+
 * Node.js 20+ and npm
 * SQLite 3.x
 
