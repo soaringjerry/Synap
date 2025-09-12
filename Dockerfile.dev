@@ -16,7 +16,7 @@ RUN test -f .air.toml || printf "root = .\n[build]\n  cmd = 'go build -o ./tmp/s
 COPY scripts/dev-entry.sh /usr/local/bin/dev-entry.sh
 RUN chmod +x /usr/local/bin/dev-entry.sh
 
-EXPOSE 8080 3000
+EXPOSE 8080 5173
 ENV SYNAP_ADDR=:8080
 
 ENTRYPOINT ["/usr/local/bin/dev-entry.sh"]
