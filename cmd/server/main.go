@@ -18,6 +18,8 @@ func main() {
 	if addr == "" {
 		addr = ":8080"
 	}
+	commit := os.Getenv("SYNAP_COMMIT")
+	buildTime := os.Getenv("SYNAP_BUILD_TIME")
 
 	mux := http.NewServeMux()
 	// API routes
@@ -26,10 +28,20 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		locale := middleware.LocaleFromContext(r.Context())
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"ok":     true,
-			"name":   "Synap API",
-			"locale": locale,
-			"msg":    utils.T(locale, "health.ok"),
+			"ok":         true,
+			"name":       "Synap API",
+			"locale":     locale,
+			"msg":        utils.T(locale, "health.ok"),
+			"commit":     commit,
+			"build_time": buildTime,
+		})
+	})
+
+	mux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"commit":     commit,
+			"build_time": buildTime,
 		})
 	})
 

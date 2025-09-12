@@ -33,6 +33,15 @@ body {
   padding: 32px 20px 64px;
 }
 
+.version-badge {
+  position: fixed; right: 12px; top: 10px;
+  font-size: 12px; opacity: 0.85;
+  padding: 6px 10px; border-radius: 999px;
+  border: 1px solid rgba(109, 240, 255, 0.35);
+  background: rgba(18, 18, 37, 0.6);
+  box-shadow: 0 0 6px rgba(109, 240, 255, 0.25);
+}
+
 .hero {
   margin: 16px 0 28px;
 }
@@ -125,4 +134,3 @@ body {
 .label { font-size: 14px; opacity: 0.9; }
 .item { margin: 12px 0 8px; }
 .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); margin: 12px 0; }
-

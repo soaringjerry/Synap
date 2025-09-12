@@ -21,6 +21,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Build vars
+        id: vars
+        run: |
+          echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
       - name: Set lowercase owner
         run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
@@ -58,6 +64,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta_backend.outputs.tags }}
           labels: ${{ steps.meta_backend.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ steps.vars.outputs.sha_short }}
+            BUILD_TIME=${{ steps.vars.outputs.build_time }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -83,6 +92,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta_full.outputs.tags }}
           labels: ${{ steps.meta_full.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ steps.vars.outputs.sha_short }}
+            BUILD_TIME=${{ steps.vars.outputs.build_time }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -107,5 +119,8 @@ jobs:
           push: true
           tags: ${{ steps.meta_dev.outputs.tags }}
           labels: ${{ steps.meta_dev.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ steps.vars.outputs.sha_short }}
+            BUILD_TIME=${{ steps.vars.outputs.build_time }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

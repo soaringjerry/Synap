@@ -32,5 +32,9 @@ COPY --from=backend /out/synap /synap
 COPY --from=frontend /out/public /public
 ENV SYNAP_ADDR=:8080
 ENV SYNAP_STATIC_DIR=/public
+ARG GIT_SHA
+ARG BUILD_TIME
+ENV SYNAP_COMMIT=${GIT_SHA}
+ENV SYNAP_BUILD_TIME=${BUILD_TIME}
 EXPOSE 8080
 ENTRYPOINT ["/synap"]

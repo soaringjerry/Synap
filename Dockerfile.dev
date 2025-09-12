@@ -18,5 +18,9 @@ RUN chmod +x /usr/local/bin/dev-entry.sh
 
 EXPOSE 8080 5173
 ENV SYNAP_ADDR=:8080
+ARG GIT_SHA
+ARG BUILD_TIME
+ENV SYNAP_COMMIT=${GIT_SHA}
+ENV SYNAP_BUILD_TIME=${BUILD_TIME}
 
 ENTRYPOINT ["/usr/local/bin/dev-entry.sh"]
