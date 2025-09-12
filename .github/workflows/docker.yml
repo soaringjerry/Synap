@@ -24,7 +24,7 @@ jobs:
       - name: Build vars
         id: vars
         run: |
-          echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          echo "sha_short=${GITHUB_SHA::6}" >> $GITHUB_OUTPUT
           echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
 
       - name: Set lowercase owner
