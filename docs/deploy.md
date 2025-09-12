@@ -7,11 +7,11 @@
 
 ## 镜像命名
 
-- 后端（仅 API）：`ghcr.io/<owner>/synap-backend`
+- 后端（仅 API）：`ghcr.io/soaringjerry/synap-backend`
   - 适合只需要后端 API 的部署，或配合外部前端。
-- 一体化（前后端）：`ghcr.io/<owner>/synap`
+- 一体化（前后端）：`ghcr.io/soaringjerry/synap`
   - 包含后端二进制 + 前端静态资源（如存在 `frontend` 并已构建）。
-- 开发版（一体化 Dev）：`ghcr.io/<owner>/synap-dev`
+- 开发版（一体化 Dev）：`ghcr.io/soaringjerry/synap-dev`
   - 容器内同时跑后端热重载（air）与前端 Vite Dev Server，便于开发联调。
   - tags：`latest`（main）、分支名、`sha-<short>`、版本 tag（如 `v1.2.3`）。
 
@@ -22,7 +22,7 @@ docker run -d --name synap -p 8080:8080 \
   -e SYNAP_ADDR=:8080 \
   -e SYNAP_DB_PATH=/data/synap.db \
   -v synap-data:/data \
-ghcr.io/<owner>/synap-backend:latest
+  ghcr.io/soaringjerry/synap-backend:latest
 ```
 
 ## 方式二：docker run（一体化）
@@ -30,7 +30,7 @@ ghcr.io/<owner>/synap-backend:latest
 ```
 docker run -d --name synap -p 8080:8080 \
   -e SYNAP_ADDR=:8080 \
-  ghcr.io/<owner>/synap:latest
+  ghcr.io/soaringjerry/synap:latest
 ```
 
 ## 方式三：docker compose
