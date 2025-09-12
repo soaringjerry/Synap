@@ -103,7 +103,6 @@ curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/qui
   | sudo bash -s -- --channel latest --edge none --port 9000 --dir /opt/synap
 # Then in Nginx, proxy_pass http://127.0.0.1:9000;
 ```
-```
 
 More options in `docs/deploy.md`.
 
@@ -129,7 +128,7 @@ More options in `docs/deploy.md`.
 
 ## Contributing
 
-Contributions are welcome. Please use Conventional Commits (`feat:`, `fix:`, etc.) and ensure lint/tests pass before opening a PR.
+Contributions are welcome. Please use Conventional Commits (`feat:`, `fix:`, etc.) and ensure lint/tests pass before opening a PR. See `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`.
 
 ## License
 
@@ -142,3 +141,13 @@ Author: [Jerry](https://github.com/soaringjerry)
 Email: *add your preferred contact email*
 
 Additional docs: see `docs/ci-cd.md`, `docs/deploy.md`, `docs/i18n.md`.
+More docs:
+- Installation: `docs/installation.md`
+- Quick Start: `docs/quick-start.md`
+- API: `docs/api/rest.md`
+- Configuration: `docs/configuration.md`
+- Architecture: `docs/architecture.md`
+- Development: `docs/development.md`
+- Testing: `docs/testing.md`
+- Roadmap: `ROADMAP.md`
+- FAQ: `docs/faq.md`
