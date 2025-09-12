@@ -1,0 +1,14 @@
+{
+  email {$EMAIL}
+}
+
+{$DOMAIN} {
+  encode zstd gzip
+  reverse_proxy synap:8080
+}
+
+:80 {
+  encode zstd gzip
+  reverse_proxy synap:8080
+}
+

@@ -1,0 +1,45 @@
+name: synap
+
+services:
+  synap:
+    image: ${SYNAP_IMAGE:-ghcr.io/${GHCR_OWNER:-soaringjerry}/synap}:${SYNAP_TAG:-latest}
+    environment:
+      - SYNAP_ADDR=:8080
+      - SYNAP_DB_PATH=/data/synap.db
+      - SYNAP_STATIC_DIR=/public
+    volumes:
+      - synap-data:/data
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-}
+      - EMAIL=${EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - synap
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    command: --interval ${WATCH_INTERVAL:-300} --cleanup --label-enable
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  synap-data:
+  caddy-data:
+  caddy-config:
+
