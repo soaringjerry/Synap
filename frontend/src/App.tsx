@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Link, Outlet } from 'react-router-dom'
 import { VersionBadge } from './components/VersionBadge'
+import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { Home } from './pages/Home'
 import { Admin } from './pages/Admin'
 import { Auth } from './pages/Auth'
@@ -8,6 +9,7 @@ function RootLayout() {
   return (
     <>
       <VersionBadge />
+      <LanguageSwitcher />
       <nav style={{ position:'fixed', left:12, top:10, display:'flex', gap:10 }}>
         <Link className="neon-btn" to="/">Home</Link>
         <Link className="neon-btn" to="/admin">Admin</Link>
