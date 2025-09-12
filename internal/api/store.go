@@ -2,12 +2,14 @@ package api
 
 import (
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
 
 type Scale struct {
 	ID        string            `json:"id"`
+	TenantID  string            `json:"tenant_id,omitempty"`
 	Points    int               `json:"points"`
 	Randomize bool              `json:"randomize"`
 	NameI18n  map[string]string `json:"name_i18n,omitempty"`
@@ -40,6 +42,8 @@ type memoryStore struct {
 	itemsByScale map[string][]*Item
 	participants map[string]*Participant
 	responses    []*Response
+	tenants      map[string]*Tenant
+	usersByEmail map[string]*User
 }
 
 func newMemoryStore() *memoryStore {
@@ -49,6 +53,8 @@ func newMemoryStore() *memoryStore {
 		itemsByScale: map[string][]*Item{},
 		participants: map[string]*Participant{},
 		responses:    []*Response{},
+		tenants:      map[string]*Tenant{},
+		usersByEmail: map[string]*User{},
 	}
 }
 
@@ -102,5 +108,39 @@ func (s *memoryStore) listResponsesByScale(scaleID string) []*Response {
 			out = append(out, r)
 		}
 	}
+	return out
+}
+
+// tenants & users (multi-tenant scaffolding)
+type Tenant struct{ ID, Name string }
+type User struct {
+	ID        string
+	Email     string
+	PassHash  []byte
+	TenantID  string
+	CreatedAt time.Time
+}
+
+func (s *memoryStore) addTenant(t *Tenant) { s.mu.Lock(); defer s.mu.Unlock(); s.tenants[t.ID] = t }
+func (s *memoryStore) addUser(u *User) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.usersByEmail[strings.ToLower(u.Email)] = u
+}
+func (s *memoryStore) findUserByEmail(email string) *User {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.usersByEmail[strings.ToLower(email)]
+}
+func (s *memoryStore) listScalesByTenant(tid string) []*Scale {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := []*Scale{}
+	for _, sc := range s.scales {
+		if sc.TenantID == tid {
+			out = append(out, sc)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
 }
