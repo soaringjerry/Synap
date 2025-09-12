@@ -38,6 +38,11 @@ frontend/.vite/
 frontend/.env
 frontend/.env.*
 
+# Next.js (web)
+**/.next/
+web/.env
+web/.env.*
+**/tsconfig.tsbuildinfo
+
 # Root npm lock is not required (semantic-release tooling only)
 /package-lock.json
-
