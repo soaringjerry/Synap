@@ -33,7 +33,7 @@ services:
 
   watchtower:
     image: containrrr/watchtower:latest
-    command: --interval ${WATCH_INTERVAL:-300} --cleanup --label-enable
+    command: --interval ${WATCH_INTERVAL:-60} --cleanup --label-enable
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
@@ -42,4 +42,3 @@ volumes:
   synap-data:
   caddy-data:
   caddy-config:
-
