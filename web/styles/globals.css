@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import './tokens.css';
+
+html, body, #__next { height: 100%; }
+
+body {
+  @apply bg-[color:var(--bg-0)] text-[color:var(--text-primary)] antialiased;
+  background:
+    radial-gradient(60vw 60vw at 10% 10%, rgba(124,58,237,0.10), transparent 55%),
+    radial-gradient(40vw 40vw at 90% 20%, rgba(34,211,238,0.10), transparent 55%),
+    linear-gradient(180deg, var(--bg-0) 0%, #0e152d 100%);
+}
+
+/* Prevent overflow and layout explosions */
+* { min-width: 0; }
+img, video, canvas, svg { max-width: 100%; height: auto; }
+svg { overflow: visible; }
+pre, code { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid color-mix(in hsl, var(--neon-cyan) 70%, white 30%);
+  outline-offset: 2px;
+}
+
+/* App shell */
+.app-header {
+  @apply fixed top-0 inset-x-0 h-16 flex items-center justify-between px-4 md:px-6 border-b;
+  background: linear-gradient(180deg, rgba(16, 19, 26, 0.8), rgba(16, 19, 26, 0.5));
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  border-color: var(--border);
+}
+.brand {
+  @apply font-display font-bold tracking-tight;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-violet));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.page { @apply pt-24; }
+.container { @apply max-w-6xl mx-auto px-4 md:px-6; }
+
+/* Buttons */
+.btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 border transition duration-200; border-color: var(--border); }
+.btn-primary { color: #0b0d12; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-violet)); border-color: transparent; box-shadow: 0 6px 20px rgba(125,211,252,0.22); }
+.btn-ghost { background: transparent; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,0,0,0.35); }
+
+/* Cards */
+.card { @apply rounded-2xl p-5 md:p-6 border; border-color: var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05)); box-shadow: 0 8px 30px rgba(0,0,0,0.35); }
+
+/* Glitch heading */
+.glitch { position: relative; display: inline-block; font-family: var(--font-display); font-weight: 700; letter-spacing: 0.6px; text-shadow: 0 2px 24px rgba(125, 211, 252, 0.20); }
+.glitch::before, .glitch::after { content: attr(data-text); position: absolute; left: 0; top: 0; filter: blur(0.3px); mix-blend-mode: screen; }
+.glitch::before { color: var(--neon-violet); transform: translate(1px, 0); animation: shift 6s infinite linear; opacity: 0.75; }
+.glitch::after { color: var(--neon-cyan); transform: translate(-1px, 0); animation: shift 5s infinite linear reverse; opacity: 0.75; }
+@keyframes shift {
+  0% { clip-path: inset(0 0 0 0); }
+  10% { clip-path: inset(10% 0 82% 0); }
+  20% { clip-path: inset(40% 0 42% 0); }
+  30% { clip-path: inset(20% 0 60% 0); }
+  40% { clip-path: inset(65% 0 15% 0); }
+  50% { clip-path: inset(0 0 0 0); }
+  60% { clip-path: inset(30% 0 50% 0); }
+  70% { clip-path: inset(80% 0 5% 0); }
+  80% { clip-path: inset(10% 0 75% 0); }
+  90% { clip-path: inset(45% 0 35% 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+/* Respect reduce-motion */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+

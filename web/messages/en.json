@@ -1,0 +1,33 @@
+{
+  "common": {
+    "brand": "Synap",
+    "cta": { "primary": "Get Started", "secondary": "Explore" }
+  },
+  "marketing": {
+    "heroTitle": "Cyber Nocturne UI",
+    "tagline": "Neon, fast, and professional. Built for night runners.",
+    "ctaPrimary": "Get Started",
+    "ctaSecondary": "Explore",
+    "feature": {
+      "speed": { "title": "Speed as a Habit", "desc": "Optimized for 90+ Lighthouse and low LCP." },
+      "design": { "title": "Bold Design", "desc": "Clear hierarchy, tasteful glitch and neon accents." }
+    },
+    "panels": { "itemTitle": "Panel {index}", "itemDesc": "Details about this capability." }
+  },
+  "dashboard": {
+    "widgets": {
+      "status": "Realtime Status",
+      "statusDesc": "System metrics and alpha checks.",
+      "activity": "Activity Feed",
+      "activityDesc": "Latest updates across your workspace.",
+      "quick": "Quick Actions",
+      "quickDesc": "Open Command Palette with ⌘K / Ctrl+K."
+    }
+  },
+  "settings": {
+    "themes": { "title": "Theme", "dark": "Dark", "light": "Light" },
+    "neon": { "title": "Neon Intensity", "low": "Low", "medium": "Medium", "high": "High" },
+    "motion": { "title": "Motion", "off": "Off", "low": "Low", "on": "On" }
+  }
+}
+
