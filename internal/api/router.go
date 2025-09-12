@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Router struct {
@@ -20,13 +22,17 @@ func NewRouter() *Router {
 }
 
 func (rt *Router) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/seed", rt.handleSeed)                    // POST
-	mux.HandleFunc("/api/scales", rt.handleScales)                // POST
-	mux.HandleFunc("/api/items", rt.handleItems)                  // POST
+	mux.HandleFunc("/api/seed", rt.handleSeed) // POST
+	mux.Handle("/api/scales", middleware.WithAuth(http.HandlerFunc(rt.handleScales)))
+	mux.Handle("/api/items", middleware.WithAuth(http.HandlerFunc(rt.handleItems)))
 	mux.HandleFunc("/api/scales/", rt.handleScaleScoped)          // GET /api/scales/{id}/items
 	mux.HandleFunc("/api/responses/bulk", rt.handleBulkResponses) // POST
 	mux.HandleFunc("/api/export", rt.handleExport)                // GET
 	mux.HandleFunc("/api/metrics/alpha", rt.handleAlpha)          // GET
+	mux.HandleFunc("/api/auth/register", rt.handleRegister)
+	mux.HandleFunc("/api/auth/login", rt.handleLogin)
+	mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
+	mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
 }
 
 // POST /api/seed — create a sample scale+items
@@ -55,6 +61,11 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	var sc Scale
 	if err := json.NewDecoder(r.Body).Decode(&sc); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -66,6 +77,7 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 	if sc.Points == 0 {
 		sc.Points = 5
 	}
+	sc.TenantID = tid
 	rt.store.addScale(&sc)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(sc)
@@ -75,6 +87,11 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) handleItems(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	var it Item
@@ -91,6 +108,11 @@ func (rt *Router) handleItems(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(it.StemI18n) == 0 {
 		http.Error(w, "stem_i18n required", http.StatusBadRequest)
+		return
+	}
+	sc := rt.store.getScale(it.ScaleID)
+	if sc == nil || sc.TenantID != tid {
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	rt.store.addItem(&it)
@@ -297,4 +319,90 @@ func (rt *Router) handleAlpha(w http.ResponseWriter, r *http.Request) {
 	alpha := services.CronbachAlpha(matrix)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": scaleID, "alpha": alpha, "n": len(matrix)})
+}
+
+// --- Auth & Admin ---
+// POST /api/auth/register {email,password,tenant_name}
+func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct{ Email, Password, TenantName string }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "email/password required", http.StatusBadRequest)
+		return
+	}
+	if rt.store.findUserByEmail(req.Email) != nil {
+		http.Error(w, "email exists", http.StatusConflict)
+		return
+	}
+	tid := "t" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
+	rt.store.addTenant(&Tenant{ID: tid, Name: req.TenantName})
+	// hash password
+	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	uid := "u" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
+	rt.store.addUser(&User{ID: uid, Email: req.Email, PassHash: hash, TenantID: tid, CreatedAt: time.Now().UTC()})
+	tok, _ := middleware.SignToken(uid, tid, req.Email, 30*24*time.Hour)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": tid, "user_id": uid})
+}
+
+// POST /api/auth/login {email,password}
+func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct{ Email, Password string }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	u := rt.store.findUserByEmail(req.Email)
+	if u == nil || bcrypt.CompareHashAndPassword(u.PassHash, []byte(req.Password)) != nil {
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		return
+	}
+	tok, _ := middleware.SignToken(u.ID, u.TenantID, u.Email, 30*24*time.Hour)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": u.TenantID, "user_id": u.ID})
+}
+
+// GET /api/admin/scales -> list scales for tenant
+func (rt *Router) handleAdminScales(w http.ResponseWriter, r *http.Request) {
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	list := rt.store.listScalesByTenant(tid)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"scales": list})
+}
+
+// GET /api/admin/stats?scale_id=...
+func (rt *Router) handleAdminStats(w http.ResponseWriter, r *http.Request) {
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	scaleID := r.URL.Query().Get("scale_id")
+	if scaleID == "" {
+		http.Error(w, "scale_id required", http.StatusBadRequest)
+		return
+	}
+	sc := rt.store.getScale(scaleID)
+	if sc == nil || sc.TenantID != tid {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	rs := rt.store.listResponsesByScale(scaleID)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"count": len(rs)})
 }
