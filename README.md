@@ -95,6 +95,14 @@ curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/qui
 # Stable channel (latest)
 curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
   | sudo bash -s -- --channel latest --domain <your-domain> --email you@example.com --dir /opt/synap
+
+Use behind your own Nginx (no Caddy, custom port):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
+  | sudo bash -s -- --channel latest --edge none --port 9000 --dir /opt/synap
+# Then in Nginx, proxy_pass http://127.0.0.1:9000;
+```
 ```
 
 More options in `docs/deploy.md`.
