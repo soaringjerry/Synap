@@ -61,6 +61,23 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
+### Docker (GHCR)
+
+Pull and run backend from GHCR (after CI builds on main):
+
+```bash
+docker run -d --name synap -p 8080:8080 \
+  -e SYNAP_ADDR=:8080 \
+  ghcr.io/<owner>/synap-backend:latest
+```
+
+Or with Compose:
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
 ## Configuration
 
 * `SYNAP_DB_PATH` — SQLite database file path (default `./data/synap.db`)

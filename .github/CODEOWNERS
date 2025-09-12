@@ -1,0 +1,14 @@
+# Update the owners below to your GitHub handles or teams.
+
+# Default owner for everything
+* @soaringjerry
+
+# Sensitive areas
+LICENSE @soaringjerry
+docs/**/privacy*/** @soaringjerry
+docs/**/*privacy* @soaringjerry
+docs/policies/** @soaringjerry
+internal/**/export*/** @soaringjerry
+frontend/src/**/export*/** @soaringjerry
+docs/api/** @soaringjerry
+

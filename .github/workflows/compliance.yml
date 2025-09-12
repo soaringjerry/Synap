@@ -1,0 +1,50 @@
+name: Compliance Gates
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect sensitive path changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            privacy:
+              - 'docs/**/privacy*/**'
+              - 'docs/**/*privacy*'
+            license:
+              - 'LICENSE'
+            export:
+              - 'internal/**/export*/**'
+              - 'frontend/src/**/export*/**'
+            openapi:
+              - 'docs/api/**.yaml'
+              - 'docs/api/**.yml'
+      - name: Require label for privacy changes
+        if: ${{ steps.changes.outputs.privacy == 'true' && !contains(join(github.event.pull_request.labels.*.name, ','), 'compliance-approved') }}
+        run: |
+          echo "Privacy-related docs changed but label 'compliance-approved' is missing." >&2
+          exit 1
+      - name: Require label for LICENSE changes
+        if: ${{ steps.changes.outputs.license == 'true' && !contains(join(github.event.pull_request.labels.*.name, ','), 'license-approved') }}
+        run: |
+          echo "LICENSE changed but label 'license-approved' is missing." >&2
+          exit 1
+      - name: Require label for export pipeline changes
+        if: ${{ steps.changes.outputs.export == 'true' && !contains(join(github.event.pull_request.labels.*.name, ','), 'export-reviewed') }}
+        run: |
+          echo "Export-related code changed but label 'export-reviewed' is missing." >&2
+          exit 1
+      - name: Require label for OpenAPI changes
+        if: ${{ steps.changes.outputs.openapi == 'true' && !contains(join(github.event.pull_request.labels.*.name, ','), 'api-approved') }}
+        run: |
+          echo "OpenAPI contract changed but label 'api-approved' is missing." >&2
+          exit 1
+
