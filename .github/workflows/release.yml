@@ -14,6 +14,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+          cache: false
       - name: Build Linux AMD64
         run: |
           GOOS=linux GOARCH=amd64 go build -o synap_linux_amd64 ./cmd/server
