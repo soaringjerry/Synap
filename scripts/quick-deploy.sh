@@ -92,7 +92,9 @@ SYNAP_TAG=${synap_tag}
 DOMAIN=${DOMAIN}
 EMAIL=${EMAIL}
 WATCH_INTERVAL=${WATCH_INTERVAL}
-PORT=${PORT}
+# Backend and Web host ports (used by compose only)
+BACKEND_PORT=${PORT}
+WEB_PORT=${WEB_PORT}
 FRONT_PORT=${FRONT_PORT}
 DEV_FRONTEND_URL=${dev_front_url}
 WEB_IMAGE=${web_image}
@@ -124,6 +126,8 @@ services:
     env_file: .env
     environment:
       - NODE_ENV=production
+      # Force Next.js to listen on 3000 in-container regardless of other vars
+      - PORT=3000
     restart: unless-stopped
     labels:
       - com.centurylinklabs.watchtower.enable=true
@@ -172,7 +176,7 @@ services:
       - SYNAP_STATIC_DIR=
       - SYNAP_DEV_FRONTEND_URL=
     ports:
-      - "127.0.0.1:${PORT}:8080"
+      - "127.0.0.1:${BACKEND_PORT}:8080"
     volumes:
       - synap-data:/data
     restart: unless-stopped
@@ -184,6 +188,7 @@ services:
     env_file: .env
     environment:
       - NODE_ENV=production
+      - PORT=3000
     ports:
       - "127.0.0.1:${WEB_PORT}:3000"
     restart: unless-stopped
