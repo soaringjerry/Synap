@@ -11,6 +11,8 @@ CHANNEL="latest"   # dev|latest|<tag>
 DOMAIN=""
 EMAIL=""
 TARGET_DIR="/opt/synap"
+PORT="8080"         # host port when not using caddy
+EDGE="caddy"        # caddy|none (none = expose 127.0.0.1:$PORT)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -19,6 +21,8 @@ while [[ $# -gt 0 ]]; do
     -d|--domain) DOMAIN="$2"; shift 2 ;;
     -e|--email) EMAIL="$2"; shift 2 ;;
     --dir) TARGET_DIR="$2"; shift 2 ;;
+    -p|--port) PORT="$2"; shift 2 ;;
+    --edge) EDGE="$2"; shift 2 ;;
     -h|--help)
       echo "Options: --owner <ghcr-owner> --channel <dev|latest|tag> --domain <host> --email <email> --dir <path>";
       exit 0 ;;
@@ -26,7 +30,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "[synap] owner=$OWNER channel=$CHANNEL domain=${DOMAIN:-<none>} target=$TARGET_DIR"
+echo "[synap] owner=$OWNER channel=$CHANNEL domain=${DOMAIN:-<none>} edge=$EDGE port=$PORT target=$TARGET_DIR"
 
 need_root() {
   if [[ $EUID -ne 0 ]]; then
@@ -75,10 +79,12 @@ SYNAP_TAG=${synap_tag}
 DOMAIN=${DOMAIN}
 EMAIL=${EMAIL}
 WATCH_INTERVAL=300
+PORT=${PORT}
 EOF
 
   # Write compose file
-  cat > docker-compose.yml <<'YAML'
+  if [[ "$EDGE" == "caddy" ]]; then
+    cat > docker-compose.yml <<'YAML'
 name: synap
 
 services:
@@ -123,9 +129,41 @@ volumes:
   caddy-data:
   caddy-config:
 YAML
+  else
+    cat > docker-compose.yml <<'YAML'
+name: synap
 
-  # Caddyfile
-  cat > Caddyfile <<'CADDY'
+services:
+  synap:
+    image: ${SYNAP_IMAGE:-ghcr.io/${GHCR_OWNER:-soaringjerry}/synap}:${SYNAP_TAG:-latest}
+    env_file: .env
+    environment:
+      - SYNAP_ADDR=:8080
+      - SYNAP_DB_PATH=/data/synap.db
+      - SYNAP_STATIC_DIR=/public
+    ports:
+      - "127.0.0.1:${PORT}:8080"
+    volumes:
+      - synap-data:/data
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    command: --interval ${WATCH_INTERVAL:-300} --cleanup --label-enable
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  synap-data:
+YAML
+  fi
+
+  # Caddyfile (only if caddy edge)
+  if [[ "$EDGE" == "caddy" ]]; then
+    cat > Caddyfile <<'CADDY'
 {
   email {$EMAIL}
 }
@@ -140,6 +178,7 @@ YAML
   reverse_proxy synap:8080
 }
 CADDY
+  fi
 }
 
 bring_up() {
@@ -160,4 +199,3 @@ main() {
 }
 
 main "$@"
-
