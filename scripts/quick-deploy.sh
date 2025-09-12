@@ -76,6 +76,12 @@ prepare_files() {
     image="ghcr.io/${OWNER}/synap"; synap_tag="$CHANNEL"
   fi
 
+  # Dev frontend URL (in-container) for proxying / to Vite dev server
+  local dev_front_url=""
+  if [[ "$CHANNEL" == "dev" ]]; then
+    dev_front_url="http://127.0.0.1:5173"
+  fi
+
   cat > .env <<EOF
 GHCR_OWNER=${OWNER}
 SYNAP_IMAGE=${image}
@@ -85,6 +91,7 @@ EMAIL=${EMAIL}
 WATCH_INTERVAL=${WATCH_INTERVAL}
 PORT=${PORT}
 FRONT_PORT=${FRONT_PORT}
+DEV_FRONTEND_URL=${dev_front_url}
 EOF
 
   # Write compose file
@@ -100,6 +107,7 @@ services:
       - SYNAP_ADDR=:8080
       - SYNAP_DB_PATH=/data/synap.db
       - SYNAP_STATIC_DIR=/public
+      - SYNAP_DEV_FRONTEND_URL=${DEV_FRONTEND_URL}
     volumes:
       - synap-data:/data
     restart: unless-stopped
@@ -147,6 +155,7 @@ services:
       - SYNAP_ADDR=:8080
       - SYNAP_DB_PATH=/data/synap.db
       - SYNAP_STATIC_DIR=/public
+      - SYNAP_DEV_FRONTEND_URL=${DEV_FRONTEND_URL}
     ports:
       - "127.0.0.1:${PORT}:8080"
       - "127.0.0.1:${FRONT_PORT}:5173"
