@@ -1,0 +1,19 @@
+run:
+  timeout: 3m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - gofmt
+    - goimports
+    - gocyclo
+    - gosimple
+    - staticcheck
+    - ineffassign
+    - misspell
+    - errcheck
+
+issues:
+  exclude-use-default: false
+
