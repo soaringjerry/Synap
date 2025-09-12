@@ -13,6 +13,7 @@ EMAIL=""
 TARGET_DIR="/opt/synap"
 PORT="8080"         # host port when not using caddy (backend -> 8080)
 FRONT_PORT="5173"   # host port for frontend dev server (maps -> 5173)
+WATCH_INTERVAL="300" # seconds for Watchtower polling
 EDGE="caddy"        # caddy|none (none = expose 127.0.0.1:$PORT)
 
 while [[ $# -gt 0 ]]; do
@@ -25,6 +26,7 @@ while [[ $# -gt 0 ]]; do
     -p|--port) PORT="$2"; shift 2 ;;
     --edge) EDGE="$2"; shift 2 ;;
     --front-port) FRONT_PORT="$2"; shift 2 ;;
+    --watch-interval) WATCH_INTERVAL="$2"; shift 2 ;;
     -h|--help)
       echo "Options: --owner <ghcr-owner> --channel <dev|latest|tag> --domain <host> --email <email> --dir <path>";
       exit 0 ;;
@@ -32,7 +34,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "[synap] owner=$OWNER channel=$CHANNEL domain=${DOMAIN:-<none>} edge=$EDGE port=$PORT front-port=$FRONT_PORT target=$TARGET_DIR"
+echo "[synap] owner=$OWNER channel=$CHANNEL domain=${DOMAIN:-<none>} edge=$EDGE port=$PORT front-port=$FRONT_PORT watch-interval=${WATCH_INTERVAL}s target=$TARGET_DIR"
 
 need_root() {
   if [[ $EUID -ne 0 ]]; then
@@ -80,7 +82,7 @@ SYNAP_IMAGE=${image}
 SYNAP_TAG=${synap_tag}
 DOMAIN=${DOMAIN}
 EMAIL=${EMAIL}
-WATCH_INTERVAL=300
+WATCH_INTERVAL=${WATCH_INTERVAL}
 PORT=${PORT}
 FRONT_PORT=${FRONT_PORT}
 EOF
