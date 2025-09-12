@@ -1,0 +1,33 @@
+{
+  "common": {
+    "brand": "Synap",
+    "cta": { "primary": "立即开始", "secondary": "探索功能" }
+  },
+  "marketing": {
+    "heroTitle": "赛博夜行 UI",
+    "tagline": "霓虹、高性能、专业。为夜行者而生。",
+    "ctaPrimary": "立即开始",
+    "ctaSecondary": "探索功能",
+    "feature": {
+      "speed": { "title": "速度即习惯", "desc": "面向 90+ Lighthouse 与低 LCP 优化。" },
+      "design": { "title": "大胆设计", "desc": "清晰层级，适度 glitch 与霓虹点缀。" }
+    },
+    "panels": { "itemTitle": "功能面板 {index}", "itemDesc": "该能力的详细说明。" }
+  },
+  "dashboard": {
+    "widgets": {
+      "status": "实时状态",
+      "statusDesc": "系统指标与可靠性检查。",
+      "activity": "活动流",
+      "activityDesc": "你空间内的最新动态。",
+      "quick": "快速操作",
+      "quickDesc": "使用 ⌘K / Ctrl+K 打开命令面板。"
+    }
+  },
+  "settings": {
+    "themes": { "title": "主题", "dark": "暗色", "light": "亮色" },
+    "neon": { "title": "霓虹强度", "low": "低", "medium": "中", "high": "高" },
+    "motion": { "title": "动效", "off": "关闭", "low": "低", "on": "开启" }
+  }
+}
+

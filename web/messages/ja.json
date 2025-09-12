@@ -1,0 +1,33 @@
+{
+  "common": {
+    "brand": "Synap",
+    "cta": { "primary": "はじめる", "secondary": "探索" }
+  },
+  "marketing": {
+    "heroTitle": "サイバーナイト UI",
+    "tagline": "ネオン、高性能、プロフェッショナル。夜行者のために。",
+    "ctaPrimary": "はじめる",
+    "ctaSecondary": "探索",
+    "feature": {
+      "speed": { "title": "スピード重視", "desc": "Lighthouse 90+ と低 LCP に最適化。" },
+      "design": { "title": "大胆なデザイン", "desc": "明確な階層、適度なグリッチとネオン。" }
+    },
+    "panels": { "itemTitle": "パネル {index}", "itemDesc": "この機能の詳細。" }
+  },
+  "dashboard": {
+    "widgets": {
+      "status": "リアルタイム状況",
+      "statusDesc": "システムメトリクスと信頼性チェック。",
+      "activity": "アクティビティ",
+      "activityDesc": "ワークスペースの最新更新。",
+      "quick": "クイック操作",
+      "quickDesc": "⌘K / Ctrl+K でコマンドパレット。"
+    }
+  },
+  "settings": {
+    "themes": { "title": "テーマ", "dark": "ダーク", "light": "ライト" },
+    "neon": { "title": "ネオン強度", "low": "低", "medium": "中", "high": "高" },
+    "motion": { "title": "モーション", "off": "オフ", "low": "低", "on": "オン" }
+  }
+}
+

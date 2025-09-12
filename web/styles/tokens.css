@@ -1,0 +1,39 @@
+:root {
+  color-scheme: dark;
+  /* Palette */
+  --bg-0: #0b0d12;
+  --bg-1: #10131a;
+  --surface: rgba(255,255,255,0.06);
+  --text-primary: #e5e7eb;
+  --text-secondary: #94a3b8;
+  --neon-violet: #7c3aed;
+  --neon-cyan: #22d3ee;
+  --neon-lime: #a3e635;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --border: rgba(255,255,255,0.12);
+  /* Elevation */
+  --radius: 16px;
+  --radius-lg: 20px;
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --motion-slow: 320ms;
+
+  /* Neon intensity (0..1) */
+  --neon-intensity: 0.8;
+}
+
+/* Light mode tokens */
+.light {
+  color-scheme: light;
+  --bg-0: #f6f7f9;
+  --bg-1: #ffffff;
+  --surface: rgba(0,0,0,0.04);
+  --text-primary: #0b0d12;
+  --text-secondary: #4b5563;
+  --border: rgba(0,0,0,0.12);
+}
+
