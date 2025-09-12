@@ -89,7 +89,7 @@ func (rt *Router) handleItems(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "scale_id required", http.StatusBadRequest)
 		return
 	}
-	if it.StemI18n == nil || len(it.StemI18n) == 0 {
+	if len(it.StemI18n) == 0 {
 		http.Error(w, "stem_i18n required", http.StatusBadRequest)
 		return
 	}
