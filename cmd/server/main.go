@@ -28,6 +28,12 @@ func main() {
 		})
 	})
 
+	// Serve static files if provided via SYNAP_STATIC_DIR
+	if staticDir := os.Getenv("SYNAP_STATIC_DIR"); staticDir != "" {
+		fs := http.FileServer(http.Dir(staticDir))
+		mux.Handle("/", fs)
+	}
+
 	// Wrap mux with locale middleware
 	handler := middleware.LocaleMiddleware(mux)
 
