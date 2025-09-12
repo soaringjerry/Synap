@@ -11,7 +11,7 @@ export function Home() {
         <div className="muted">{t('tagline')}</div>
       </div>
       <div className="row">
-        <section className="card glass span-6 fx-fractal">
+        <section className="card span-6">
           <h3 style={{ marginTop: 0 }}>Synap</h3>
           <p className="muted">{t('home_intro')}</p>
           <div style={{ height: 12 }} />
@@ -19,7 +19,7 @@ export function Home() {
           <span style={{ display: 'inline-block', width: 8 }} />
           <Link className="btn btn-ghost" to="/auth">{t('cta_auth')}</Link>
         </section>
-        <section className="card glass span-6">
+        <section className="card span-6">
           <h3 style={{ marginTop: 0 }}>Highlights</h3>
           <p className="muted">• SQLite by default, swap to Postgres later
           <br/>• Export-ready CSV (long/wide/score) and α

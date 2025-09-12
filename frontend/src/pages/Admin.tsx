@@ -53,14 +53,14 @@ export function Admin() {
         <div className="muted">{t('admin_console_sub')}</div>
       </div>
       <div className="row">
-        <section className="card glass span-6">
+        <section className="card span-6">
           <h3 style={{marginTop:0}}>{t('create_scale')}</h3>
           <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={nameEn} onChange={e=>setNameEn(e.target.value)} /></div>
           <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={nameZh} onChange={e=>setNameZh(e.target.value)} /></div>
           <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} /></div>
           <button className="btn btn-primary" onClick={createScale}>{t('create')}</button>
         </section>
-        <section className="card glass span-6 offset">
+        <section className="card span-6 offset">
           <h3 style={{marginTop:0}}>{t('add_item')}</h3>
           <div className="item"><div className="label">{t('scale_id')}</div><input className="input" value={scaleId} onChange={e=>setScaleId(e.target.value)} placeholder={t('scale_id_placeholder')} /></div>
           <div className="item"><div className="label">{t('stem_en')}</div><input className="input" value={stemEn} onChange={e=>setStemEn(e.target.value)} /></div>
@@ -70,7 +70,7 @@ export function Admin() {
         </section>
       </div>
       <div className="row" style={{marginTop:16}}>
-        <section className="card glass span-12">
+        <section className="card span-12">
           <h3 style={{marginTop:0}}>{t('your_scales')}</h3>
           {scales.length===0 && <div className="muted">{t('no_scales')}</div>}
           {scales.map((s:any)=>(
