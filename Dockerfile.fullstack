@@ -14,7 +14,11 @@ WORKDIR /app
 COPY . .
 RUN set -eux; \
     if [ -f frontend/package.json ]; then \
-      npm ci --prefix frontend; \
+      if [ -f frontend/package-lock.json ]; then \
+        npm ci --prefix frontend; \
+      else \
+        npm install --prefix frontend; \
+      fi; \
       npm run build --prefix frontend; \
       mkdir -p /out/public && cp -r frontend/dist/* /out/public/; \
     else \
@@ -30,4 +34,3 @@ ENV SYNAP_ADDR=:8080
 ENV SYNAP_STATIC_DIR=/public
 EXPOSE 8080
 ENTRYPOINT ["/synap"]
-
