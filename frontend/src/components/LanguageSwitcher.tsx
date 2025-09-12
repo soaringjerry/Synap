@@ -17,7 +17,7 @@ export function LanguageSwitcher() {
         url.searchParams.set('lang', v)
         window.history.replaceState({}, '', url.toString())
       }}
-      className="neon-btn"
+      className="neon-btn bubble-glass"
       style={{ position: 'fixed', right: 12, top: 46 }}
     >
       <option value="en">{t('lang_en')}</option>
@@ -25,4 +25,3 @@ export function LanguageSwitcher() {
     </select>
   )
 }
-
