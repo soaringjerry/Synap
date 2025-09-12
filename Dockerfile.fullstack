@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+
+# ---- Backend build ----
+FROM golang:1.23-alpine AS backend
+WORKDIR /app
+ENV CGO_ENABLED=0
+COPY . .
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags='-s -w' -o /out/synap ./cmd/server
+
+# ---- Frontend build (optional) ----
+FROM node:20-alpine AS frontend
+WORKDIR /app
+COPY . .
+RUN set -eux; \
+    if [ -f frontend/package.json ]; then \
+      npm ci --prefix frontend; \
+      npm run build --prefix frontend; \
+      mkdir -p /out/public && cp -r frontend/dist/* /out/public/; \
+    else \
+      mkdir -p /out/public; \
+    fi
+
+# ---- Final ----
+FROM scratch AS final
+WORKDIR /
+COPY --from=backend /out/synap /synap
+COPY --from=frontend /out/public /public
+ENV SYNAP_ADDR=:8080
+ENV SYNAP_STATIC_DIR=/public
+EXPOSE 8080
+ENTRYPOINT ["/synap"]
+
