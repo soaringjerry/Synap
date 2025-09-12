@@ -1,0 +1,43 @@
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+.history/
+
+# Logs and caches
+*.log
+*.out
+.cache/
+coverage/
+coverage.out
+
+# Env and local config
+.env
+.env.*
+!.env.example
+
+# Go build artifacts
+synap
+synap.exe
+dist/
+tmp/
+
+# SQLite/data
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.env.*
+
+# Root npm lock is not required (semantic-release tooling only)
+/package-lock.json
+
