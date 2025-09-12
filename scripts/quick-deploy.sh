@@ -13,7 +13,7 @@ EMAIL=""
 TARGET_DIR="/opt/synap"
 PORT="8080"         # host port when not using caddy (backend -> 8080)
 FRONT_PORT="5173"   # host port for frontend dev server (maps -> 5173)
-WATCH_INTERVAL="300" # seconds for Watchtower polling
+WATCH_INTERVAL="60"  # seconds for Watchtower polling (default dev-friendly)
 EDGE="caddy"        # caddy|none (none = expose 127.0.0.1:$PORT)
 
 while [[ $# -gt 0 ]]; do
