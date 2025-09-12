@@ -51,9 +51,9 @@
 * `.github/workflows/compliance.yml` — 合规守门：隐私文档、LICENSE、导出代码、OpenAPI 修改时强制需要对应标签（`compliance-approved`、`license-approved`、`export-reviewed`、`api-approved`）。
 * `.github/workflows/release.yml` — 发布：发布事件触发，多平台构建并上传二进制；同时触发 Semantic Release 生成 Release Note。
 * `.github/workflows/docker.yml` — GHCR 镜像构建与发布：
-  - `ghcr.io/<owner>/synap-backend`（后端仅 API）
-  - `ghcr.io/<owner>/synap`（一体化：前端静态 + 后端）
-  - `ghcr.io/<owner>/synap-dev`（一体化开发镜像：前后端同容器）
+  - `ghcr.io/soaringjerry/synap-backend`（后端仅 API）
+  - `ghcr.io/soaringjerry/synap`（一体化：前端静态 + 后端）
+  - `ghcr.io/soaringjerry/synap-dev`（一体化开发镜像：前后端同容器）
   - 平台：`linux/amd64`（暂不构建 arm64）
 * `.github/CODEOWNERS` — 对隐私、许可证、导出、API 契约等敏感路径设置代码所有者，配合分支保护强制评审。
 * `.golangci.yml` — Go 静态检查配置。

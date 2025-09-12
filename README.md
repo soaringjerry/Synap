@@ -65,16 +65,16 @@ Open [http://localhost:3000](http://localhost:3000)
 
 Images (amd64):
 
-- `ghcr.io/<owner>/synap-backend` — backend API only
-- `ghcr.io/<owner>/synap` — fullstack (backend + built frontend static)
-- `ghcr.io/<owner>/synap-dev` — dev image (backend + frontend dev server)
+- `ghcr.io/soaringjerry/synap-backend` — backend API only
+- `ghcr.io/soaringjerry/synap` — fullstack (backend + built frontend static)
+- `ghcr.io/soaringjerry/synap-dev` — dev image (backend + frontend dev server)
 
 Run backend-only:
 
 ```bash
 docker run -d --name synap -p 8080:8080 \
   -e SYNAP_ADDR=:8080 \
-  ghcr.io/<owner>/synap-backend:latest
+  ghcr.io/soaringjerry/synap-backend:latest
 ```
 
 Run fullstack (serves Web + API on 8080):
@@ -82,7 +82,7 @@ Run fullstack (serves Web + API on 8080):
 ```bash
 docker run -d --name synap -p 8080:8080 \
   -e SYNAP_ADDR=:8080 \
-  ghcr.io/<owner>/synap:latest
+  ghcr.io/soaringjerry/synap:latest
 ```
 
 One‑click deploy (Scheme A: Docker + Compose + Caddy + Watchtower):
@@ -90,11 +90,11 @@ One‑click deploy (Scheme A: Docker + Compose + Caddy + Watchtower):
 ```bash
 # Dev channel (auto‑update)
 curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
-  | sudo bash -s -- --owner <owner> --channel dev --domain <your-domain> --email you@example.com --dir /opt/synap
+  | sudo bash -s -- --channel dev --domain <your-domain> --email you@example.com --dir /opt/synap
 
 # Stable channel (latest)
 curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
-  | sudo bash -s -- --owner <owner> --channel latest --domain <your-domain> --email you@example.com --dir /opt/synap
+  | sudo bash -s -- --channel latest --domain <your-domain> --email you@example.com --dir /opt/synap
 ```
 
 More options in `docs/deploy.md`.
