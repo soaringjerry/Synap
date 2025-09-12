@@ -34,6 +34,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Links: remove default underline for a cleaner, product-grade look */
+a { text-decoration: none; color: inherit; }
+a:hover, a:focus { text-decoration: none; }
+.neon-btn, .btn { text-decoration: none; }
+
 /* App frame */
 .app-header {
   position: fixed; inset: 0 0 auto 0; height: 64px;
@@ -132,20 +137,30 @@ body {
 .neon-btn:hover, .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .neon-btn:active, .btn:active { transform: translateY(0); }
 
-.scale {
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-}
+.scale { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+/* Premium segmented Likert control */
 .bubble {
-  width: 36px; height: 36px; border-radius: 50%;
+  min-width: 44px; height: 44px; border-radius: 12px;
   display: inline-flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(109, 240, 255, 0.25);
+  padding: 0 10px;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.16);
   color: var(--text);
+  font-weight: 700; letter-spacing: 0.2px;
+  font-family: 'Space Grotesk', Inter, sans-serif;
   cursor: pointer;
-  transition: all 140ms ease;
+  transition: transform 120ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
 }
-.bubble.active { background: rgba(109, 240, 255, 0.18); border-color: rgba(255,77,240,0.5); box-shadow: var(--glow); }
-.bubble:hover { transform: translateY(-1px); }
+.bubble:hover { transform: translateY(-1px); background: rgba(255,255,255,0.08); }
+.bubble:active { transform: translateY(0); }
+.bubble:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.35), 0 6px 18px rgba(0,0,0,0.25); }
+.bubble.active {
+  background: var(--accent-grad);
+  color: #0b0f1d;
+  border-color: transparent;
+  box-shadow: 0 10px 28px rgba(125,211,252,0.25), 0 2px 0 rgba(255,255,255,0.35) inset;
+}
 
 .label { font-size: 14px; opacity: 0.9; }
 .item { margin: 12px 0 8px; }
