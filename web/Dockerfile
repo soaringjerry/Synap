@@ -4,7 +4,8 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+# Install with dev deps so Next build can typecheck and lint
+RUN npm ci
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -25,4 +26,3 @@ COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 CMD ["node", "server.js"]
-
