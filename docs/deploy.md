@@ -90,6 +90,50 @@ server {
 }
 ```
 
+## 运维操作（手动更新/回滚/重启）
+
+以下命令默认目录为 `--dir`（例如 `/opt/synap`）：
+
+### 查看与日志
+- 查看服务状态：`docker compose ps`
+- 查看后端日志：`docker compose logs -f synap`
+- 查看 Watchtower 日志：`docker compose logs -f watchtower`
+
+### 立即执行一次镜像更新（不等轮询）
+- `docker compose exec watchtower watchtower --run-once`
+
+### 手动更新到最新标签
+- 更新并重启后端：`docker compose pull synap && docker compose up -d synap`
+- 强制重建容器：`docker compose up -d --force-recreate --no-deps synap`
+
+### 手动回滚
+1) 编辑 `.env`，将 `SYNAP_TAG` 改为上一个版本（例如 `latest` → 指定 `vX.Y.Z` 或指定 `@sha256:...`）。
+2) 执行：`docker compose pull synap && docker compose up -d synap`
+
+小贴士：用 `docker image ls ghcr.io/soaringjerry/synap*` 查看已缓存的本地标签；或 `docker inspect ghcr.io/soaringjerry/synap:latest --format '{{json .RepoDigests}}'` 获取 digest。
+
+### 暂停/恢复自动更新
+- 暂停 Watchtower：`docker compose stop watchtower`
+- 恢复 Watchtower：`docker compose up -d watchtower`
+
+### 重启/停止/删除服务
+- 重启后端：`docker compose restart synap`
+- 停止后端：`docker compose stop synap`
+- 杀进程（SIGKILL）：`docker compose kill synap`
+- 删除容器：`docker compose rm -f synap`（随后用 `up -d` 重新创建）
+
+### 全栈操作
+- 全栈重启：`docker compose down && docker compose up -d`
+- 仅重启 Caddy（如你在 Caddy 模式下改了域名/证书邮箱）：`docker compose restart caddy`
+
+### 健康检查与验证
+- 健康检查：`curl http://127.0.0.1:<后端端口>/health`
+- Caddy 模式下用域名访问：`curl -I https://<你的域名>/health`
+
+### 清理旧镜像
+- `docker image prune -f`（仅清理悬挂层）
+- 更彻底：`docker system prune -f`（请谨慎）
+
 ## 注意
 
 - 当前镜像仅包含后端。前端可在构建完成后使用独立镜像（Nginx 提供静态文件）或 Vercel/Netlify。
