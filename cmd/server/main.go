@@ -1,15 +1,16 @@
 package main
 
 import (
-	"encoding/json"
-	"log"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"os"
+    "encoding/json"
+    "log"
+    "net/http"
+    "net/http/httputil"
+    "net/url"
+    "os"
 
-	"github.com/soaringjerry/Synap/internal/middleware"
-	"github.com/soaringjerry/Synap/internal/utils"
+    "github.com/soaringjerry/Synap/internal/middleware"
+    "github.com/soaringjerry/Synap/internal/api"
+    "github.com/soaringjerry/Synap/internal/utils"
 )
 
 func main() {
@@ -18,7 +19,9 @@ func main() {
 		addr = ":8080"
 	}
 
-	mux := http.NewServeMux()
+    mux := http.NewServeMux()
+    // API routes
+    api.NewRouter().Register(mux)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		locale := middleware.LocaleFromContext(r.Context())
