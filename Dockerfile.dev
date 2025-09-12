@@ -1,15 +1,12 @@
 # syntax=docker/dockerfile:1
 
 # Dev image: run backend and frontend dev servers in one container
-FROM golang:1.23-bullseye AS dev
+FROM golang:1.23-alpine AS dev
 WORKDIR /workspace
 
-# Install Node.js 20 (NodeSource)
-RUN apt-get update && apt-get install -y curl ca-certificates gnupg && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    npm --version && node --version && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install Node.js + npm on Alpine (smaller dev image)
+RUN apk add --no-cache nodejs npm bash curl ca-certificates && \
+    node --version && npm --version
 
 COPY . .
 
