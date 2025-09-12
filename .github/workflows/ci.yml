@@ -39,6 +39,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+          cache: false
       - name: Go format check
         run: |
           fmt_out=$(gofmt -l .)
@@ -105,7 +106,8 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
+          cache: false
       - name: Build backend
         run: |
           mkdir -p dist
@@ -142,7 +144,8 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
+          cache: false
       - name: Build and run server
         run: |
           go build -o synap ./cmd/server
