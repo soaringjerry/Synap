@@ -9,10 +9,12 @@
 
 - 后端（仅 API）：`ghcr.io/soaringjerry/synap-backend`
   - 适合只需要后端 API 的部署，或配合外部前端。
-- 一体化（前后端）：`ghcr.io/soaringjerry/synap`
-  - 包含后端二进制 + 前端静态资源（如存在 `frontend` 并已构建）。
-- 开发版（一体化 Dev）：`ghcr.io/soaringjerry/synap-dev`
-  - 容器内同时跑后端热重载（air）与前端 Vite Dev Server，便于开发联调。
+- Web（Next.js App Router）：`ghcr.io/soaringjerry/synap-web`
+  - 独立的 Next.js 应用容器，默认端口 3000，内置严格 no-store 安全头和 CSP。
+- 一体化（旧，前后端）：`ghcr.io/soaringjerry/synap`
+  - 包含后端二进制 + 旧的静态前端（legacy）。
+- 开发版（旧，一体化 Dev）：`ghcr.io/soaringjerry/synap-dev`
+  - 容器内同时跑后端热重载与旧前端的 Vite Dev Server，便于开发联调。
   - tags：`latest`（main）、分支名、`sha-<short>`、版本 tag（如 `v1.2.3`）。
 
 ## 方式一：docker run（后端）
@@ -33,7 +35,7 @@ docker run -d --name synap -p 8080:8080 \
   ghcr.io/soaringjerry/synap:latest
 ```
 
-## 方式三：docker compose
+## 方式三：docker compose（后端 + Web）
 
 1) 配置 `.env`
 
@@ -42,7 +44,7 @@ cp .env.example .env
 # 编辑 .env，将 GHCR_OWNER 改为你的 GitHub 用户名或组织（小写）
 ```
 
-2) 启动服务
+2) 启动服务（建议使用一键脚本生成完整 Caddy 反代栈；若手动 compose，需添加 Web 服务并在边缘将 `/api` 指到后端，其它流量指到 Web）
 
 ```
 docker compose up -d
@@ -50,9 +52,8 @@ docker compose up -d
 
 3) 访问
 
-- 健康检查：`http://localhost:8080/health`
-- 语言切换：`http://localhost:8080/health?lang=zh`
-- 一体化页面（若构建了前端）：`http://localhost:8080/`
+- 后端健康检查：`http://localhost:8080/health`
+- Web：`http://localhost:3000/`（使用一键 Caddy 则通过域名访问）
 
 ## 常用环境变量
 
@@ -66,18 +67,18 @@ docker compose up -d
 
 ```
 curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
-  | sudo bash -s -- --channel latest --edge none --port 9000 --dir /opt/synap
+  | sudo bash -s -- --channel latest --edge none --port 9000 --web-port 3001 --dir /opt/synap
 ```
 
 - 生成的 compose 会绑定 `127.0.0.1:9000 -> synap:8080`，你可以在 Nginx 中反代到 `http://127.0.0.1:9000`。
 
-示例 Nginx 片段（HTTP）：
+示例 Nginx 片段（HTTP）：（/api → 后端，其它 → Web）
 
 ```
 server {
     listen 80;
     server_name your.domain.com;
-    location / {
+    location /api/ {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -86,6 +87,17 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_pass http://127.0.0.1:9000;
+    }
+
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_pass http://127.0.0.1:3001;
     }
 }
 ```

@@ -124,3 +124,30 @@ jobs:
             BUILD_TIME=${{ steps.vars.outputs.build_time }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Docker meta (web)
+        id: meta_web
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/synap-web
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+
+      - name: Build and push web (Next.js, amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          file: ./web/Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta_web.outputs.tags }}
+          labels: ${{ steps.meta_web.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ steps.vars.outputs.sha_short }}
+            BUILD_TIME=${{ steps.vars.outputs.build_time }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

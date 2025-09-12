@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 export default function PrivacyPage() {
   return (
     <article className="prose prose-invert max-w-none">
@@ -6,4 +7,3 @@ export default function PrivacyPage() {
     </article>
   )
 }
-

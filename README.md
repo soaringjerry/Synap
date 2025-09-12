@@ -66,8 +66,9 @@ Open [http://localhost:3000](http://localhost:3000)
 Images (amd64):
 
 - `ghcr.io/soaringjerry/synap-backend` — backend API only
-- `ghcr.io/soaringjerry/synap` — fullstack (backend + built frontend static)
-- `ghcr.io/soaringjerry/synap-dev` — dev image (backend + frontend dev server)
+- `ghcr.io/soaringjerry/synap-web` — Next.js Web (App Router, strict no-store)
+- `ghcr.io/soaringjerry/synap` — legacy fullstack (backend + old static frontend)
+- `ghcr.io/soaringjerry/synap-dev` — dev image (backend + legacy frontend dev server)
 
 Run backend-only:
 
@@ -77,13 +78,7 @@ docker run -d --name synap -p 8080:8080 \
   ghcr.io/soaringjerry/synap-backend:latest
 ```
 
-Run fullstack (serves Web + API on 8080):
-
-```bash
-docker run -d --name synap -p 8080:8080 \
-  -e SYNAP_ADDR=:8080 \
-  ghcr.io/soaringjerry/synap:latest
-```
+Run web (Next.js) + backend via Compose (reverse proxy at edge recommended). See docs/deploy.md for quick deploy with Caddy.
 
 One‑click deploy (Scheme A: Docker + Compose + Caddy + Watchtower):
 
@@ -96,12 +91,12 @@ curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/qui
 curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
   | sudo bash -s -- --channel latest --domain <your-domain> --email you@example.com --dir /opt/synap
 
-Use behind your own Nginx (no Caddy, custom port):
+Use behind your own Nginx (no Caddy, custom ports):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
-  | sudo bash -s -- --channel latest --edge none --port 9000 --dir /opt/synap
-# Then in Nginx, proxy_pass http://127.0.0.1:9000;
+  | sudo bash -s -- --channel latest --edge none --port 9000 --web-port 3001 --dir /opt/synap
+# Nginx: /api -> http://127.0.0.1:9000 ; others -> http://127.0.0.1:3001
 ```
 
 More options in `docs/deploy.md`.

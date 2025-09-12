@@ -1,4 +1,5 @@
 import { useTranslations } from 'next-intl'
+export const dynamic = 'force-dynamic'
 
 export default function ExplorePage() {
   const t = useTranslations('marketing')
@@ -13,4 +14,3 @@ export default function ExplorePage() {
     </div>
   )
 }
-

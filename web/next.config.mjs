@@ -1,3 +1,7 @@
+import createNextIntlPlugin from 'next-intl/plugin'
+
+const withNextIntl = createNextIntlPlugin()
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -5,6 +9,8 @@ const nextConfig = {
   experimental: {
     typedRoutes: true
   },
+  // Standalone output for Docker runtime
+  output: 'standalone',
   async headers() {
     // Global security + caching headers
     const common = [
@@ -32,5 +38,4 @@ const nextConfig = {
   }
 }
 
-export default nextConfig
-
+export default withNextIntl(nextConfig)

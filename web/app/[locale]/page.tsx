@@ -1,4 +1,5 @@
 import { useTranslations } from 'next-intl'
+export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 
 export default function HomePage() {
@@ -26,4 +27,3 @@ export default function HomePage() {
     </>
   )
 }
-

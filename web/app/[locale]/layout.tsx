@@ -6,6 +6,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { ReactNode } from 'react'
 import { getMessages } from '../../lib/i18n/getMessages'
 import { Navbar } from '../../components/Navbar'
+export const dynamic = 'force-dynamic'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const space = Space_Grotesk({ subsets: ['latin'], variable: '--font-display' })
@@ -17,10 +18,6 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   robots: { index: true, follow: true },
   openGraph: { title: 'Synap', description: 'Cyber nocturne UI', type: 'website' }
-}
-
-export function generateStaticParams() {
-  return [{ locale: 'en' }, { locale: 'zh-CN' }, { locale: 'ja' }]
 }
 
 export default async function RootLayout({ children, params }: { children: ReactNode; params: { locale: string } }) {
@@ -46,4 +43,3 @@ export default async function RootLayout({ children, params }: { children: React
     </html>
   )
 }
-
