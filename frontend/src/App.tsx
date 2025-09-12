@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { seedSample, listItems, submitBulk, getAlpha } from './api/client'
+import { VersionBadge } from './components/VersionBadge'
 
 type Item = { id: string; stem: string; reverse?: boolean }
 
@@ -63,6 +64,7 @@ export function App() {
 
   return (
     <div className="container">
+      <VersionBadge />
       <div className="hero">
         <div className="glitch" data-text="Synap — Cyber Survey">Synap — Cyber Survey</div>
         <div className="muted">Neon vibes · subtle chaos · focused research</div>
