@@ -1,16 +1,16 @@
 package main
 
 import (
-    "encoding/json"
-    "log"
-    "net/http"
-    "net/http/httputil"
-    "net/url"
-    "os"
+	"encoding/json"
+	"log"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
 
-    "github.com/soaringjerry/Synap/internal/middleware"
-    "github.com/soaringjerry/Synap/internal/api"
-    "github.com/soaringjerry/Synap/internal/utils"
+	"github.com/soaringjerry/Synap/internal/api"
+	"github.com/soaringjerry/Synap/internal/middleware"
+	"github.com/soaringjerry/Synap/internal/utils"
 )
 
 func main() {
@@ -19,9 +19,9 @@ func main() {
 		addr = ":8080"
 	}
 
-    mux := http.NewServeMux()
-    // API routes
-    api.NewRouter().Register(mux)
+	mux := http.NewServeMux()
+	// API routes
+	api.NewRouter().Register(mux)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		locale := middleware.LocaleFromContext(r.Context())
@@ -42,14 +42,21 @@ func main() {
 	} else if devURL := os.Getenv("SYNAP_DEV_FRONTEND_URL"); devURL != "" {
 		if u, err := url.Parse(devURL); err == nil {
 			rp := httputil.NewSingleHostReverseProxy(u)
+			// Ensure no-store headers also apply to proxied responses
+			rp.ModifyResponse = func(res *http.Response) error {
+				res.Header.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+				res.Header.Set("Pragma", "no-cache")
+				res.Header.Set("Expires", "0")
+				return nil
+			}
 			mux.Handle("/", rp)
 		} else {
 			log.Printf("invalid SYNAP_DEV_FRONTEND_URL=%q: %v", devURL, err)
 		}
 	}
 
-	// Wrap mux with locale middleware
-	handler := middleware.LocaleMiddleware(mux)
+	// Wrap mux with locale + no-store cache middleware
+	handler := middleware.NoStore(middleware.LocaleMiddleware(mux))
 
 	log.Printf("Synap server listening on %s", addr)
 	if err := http.ListenAndServe(addr, handler); err != nil {

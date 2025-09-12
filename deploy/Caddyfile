@@ -4,11 +4,17 @@
 
 {$DOMAIN} {
   encode zstd gzip
+  # Disable client caching to avoid stale content
+  header Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  header Pragma "no-cache"
+  header Expires "0"
   reverse_proxy synap:8080
 }
 
 :80 {
   encode zstd gzip
+  header Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  header Pragma "no-cache"
+  header Expires "0"
   reverse_proxy synap:8080
 }
-
