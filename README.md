@@ -63,7 +63,13 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ### Docker (GHCR)
 
-Pull and run backend from GHCR (after CI builds on main):
+Images (amd64):
+
+- `ghcr.io/<owner>/synap-backend` — backend API only
+- `ghcr.io/<owner>/synap` — fullstack (backend + built frontend static)
+- `ghcr.io/<owner>/synap-dev` — dev image (backend + frontend dev server)
+
+Run backend-only:
 
 ```bash
 docker run -d --name synap -p 8080:8080 \
@@ -71,18 +77,34 @@ docker run -d --name synap -p 8080:8080 \
   ghcr.io/<owner>/synap-backend:latest
 ```
 
-Or with Compose:
+Run fullstack (serves Web + API on 8080):
 
 ```bash
-cp .env.example .env
-docker compose up -d
+docker run -d --name synap -p 8080:8080 \
+  -e SYNAP_ADDR=:8080 \
+  ghcr.io/<owner>/synap:latest
 ```
+
+One‑click deploy (Scheme A: Docker + Compose + Caddy + Watchtower):
+
+```bash
+# Dev channel (auto‑update)
+curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
+  | sudo bash -s -- --owner <owner> --channel dev --domain <your-domain> --email you@example.com --dir /opt/synap
+
+# Stable channel (latest)
+curl -fsSL https://raw.githubusercontent.com/soaringjerry/Synap/main/scripts/quick-deploy.sh \
+  | sudo bash -s -- --owner <owner> --channel latest --domain <your-domain> --email you@example.com --dir /opt/synap
+```
+
+More options in `docs/deploy.md`.
 
 ## Configuration
 
 * `SYNAP_DB_PATH` — SQLite database file path (default `./data/synap.db`)
 * `SYNAP_ADDR` — server listen address (default `:8080`)
 * `SYNAP_REGION_MODE` — privacy mode: `auto` (geo-aware) or `pdpa`/`gdpr`/`ccpa`/`pipl`
+* `SYNAP_STATIC_DIR` — when set, backend serves static files from this directory (used by fullstack image)
 
 ## Data & Privacy
 
@@ -110,3 +132,5 @@ For **commercial use**, please contact the author for a commercial license.
 
 Author: [Jerry](https://github.com/soaringjerry)
 Email: *add your preferred contact email*
+
+Additional docs: see `docs/ci-cd.md`, `docs/deploy.md`, `docs/i18n.md`.
