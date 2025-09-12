@@ -9,5 +9,10 @@ export default defineConfig({
     // Allow all hosts to access dev server (useful behind reverse proxies)
     // See: Vite server.allowedHosts option
     allowedHosts: true,
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
   },
 })
