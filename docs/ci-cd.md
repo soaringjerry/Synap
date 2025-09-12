@@ -16,7 +16,7 @@
 
 ### 阶段二：CI 快检
 
-* Lint：`golangci-lint run ./...`（Go），`eslint .`（Frontend，若存在）。
+* Lint：`golangci-lint run ./...`（Go 1.23+），`eslint .`（Frontend，若存在）。
 * 类型检查：`go vet ./...`、`tsc --noEmit`（若存在）。
 * 单元测试：`go test ./... -cover`；前端 `npm test -- --coverage`（若存在）。
 * 安全扫描：
@@ -47,7 +47,7 @@
 
 已添加以下工作流与配置：
 
-* `.github/workflows/ci.yml` — 主 CI：commitlint、pre-commit、Go/前端的 lint/类型检查/测试、安全扫描、构建、冒烟测试；前端步骤在不存在 `frontend/package.json` 时自动跳过。
+* `.github/workflows/ci.yml` — 主 CI：commitlint、pre-commit、Go/前端的 lint/类型检查/测试、安全扫描（Go 1.23+ govulncheck）、构建、冒烟测试；前端步骤在不存在 `frontend/package.json` 时自动跳过。
 * `.github/workflows/compliance.yml` — 合规守门：隐私文档、LICENSE、导出代码、OpenAPI 修改时强制需要对应标签（`compliance-approved`、`license-approved`、`export-reviewed`、`api-approved`）。
 * `.github/workflows/release.yml` — 发布：发布事件触发，多平台构建并上传二进制；同时触发 Semantic Release 生成 Release Note。
 * `.github/workflows/docker.yml` — GHCR 镜像构建与发布：针对 main 分支与版本 tag，构建 `linux/amd64, linux/arm64` 多架构镜像并推送到 `ghcr.io/<owner>/synap-backend`。
