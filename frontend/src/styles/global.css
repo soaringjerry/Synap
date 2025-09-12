@@ -44,8 +44,9 @@ a:hover, a:focus { text-decoration: none; }
   position: fixed; inset: 0 0 auto 0; height: 64px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 16px;
-  background: linear-gradient(180deg, rgba(16, 23, 51, 0.7), rgba(16, 23, 51, 0.35));
-  backdrop-filter: blur(8px);
+  background: linear-gradient(180deg, rgba(16, 23, 51, 0.65), rgba(16, 23, 51, 0.3));
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
   border-bottom: 1px solid var(--border);
   z-index: 50;
 }
@@ -173,3 +174,14 @@ a:hover, a:focus { text-decoration: none; }
 .label { font-size: 14px; opacity: 0.9; margin-bottom: 6px; display: inline-block; }
 .item { margin: 12px 0 10px; }
 .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent); margin: 14px 0; }
+.glass {
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid var(--border);
+  backdrop-filter: blur(10px) saturate(1.25);
+  -webkit-backdrop-filter: blur(10px) saturate(1.25);
+}
+.fx-fractal { /* optional decorative filter; degrades gracefully */
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  filter: url(#fractal-glass);
+}
