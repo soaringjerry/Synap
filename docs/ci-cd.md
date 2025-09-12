@@ -50,7 +50,7 @@
 * `.github/workflows/ci.yml` — 主 CI：commitlint、pre-commit、Go/前端的 lint/类型检查/测试、安全扫描（Go 1.23+ govulncheck）、构建、冒烟测试；前端步骤在不存在 `frontend/package.json` 时自动跳过。
 * `.github/workflows/compliance.yml` — 合规守门：隐私文档、LICENSE、导出代码、OpenAPI 修改时强制需要对应标签（`compliance-approved`、`license-approved`、`export-reviewed`、`api-approved`）。
 * `.github/workflows/release.yml` — 发布：发布事件触发，多平台构建并上传二进制；同时触发 Semantic Release 生成 Release Note。
-* `.github/workflows/docker.yml` — GHCR 镜像构建与发布：针对 main 分支与版本 tag，构建 `linux/amd64, linux/arm64` 多架构镜像并推送到 `ghcr.io/<owner>/synap-backend`。
+* `.github/workflows/docker.yml` — GHCR 镜像构建与发布：针对 main 分支与版本 tag，构建 `linux/amd64` 镜像并推送到 `ghcr.io/<owner>/synap-backend`（暂不构建 arm64）。
 * `.github/CODEOWNERS` — 对隐私、许可证、导出、API 契约等敏感路径设置代码所有者，配合分支保护强制评审。
 * `.golangci.yml` — Go 静态检查配置。
 * `.commitlintrc.json` — Conventional Commits 规范配置。
