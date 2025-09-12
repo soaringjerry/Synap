@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { VersionBadge } from './components/VersionBadge'
 import { Home } from './pages/Home'
 import { Admin } from './pages/Admin'
 import { Auth } from './pages/Auth'
