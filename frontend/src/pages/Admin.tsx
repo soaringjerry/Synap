@@ -55,18 +55,18 @@ export function Admin() {
       <div className="row">
         <section className="card span-6">
           <h3 style={{marginTop:0}}>{t('create_scale')}</h3>
-          <div className="item"><div className="label">{t('name_en')}</div><input value={nameEn} onChange={e=>setNameEn(e.target.value)} style={{width:'100%',padding:10,borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'inherit'}}/></div>
-          <div className="item"><div className="label">{t('name_zh')}</div><input value={nameZh} onChange={e=>setNameZh(e.target.value)} style={{width:'100%',padding:10,borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'inherit'}}/></div>
-          <div className="item"><div className="label">{t('points')}</div><input type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} style={{width:'100%',padding:10,borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'inherit'}}/></div>
-          <button className="neon-btn" onClick={createScale}>{t('create')}</button>
+          <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={nameEn} onChange={e=>setNameEn(e.target.value)} /></div>
+          <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={nameZh} onChange={e=>setNameZh(e.target.value)} /></div>
+          <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} /></div>
+          <button className="btn btn-primary" onClick={createScale}>{t('create')}</button>
         </section>
         <section className="card span-6 offset">
           <h3 style={{marginTop:0}}>{t('add_item')}</h3>
-          <div className="item"><div className="label">{t('scale_id')}</div><input value={scaleId} onChange={e=>setScaleId(e.target.value)} placeholder={t('scale_id_placeholder')} style={{width:'100%',padding:10,borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'inherit'}}/></div>
-          <div className="item"><div className="label">{t('stem_en')}</div><input value={stemEn} onChange={e=>setStemEn(e.target.value)} style={{width:'100%',padding:10,borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'inherit'}}/></div>
-          <div className="item"><div className="label">{t('stem_zh')}</div><input value={stemZh} onChange={e=>setStemZh(e.target.value)} style={{width:'100%',padding:10,borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'inherit'}}/></div>
-          <div className="item"><label><input type="checkbox" checked={reverse} onChange={e=>setReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
-          <button className="neon-btn" onClick={createItem}>{t('add')}</button>
+          <div className="item"><div className="label">{t('scale_id')}</div><input className="input" value={scaleId} onChange={e=>setScaleId(e.target.value)} placeholder={t('scale_id_placeholder')} /></div>
+          <div className="item"><div className="label">{t('stem_en')}</div><input className="input" value={stemEn} onChange={e=>setStemEn(e.target.value)} /></div>
+          <div className="item"><div className="label">{t('stem_zh')}</div><input className="input" value={stemZh} onChange={e=>setStemZh(e.target.value)} /></div>
+          <div className="item"><label><input className="checkbox" type="checkbox" checked={reverse} onChange={e=>setReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
+          <button className="btn btn-primary" onClick={createItem}>{t('add')}</button>
         </section>
       </div>
       <div className="row" style={{marginTop:16}}>

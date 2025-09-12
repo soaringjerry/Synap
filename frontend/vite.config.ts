@@ -14,5 +14,12 @@ export default defineConfig({
       'Pragma': 'no-cache',
       'Expires': '0',
     },
+    proxy: {
+      // Ensure calls like fetch('/api/...') from 5173 go to backend 8080
+      '/api': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true,
+      },
+    },
   },
 })

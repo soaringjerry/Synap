@@ -39,18 +39,15 @@ export function Auth() {
             <button className="neon-btn" onClick={() => setMode('register')} aria-pressed={mode==='register'}>{t('register')}</button>
             <button className="neon-btn" onClick={() => setMode('login')} aria-pressed={mode==='login'}>{t('login')}</button>
           </div>
-          <div className="item">
-            <div className="label">{t('email')}</div>
-            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" style={{ width:'100%', padding:10, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'inherit' }}/>
+          <div className="item"><div className="label">{t('email')}</div>
+            <input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
           </div>
-          <div className="item">
-            <div className="label">{t('password')}</div>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={{ width:'100%', padding:10, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'inherit' }}/>
+          <div className="item"><div className="label">{t('password')}</div>
+            <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} />
           </div>
           {mode==='register' && (
-            <div className="item">
-              <div className="label">{t('tenant_name')}</div>
-              <input value={tenant} onChange={e=>setTenant(e.target.value)} placeholder="Lab / Team" style={{ width:'100%', padding:10, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'inherit' }}/>
+            <div className="item"><div className="label">{t('tenant_name')}</div>
+              <input className="input" value={tenant} onChange={e=>setTenant(e.target.value)} placeholder="Lab / Team" />
             </div>
           )}
           <div style={{ height: 12 }} />
