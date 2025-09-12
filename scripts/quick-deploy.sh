@@ -11,7 +11,8 @@ CHANNEL="latest"   # dev|latest|<tag>
 DOMAIN=""
 EMAIL=""
 TARGET_DIR="/opt/synap"
-PORT="8080"         # host port when not using caddy
+PORT="8080"         # host port when not using caddy (backend -> 8080)
+FRONT_PORT="5173"   # host port for frontend dev server (maps -> 5173)
 EDGE="caddy"        # caddy|none (none = expose 127.0.0.1:$PORT)
 
 while [[ $# -gt 0 ]]; do
@@ -23,6 +24,7 @@ while [[ $# -gt 0 ]]; do
     --dir) TARGET_DIR="$2"; shift 2 ;;
     -p|--port) PORT="$2"; shift 2 ;;
     --edge) EDGE="$2"; shift 2 ;;
+    --front-port) FRONT_PORT="$2"; shift 2 ;;
     -h|--help)
       echo "Options: --owner <ghcr-owner> --channel <dev|latest|tag> --domain <host> --email <email> --dir <path>";
       exit 0 ;;
@@ -30,7 +32,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "[synap] owner=$OWNER channel=$CHANNEL domain=${DOMAIN:-<none>} edge=$EDGE port=$PORT target=$TARGET_DIR"
+echo "[synap] owner=$OWNER channel=$CHANNEL domain=${DOMAIN:-<none>} edge=$EDGE port=$PORT front-port=$FRONT_PORT target=$TARGET_DIR"
 
 need_root() {
   if [[ $EUID -ne 0 ]]; then
@@ -80,6 +82,7 @@ DOMAIN=${DOMAIN}
 EMAIL=${EMAIL}
 WATCH_INTERVAL=300
 PORT=${PORT}
+FRONT_PORT=${FRONT_PORT}
 EOF
 
   # Write compose file
@@ -130,6 +133,7 @@ volumes:
   caddy-config:
 YAML
   else
+    # EDGE=none: expose backend to 127.0.0.1:$PORT and (optionally) frontend dev to 127.0.0.1:$FRONT_PORT
     cat > docker-compose.yml <<'YAML'
 name: synap
 
@@ -143,6 +147,7 @@ services:
       - SYNAP_STATIC_DIR=/public
     ports:
       - "127.0.0.1:${PORT}:8080"
+      - "127.0.0.1:${FRONT_PORT}:5173"
     volumes:
       - synap-data:/data
     restart: unless-stopped
