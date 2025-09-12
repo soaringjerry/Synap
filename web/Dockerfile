@@ -2,14 +2,14 @@
 
 FROM node:20-alpine AS deps
 WORKDIR /app
-ENV NODE_ENV=production
+# Install all deps including dev for build-time tools (TS, ESLint, PostCSS)
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY package.json package-lock.json ./
-# Install with dev deps so Next build can typecheck and lint
-RUN npm ci
+RUN npm ci --include=dev
 
 FROM node:20-alpine AS builder
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
