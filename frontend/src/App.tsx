@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { seedSample, listItems, submitBulk, getAlpha } from './api/client'
 import { VersionBadge } from './components/VersionBadge'
+import { useTranslation } from 'react-i18next'
 
 type Item = { id: string; stem: string; reverse?: boolean }
 
@@ -24,7 +25,8 @@ function LikertScale({ points, value, onChange }: { points?: number; value: numb
 function reverseScore(raw: number, points: number) { return (points + 1) - raw }
 
 export function App() {
-  const [lang, setLang] = useState<'en' | 'zh'>(() => (navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'))
+  const { t, i18n } = useTranslation()
+  const [lang, setLang] = useState<'en' | 'zh'>(() => (i18n.language.startsWith('zh') ? 'zh' : 'en'))
   const [scaleId, setScaleId] = useState('SAMPLE')
   const [items, setItems] = useState<Item[]>([])
   const [answers, setAnswers] = useState<Record<string, number>>({})
@@ -66,8 +68,8 @@ export function App() {
     <div className="container">
       <VersionBadge />
       <div className="hero">
-        <div className="glitch" data-text="Synap — Cyber Survey">Synap — Cyber Survey</div>
-        <div className="muted">Neon vibes · subtle chaos · focused research</div>
+        <div className="glitch" data-text={t('title')}>{t('title')}</div>
+        <div className="muted">{t('tagline')}</div>
       </div>
 
       <div className="row">
@@ -75,15 +77,15 @@ export function App() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0 }}>Quick Survey</h3>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="neon-btn" onClick={async () => { await seedSample(); setScaleId('SAMPLE'); const { items } = await listItems('SAMPLE', lang); setItems(items.map(it => ({ id: it.id, stem: it.stem, reverse: it.reverse_scored })))} }>Seed Sample</button>
-              <select value={lang} onChange={e => setLang(e.target.value as any)} className="neon-btn" aria-label="Language">
+              <button className="neon-btn" onClick={async () => { await seedSample(); setScaleId('SAMPLE'); const { items } = await listItems('SAMPLE', lang); setItems(items.map(it => ({ id: it.id, stem: it.stem, reverse: it.reverse_scored })))} }>{t('seed_sample')}</button>
+              <select value={lang} onChange={e => { const v = e.target.value as 'en'|'zh'; setLang(v); i18n.changeLanguage(v); localStorage.setItem('lang', v); }} className="neon-btn" aria-label={t('language')}>
                 <option value="en">English</option>
                 <option value="zh">中文</option>
               </select>
             </div>
           </div>
           <div className="divider" />
-          {items.length === 0 && <div className="muted">No items. Click Seed Sample.</div>}
+          {items.length === 0 && <div className="muted">{t('no_items_click_seed')}</div>}
           {items.map((it) => (
             <div key={it.id} className="item">
               <div className="label">{it.stem}{it.reverse ? ' · (R)' : ''}</div>
@@ -91,28 +93,28 @@ export function App() {
             </div>
           ))}
           <div className="divider" />
-          <div className="muted">Total score: {total}</div>
+          <div className="muted">{t('total_score')}: {total}</div>
           <div style={{ height: 12 }} />
-          <button className="neon-btn" onClick={submit}>Submit</button>
+          <button className="neon-btn" onClick={submit}>{t('submit')}</button>
           {msg && <div className="muted" style={{ marginTop: 8 }}>{msg}</div>}
           {alpha != null && <div className="muted" style={{ marginTop: 4 }}>Cronbach's α: {alpha.toFixed(3)}</div>}
         </section>
 
         <section className="card span-6 offset">
-          <h3 style={{ marginTop: 0 }}>Status</h3>
+          <h3 style={{ marginTop: 0 }}>{t('status')}</h3>
           <div className="divider" />
           <p className="muted" style={{ marginTop: 0 }}>
-            Backend health: <a href="/health" target="_blank" rel="noreferrer">/health</a>
+            {t('backend_health')}: <a href="/health" target="_blank" rel="noreferrer">/health</a>
           </p>
           <p className="muted">
             Style: neon accents, broken grid, subtle glitch overlays; function stays clean.
           </p>
-          <button className="neon-btn" onClick={() => window.location.reload()}>Reload</button>
+          <button className="neon-btn" onClick={() => window.location.reload()}>{t('reload')}</button>
           <div style={{ height: 12 }} />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(scaleId)}`} target="_blank" rel="noreferrer">Export Long CSV</a>
-            <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(scaleId)}`} target="_blank" rel="noreferrer">Export Wide CSV</a>
-            <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(scaleId)}`} target="_blank" rel="noreferrer">Export Score CSV</a>
+            <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(scaleId)}`} target="_blank" rel="noreferrer">{t('export_long_csv')}</a>
+            <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(scaleId)}`} target="_blank" rel="noreferrer">{t('export_wide_csv')}</a>
+            <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(scaleId)}`} target="_blank" rel="noreferrer">{t('export_score_csv')}</a>
           </div>
         </section>
       </div>

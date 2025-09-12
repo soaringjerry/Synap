@@ -1,22 +1,31 @@
-// Minimal i18n bootstrap (placeholder). In real app, install i18next/react-i18next.
-// This file sketches how to initialize and switch language.
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
+import en from './locales/en.json'
+import zh from './locales/zh.json'
 
-export type Locale = 'en' | 'zh';
+export type Locale = 'en' | 'zh'
+export const supported: Locale[] = ['en', 'zh']
 
-export const supported: Locale[] = ['en', 'zh'];
-
-export function detectLocale(paramLang?: string): Locale {
-  const fromParam = (paramLang || '').toLowerCase();
-  if (fromParam.startsWith('zh')) return 'zh';
-  if (fromParam.startsWith('en')) return 'en';
-  if (typeof navigator !== 'undefined') {
-    const n = (navigator.language || navigator.languages?.[0] || '').toLowerCase();
-    if (n.startsWith('zh')) return 'zh';
-  }
-  return 'en';
+export function detectLocale(): Locale {
+  const fromParam = new URLSearchParams(location.search).get('lang')?.toLowerCase()
+  const fromStorage = localStorage.getItem('lang')?.toLowerCase() || undefined
+  const first = fromParam || fromStorage || navigator.language.toLowerCase()
+  if (first.startsWith('zh')) return 'zh'
+  return 'en'
 }
 
-// Example usage:
-// const lang = detectLocale(new URLSearchParams(location.search).get('lang') || localStorage.getItem('lang') || undefined);
-// i18n.init({ lng: lang, resources: { en: {...}, zh: {...} } })
+export function initI18n() {
+  const lng = detectLocale()
+  i18n
+    .use(initReactI18next)
+    .init({
+      lng,
+      fallbackLng: 'en',
+      resources: { en, zh },
+      interpolation: { escapeValue: false },
+      defaultNS: 'common'
+    })
+  return i18n
+}
 
+export { i18n }
