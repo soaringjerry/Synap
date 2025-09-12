@@ -13,14 +13,13 @@ export function Home() {
       <div className="row">
         <section className="card span-6">
           <h3 style={{ marginTop: 0 }}>Synap</h3>
-          <p className="muted">A modern survey platform for psychology & behavioral research: fast Go backend, React frontend, privacy by default, and AI-compatible design.</p>
+          <p className="muted">{t('home_intro')}</p>
           <div style={{ height: 12 }} />
-          <Link className="neon-btn" to="/admin">Start Creating Survey</Link>
+          <Link className="neon-btn" to="/admin">{t('cta_create')}</Link>
           <span style={{ display: 'inline-block', width: 8 }} />
-          <Link className="neon-btn" to="/auth">Register / Login</Link>
+          <Link className="neon-btn" to="/auth">{t('cta_auth')}</Link>
         </section>
       </div>
     </div>
   )
 }
-

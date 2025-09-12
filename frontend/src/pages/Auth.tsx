@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export function Auth() {
+  const { t } = useTranslation()
   const nav = useNavigate()
   const [mode, setMode] = useState<'login'|'register'>('register')
   const [email, setEmail] = useState('')
@@ -28,35 +30,34 @@ export function Auth() {
   return (
     <div className="container">
       <div className="hero">
-        <div className="glitch" data-text="Admin Access">Admin Access</div>
-        <div className="muted">Create surveys, manage items, export data</div>
+        <div className="glitch" data-text={t('admin_access')}>{t('admin_access')}</div>
+        <div className="muted">{t('admin_sub')}</div>
       </div>
       <div className="row">
         <section className="card span-6">
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <button className="neon-btn" onClick={() => setMode('register')} aria-pressed={mode==='register'}>Register</button>
-            <button className="neon-btn" onClick={() => setMode('login')} aria-pressed={mode==='login'}>Login</button>
+            <button className="neon-btn" onClick={() => setMode('register')} aria-pressed={mode==='register'}>{t('register')}</button>
+            <button className="neon-btn" onClick={() => setMode('login')} aria-pressed={mode==='login'}>{t('login')}</button>
           </div>
           <div className="item">
-            <div className="label">Email</div>
+            <div className="label">{t('email')}</div>
             <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" style={{ width:'100%', padding:10, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'inherit' }}/>
           </div>
           <div className="item">
-            <div className="label">Password</div>
+            <div className="label">{t('password')}</div>
             <input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={{ width:'100%', padding:10, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'inherit' }}/>
           </div>
           {mode==='register' && (
             <div className="item">
-              <div className="label">Tenant Name</div>
+              <div className="label">{t('tenant_name')}</div>
               <input value={tenant} onChange={e=>setTenant(e.target.value)} placeholder="Lab / Team" style={{ width:'100%', padding:10, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'inherit' }}/>
             </div>
           )}
           <div style={{ height: 12 }} />
-          <button className="neon-btn" onClick={submit}>{mode==='register'?'Create account':'Login'}</button>
+          <button className="neon-btn" onClick={submit}>{mode==='register'?t('create_account'):t('login')}</button>
           {msg && <div className="muted" style={{ marginTop:8 }}>{msg}</div>}
         </section>
       </div>
     </div>
   )
 }
-
