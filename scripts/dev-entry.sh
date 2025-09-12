@@ -15,8 +15,14 @@ if [ "$have_frontend" = "1" ]; then
   npm ci --prefix frontend || npm install --prefix frontend
 fi
 
-echo "[dev] Starting backend with air..."
-"$(go env GOPATH)"/bin/air &
+echo "[dev] Starting backend..."
+if command -v air >/dev/null 2>&1; then
+  echo "[dev] using air for hot reload"
+  "$(go env GOPATH)"/bin/air &
+else
+  echo "[dev] air not found, running 'go run ./cmd/server'"
+  go run ./cmd/server &
+fi
 BACK_PID=$!
 
 if [ "$have_frontend" = "1" ]; then
@@ -36,4 +42,3 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 wait -n "$BACK_PID" ${FRONT_PID:+"$FRONT_PID"}
-
