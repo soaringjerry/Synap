@@ -86,6 +86,18 @@
     "participant_link": "Participant Link",
     "share_desc": "Share this URL with participants to answer the survey directly.",
 
+    "cookie": {
+      "title": "Cookies",
+      "desc": "We use necessary cookies to run the site. You can opt in to analytics or third‑party cookies. This service uses Cloudflare CDN for performance and security.",
+      "nec": "Necessary",
+      "analytics": "Analytics",
+      "third": "3rd‑party",
+      "only": "Only necessary",
+      "save": "Save",
+      "all": "Accept all",
+      "learn": "Learn more"
+    },
+
     "home": {
       "hero": {
         "title": "Psychology research, from surveys to insights.",
@@ -156,30 +168,7 @@
         "dpa_link": "View Cloudflare DPA",
         "learn_more": "Learn more in our Privacy Policy"
       },
-      "cookie": {
-        "title": "Cookies",
-        "desc": "We use necessary cookies to run the site. You can opt in to analytics or third‑party cookies. This service uses Cloudflare CDN for performance and security.",
-        "nec": "Necessary",
-        "analytics": "Analytics",
-        "third": "3rd‑party",
-        "only": "Only necessary",
-        "save": "Save",
-        "all": "Accept all",
-        "learn": "Learn more"
-      }
-    ,
-    "cookie": {
-      "title": "Cookies",
-      "desc": "We use necessary cookies to run the site. You can opt in to analytics or third‑party cookies. This service uses Cloudflare CDN for performance and security.",
-      "nec": "Necessary",
-      "analytics": "Analytics",
-      "third": "3rd‑party",
-      "only": "Only necessary",
-      "save": "Save",
-      "all": "Accept all",
-      "learn": "Learn more"
-    }
-    ,
+      
     "nav": {
       "home": "Home",
       "admin": "Admin",
