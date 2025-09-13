@@ -13,6 +13,7 @@ export function AdminScale() {
   const [newStemEn, setNewStemEn] = useState('')
   const [newStemZh, setNewStemZh] = useState('')
   const [newReverse, setNewReverse] = useState(false)
+  const [shareLang, setShareLang] = useState<'en'|'zh'>('en')
 
   async function load() {
     setMsg('')
@@ -57,6 +58,25 @@ export function AdminScale() {
 
   return (
     <div className="container">
+      <div className="row">
+        <section className="card span-12">
+          <h3 style={{marginTop:0}}>{t('participant_link')||'Participant Link'}</h3>
+          <div className="item" style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            <div className="label">{t('language')}</div>
+            <select className="select" style={{maxWidth:160}} value={shareLang} onChange={e=> setShareLang((e.target.value as any))}>
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+            </select>
+            <input className="input" readOnly value={`${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang?`?lang=${shareLang}`:''}`} />
+            <button className="btn" onClick={async()=>{
+              const url = `${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang?`?lang=${shareLang}`:''}`
+              try { await navigator.clipboard.writeText(url); setMsg(t('copied') as string) } catch { setMsg(url) }
+            }}>{t('copy')||'Copy'}</button>
+            <a className="btn btn-ghost" href={`${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang?`?lang=${shareLang}`:''}`} target="_blank" rel="noreferrer">{t('open')||'Open'}</a>
+          </div>
+          <div className="muted">{t('share_desc')||'Share this URL with participants. The link opens the survey directly.'}</div>
+        </section>
+      </div>
       <div className="row">
         <section className="card span-12">
           <h3 style={{marginTop:0}}>{t('manage_scale')}: <b>{id}</b></h3>

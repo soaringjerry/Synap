@@ -40,6 +40,12 @@
     "language": "Language",
     "lang_en": "English",
     "lang_zh": "中文",
+    "share": "Share",
+    "copy": "Copy",
+    "copied": "Copied",
+    "open": "Open",
+    "participant_link": "Participant Link",
+    "share_desc": "Share this URL with participants to answer the survey directly.",
 
     "home": {
       "hero": {

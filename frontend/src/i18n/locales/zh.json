@@ -40,6 +40,12 @@
     "language": "语言",
     "lang_en": "English",
     "lang_zh": "中文",
+    "share": "分享",
+    "copy": "复制",
+    "copied": "已复制",
+    "open": "打开",
+    "participant_link": "参与者链接",
+    "share_desc": "将此链接发送给参与者即可直接填写问卷。",
 
     "home": {
       "hero": {

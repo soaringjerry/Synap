@@ -27,6 +27,21 @@ export function Admin() {
       setNameEn(''); setNameZh(''); setPoints(5); loadScales()
     } catch (e:any) { setMsg(e.message||String(e)) }
   }
+  function shareLink(id: string, lang?: string) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${origin}/survey/${encodeURIComponent(id)}${lang?`?lang=${lang}`:''}`
+  }
+  async function copyLink(id: string) {
+    try {
+      const url = shareLink(id)
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url)
+        setMsg(t('copied') as string)
+      } else {
+        setMsg(url)
+      }
+    } catch (e:any) { setMsg(e.message||String(e)) }
+  }
   // Item creation is done within per-scale management page now.
 
   return (
@@ -56,6 +71,8 @@ export function Admin() {
                 <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Long</a>
                 <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Wide</a>
                 <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Score</a>
+                <button className="btn" onClick={()=>copyLink(s.id)}>{t('share')||'Share'}</button>
+                <a className="btn btn-ghost" href={shareLink(s.id)} target="_blank" rel="noreferrer">{t('open')||'Open'}</a>
                 <Link className="btn btn-primary" to={`/admin/scale/${encodeURIComponent(s.id)}`}>Manage</Link>
               </div>
             </div>
