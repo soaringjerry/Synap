@@ -24,18 +24,26 @@ export function CookieBanner() {
 
   if (!open) return null
   return (
-    <div className="cookie-banner">
-      <div className="cookie-text">
-        <b>{t('cookie.title')}</b> · {t('cookie.desc')} <a href="/legal/privacy" className="btn btn-ghost" style={{marginLeft:8, padding:'4px 8px'}}>{t('cookie.learn')}</a>
+    <div className="cookie-banner" role="dialog" aria-modal="false" aria-labelledby="cookie-title">
+      <div className="cookie-glow" aria-hidden />
+      <div className="cookie-head">
+        <div className="cookie-icon" aria-hidden>🍪</div>
+        <div className="cookie-title-wrap">
+          <div id="cookie-title" className="cookie-title">{t('cookie.title')}</div>
+          <div className="cookie-sub muted">{t('cookie.desc')} <a href="/legal/privacy" className="btn btn-ghost cookie-link">{t('cookie.learn')}</a></div>
+        </div>
+      </div>
+      <div className="cookie-body">
         <div className="cookie-options">
-          <label><input type="checkbox" checked disabled /> {t('cookie.nec')}</label>
-          <label><input type="checkbox" checked={analytics} onChange={e=>setAnalytics(e.target.checked)} /> {t('cookie.analytics')}</label>
-          <label><input type="checkbox" checked={third} onChange={e=>setThird(e.target.checked)} /> {t('cookie.third')}</label>
+          <label className="switch"><input className="vh" type="checkbox" checked disabled /><span className="track" aria-hidden />{t('cookie.nec')}</label>
+          <label className="switch"><input className="vh" type="checkbox" checked={analytics} onChange={e=>setAnalytics(e.target.checked)} /><span className="track" aria-hidden />{t('cookie.analytics')}</label>
+          <label className="switch"><input className="vh" type="checkbox" checked={third} onChange={e=>setThird(e.target.checked)} /><span className="track" aria-hidden />{t('cookie.third')}</label>
         </div>
       </div>
       <div className="cookie-actions">
         <button className="btn" onClick={()=>{ save({necessary:true, analytics:false, thirdParty:false, ts:Date.now()}); setOpen(false) }}>{t('cookie.only')}</button>
         <button className="btn btn-ghost" onClick={()=>{ save({necessary:true, analytics, thirdParty:third, ts:Date.now()}); setOpen(false) }}>{t('cookie.save')}</button>
+        <button className="btn btn-primary" onClick={()=>{ setAnalytics(true); setThird(true); save({necessary:true, analytics:true, thirdParty:true, ts:Date.now()}); setOpen(false) }}>{t('cookie.all')}</button>
       </div>
     </div>
   )
