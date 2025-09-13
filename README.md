@@ -141,7 +141,7 @@ For **commercial use**, please contact the author for a commercial license.
 ## Contact
 
 Author: [Jerry](https://github.com/soaringjerry)
-Email: *add your preferred contact email*
+Email: *synap@forgotmail.com*
 
 Additional docs: see `docs/ci-cd.md`, `docs/deploy.md`, `docs/i18n.md`.
 More docs:
