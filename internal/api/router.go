@@ -3,7 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -589,7 +589,7 @@ func (rt *Router) handleAdminAITranslatePreview(w http.ResponseWriter, r *http.R
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
-		b, _ := ioutil.ReadAll(resp.Body)
+		b, _ := io.ReadAll(resp.Body)
 		http.Error(w, string(b), http.StatusBadGateway)
 		return
 	}
