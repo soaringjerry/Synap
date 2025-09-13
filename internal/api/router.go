@@ -27,10 +27,11 @@ func NewRouter() *Router {
 }
 
 func (rt *Router) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/seed", rt.handleSeed) // POST
-	mux.Handle("/api/scales", middleware.WithAuth(http.HandlerFunc(rt.handleScales)))
-	mux.Handle("/api/items", middleware.WithAuth(http.HandlerFunc(rt.handleItems)))
-	mux.HandleFunc("/api/scales/", rt.handleScaleScoped)
+    mux.HandleFunc("/api/seed", rt.handleSeed) // POST
+    mux.Handle("/api/scales", middleware.WithAuth(http.HandlerFunc(rt.handleScales)))
+    mux.Handle("/api/items", middleware.WithAuth(http.HandlerFunc(rt.handleItems)))
+    mux.HandleFunc("/api/scales/", rt.handleScaleScoped)
+    mux.HandleFunc("/api/scale/", rt.handleScaleMeta) // public metadata
 	mux.HandleFunc("/api/responses/bulk", rt.handleBulkResponses)
 	mux.Handle("/api/export", middleware.WithAuth(http.HandlerFunc(rt.handleExport)))       // GET (auth)
 	mux.Handle("/api/metrics/alpha", middleware.WithAuth(http.HandlerFunc(rt.handleAlpha))) // GET (auth)
@@ -172,6 +173,28 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": id, "items": out})
+}
+
+// GET /api/scale/{id} -> public scale metadata (name_i18n, points, consent_i18n, randomize)
+func (rt *Router) handleScaleMeta(w http.ResponseWriter, r *http.Request) {
+    id := strings.TrimPrefix(r.URL.Path, "/api/scale/")
+    if id == "" {
+        http.NotFound(w, r)
+        return
+    }
+    sc := rt.store.getScale(id)
+    if sc == nil {
+        http.NotFound(w, r)
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(map[string]any{
+        "id": sc.ID,
+        "name_i18n": sc.NameI18n,
+        "points": sc.Points,
+        "randomize": sc.Randomize,
+        "consent_i18n": sc.ConsentI18n,
+    })
 }
 
 // POST /api/responses/bulk

@@ -12,11 +12,12 @@ import (
 )
 
 type Scale struct {
-	ID        string            `json:"id"`
-	TenantID  string            `json:"tenant_id,omitempty"`
-	Points    int               `json:"points"`
-	Randomize bool              `json:"randomize"`
-	NameI18n  map[string]string `json:"name_i18n,omitempty"`
+    ID        string            `json:"id"`
+    TenantID  string            `json:"tenant_id,omitempty"`
+    Points    int               `json:"points"`
+    Randomize bool              `json:"randomize"`
+    NameI18n  map[string]string `json:"name_i18n,omitempty"`
+    ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
 }
 
 type Item struct {
@@ -101,6 +102,9 @@ func (s *memoryStore) updateScale(sc *Scale) bool {
         old.Points = sc.Points
     }
     old.Randomize = sc.Randomize
+    if sc.ConsentI18n != nil {
+        old.ConsentI18n = sc.ConsentI18n
+    }
     s.saveLocked()
     return true
 }

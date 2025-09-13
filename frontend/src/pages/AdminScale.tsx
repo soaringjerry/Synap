@@ -28,7 +28,7 @@ export function AdminScale() {
   async function saveScale() {
     try {
       setSaving(true)
-      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize })
+      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n })
       setMsg(t('saved'))
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
   }
@@ -88,6 +88,16 @@ export function AdminScale() {
               <div className="item"><label><input className="checkbox" type="checkbox" checked={newReverse} onChange={e=>setNewReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
               <button className="btn btn-primary" onClick={addItem}>{t('add')}</button>
             </div>
+            <div className="card span-6">
+              <h4 style={{marginTop:0}}>{t('consent_custom')||'Consent'}</h4>
+              <div className="item"><div className="label">{t('consent_en')||'Consent (EN)'}</div>
+                <textarea className="input" rows={6} value={scale.consent_i18n?.en||''} onChange={e=> setScale((s:any)=> ({...s, consent_i18n: {...(s.consent_i18n||{}), en: e.target.value }}))} />
+              </div>
+              <div className="item"><div className="label">{t('consent_zh')||'Consent (ZH)'}</div>
+                <textarea className="input" rows={6} value={scale.consent_i18n?.zh||''} onChange={e=> setScale((s:any)=> ({...s, consent_i18n: {...(s.consent_i18n||{}), zh: e.target.value }}))} />
+              </div>
+              <div className="muted">{t('consent_hint')||'Optional, leave blank to use default consent text. Newlines preserved.'}</div>
+            </div>
           </div>
         </section>
       </div>
@@ -118,4 +128,3 @@ export function AdminScale() {
     </div>
   )
 }
-
