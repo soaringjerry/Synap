@@ -1,0 +1,16 @@
+name: i18n Check
+
+on:
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  i18n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run i18n consistency check
+        run: node scripts/check-i18n.js

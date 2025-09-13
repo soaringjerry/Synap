@@ -13,6 +13,7 @@
   },
   "scripts": {
     "prerelease": "bash scripts/clean-release-tag.sh",
-    "release": "semantic-release"
+    "release": "semantic-release",
+    "check:i18n": "node scripts/check-i18n.js"
   }
 }
