@@ -13,7 +13,7 @@ export function AdminScale() {
   const [newStemEn, setNewStemEn] = useState('')
   const [newStemZh, setNewStemZh] = useState('')
   const [newReverse, setNewReverse] = useState(false)
-  const [shareLang, setShareLang] = useState<'en'|'zh'>('en')
+  const [shareLang, setShareLang] = useState<'en'|'zh'|'auto'>('auto')
   const [analytics, setAnalytics] = useState<any|null>(null)
 
   async function load() {
@@ -65,16 +65,17 @@ export function AdminScale() {
           <h3 style={{marginTop:0}}>{t('participant_link')||'Participant Link'}</h3>
           <div className="item" style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
             <div className="label">{t('language')}</div>
-            <select className="select" style={{maxWidth:160}} value={shareLang} onChange={e=> setShareLang((e.target.value as any))}>
+            <select className="select" style={{maxWidth:200}} value={shareLang} onChange={e=> setShareLang((e.target.value as any))}>
+              <option value="auto">{t('lang_auto')||'Auto (detect browser)'}</option>
               <option value="en">English</option>
               <option value="zh">中文</option>
             </select>
-            <input className="input" readOnly value={`${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang?`?lang=${shareLang}`:''}`} />
+            <input className="input" readOnly value={`${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang==='auto' ? '' : `?lang=${shareLang}`}`} />
             <button className="btn" onClick={async()=>{
-              const url = `${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang?`?lang=${shareLang}`:''}`
+              const url = `${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang==='auto' ? '' : `?lang=${shareLang}`}`
               try { await navigator.clipboard.writeText(url); setMsg(t('copied') as string) } catch { setMsg(url) }
             }}>{t('copy')||'Copy'}</button>
-            <a className="btn btn-ghost" href={`${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang?`?lang=${shareLang}`:''}`} target="_blank" rel="noreferrer">{t('open')||'Open'}</a>
+            <a className="btn btn-ghost" href={`${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang==='auto' ? '' : `?lang=${shareLang}`}`} target="_blank" rel="noreferrer">{t('open')||'Open'}</a>
           </div>
           <div className="muted">{t('share_desc')||'Share this URL with participants. The link opens the survey directly.'}</div>
         </section>

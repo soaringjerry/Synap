@@ -50,6 +50,7 @@
     "language": "Language",
     "lang_en": "English",
     "lang_zh": "中文",
+    "lang_auto": "Auto (detect browser)",
     "nav": {
       "home": "Home",
       "admin": "Admin",

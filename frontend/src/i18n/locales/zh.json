@@ -50,6 +50,7 @@
     "language": "语言",
     "lang_en": "English",
     "lang_zh": "中文",
+    "lang_auto": "自动（按浏览器语言）",
     "nav": {
       "home": "首页",
       "admin": "管理",
