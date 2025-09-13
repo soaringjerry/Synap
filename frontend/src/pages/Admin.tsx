@@ -3,24 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { adminListScales, adminCreateScale } from '../api/client'
 
-async function authed(path: string, init: RequestInit = {}) {
-  const token = localStorage.getItem('token')
-  init.headers = { ...(init.headers||{}), 'Authorization': token ? `Bearer ${token}` : '' }
-  const res = await fetch(path, init)
-  if (!res.ok) throw new Error(await res.text())
-  return res.json()
-}
-
 export function Admin() {
   const { t } = useTranslation()
   const [scales, setScales] = useState<any[]>([])
   const [nameEn, setNameEn] = useState('')
   const [nameZh, setNameZh] = useState('')
   const [points, setPoints] = useState(5)
-  const [scaleId, setScaleId] = useState('')
-  const [stemEn, setStemEn] = useState('')
-  const [stemZh, setStemZh] = useState('')
-  const [reverse, setReverse] = useState(false)
   const [msg, setMsg] = useState('')
 
   async function loadScales() {
@@ -35,18 +23,11 @@ export function Admin() {
     setMsg('')
     try {
       const body = { name_i18n: { en: nameEn, zh: nameZh }, points }
-      const sc = await adminCreateScale(body as any)
-      setScaleId(sc.id); setNameEn(''); setNameZh(''); setPoints(5); loadScales()
+      await adminCreateScale(body as any)
+      setNameEn(''); setNameZh(''); setPoints(5); loadScales()
     } catch (e:any) { setMsg(e.message||String(e)) }
   }
-  async function createItem() {
-    setMsg('')
-    try {
-      const body = { scale_id: scaleId, reverse_scored: reverse, stem_i18n: { en: stemEn, zh: stemZh } }
-      await authed('/api/items', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
-      setStemEn(''); setStemZh(''); setReverse(false)
-    } catch (e:any) { setMsg(e.message||String(e)) }
-  }
+  // Item creation is done within per-scale management page now.
 
   return (
     <div className="container">
@@ -62,14 +43,7 @@ export function Admin() {
           <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} /></div>
           <button className="btn btn-primary" onClick={createScale}>{t('create')}</button>
         </section>
-        <section className="card span-6 offset">
-          <h3 style={{marginTop:0}}>{t('add_item')}</h3>
-          <div className="item"><div className="label">{t('scale_id')}</div><input className="input" value={scaleId} onChange={e=>setScaleId(e.target.value)} placeholder={t('scale_id_placeholder')} /></div>
-          <div className="item"><div className="label">{t('stem_en')}</div><input className="input" value={stemEn} onChange={e=>setStemEn(e.target.value)} /></div>
-          <div className="item"><div className="label">{t('stem_zh')}</div><input className="input" value={stemZh} onChange={e=>setStemZh(e.target.value)} /></div>
-          <div className="item"><label><input className="checkbox" type="checkbox" checked={reverse} onChange={e=>setReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
-          <button className="btn btn-primary" onClick={createItem}>{t('add')}</button>
-        </section>
+        {/* Per-item add/edit is available in per-scale management */}
       </div>
       <div className="row" style={{marginTop:16}}>
         <section className="card span-12">
