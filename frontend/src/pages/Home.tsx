@@ -26,64 +26,86 @@ export function Home() {
         </div>
       </section>
 
+      {/* Stats strip for quick trust signals */}
+      <section className="section">
+        <div className="stats">
+          <div className="stat">
+            <div className="num">99.9%</div>
+            <div className="text">Uptime-friendly architecture（single binary + CDN）</div>
+          </div>
+          <div className="stat">
+            <div className="num">GDPR/PDPA</div>
+            <div className="text">Privacy-first defaults · Singapore storage · Cloudflare edge transit</div>
+          </div>
+          <div className="stat">
+            <div className="num">α</div>
+            <div className="text">Reliability & exports designed for research workflows</div>
+          </div>
+        </div>
+      </section>
+
       {/* Showcase: visually communicate research capability */}
-      <section className="row">
-        <div className="span-12 neo-panel">
+      <section className="section">
+        <div className="neo-panel">
           <div className="panel-head">
             <h3 className="section-title">{t('home.showcase.title')}</h3>
             <div className="panel-actions" aria-hidden>
               <span className="dot"/><span className="dot"/><span className="dot"/>
             </div>
           </div>
-          <div className="showcase-grid">
-            <div className="showcase-item tilt">
-              <div className="showcase-title">Cronbach α</div>
+          <div className="mosaic">
+            <div className="tile tile-accent wide tilt">
+              <div className="title">Cronbach α</div>
               <AlphaGauge value={0.87} label={t('home.showcase.alpha')} />
             </div>
-            <div className="showcase-item tilt">
-              <div className="showcase-title">{t('home.showcase.progress')}</div>
+            <div className="tile narrow tilt">
+              <div className="title">{t('home.showcase.progress')}</div>
               <Sparkline points={[3,5,4,6,7,6,8,9,8,10]} />
               <div className="muted sub">{t('home.showcase.spark_hint')}</div>
             </div>
-            <div className="showcase-item tilt">
-              <div className="showcase-title">{t('home.showcase.heatmap')}</div>
+            <div className="tile half tilt">
+              <div className="title">{t('home.showcase.heatmap')}</div>
               <Heatmap rows={7} cols={12} />
+            </div>
+            <div className="tile half tile-ghost tilt">
+              <div className="title">Exports</div>
+              <div className="muted">CSV (long/wide/score) · Open formats for SPSS/R/JASP</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Use cases */}
-      <section className="row">
-        <div className="span-12 feature-wrap">
+      <section className="section">
+        <div className="feature-wrap">
           <h3 className="section-title">{t('home.use.title')}</h3>
-          <div className="use-grid">
-            <div className="feature-card tilt">🎓 {t('home.use.psych')}</div>
-            <div className="feature-card tilt">🏫 {t('home.use.edu')}</div>
-            <div className="feature-card tilt">🧪 {t('home.use.paper')}</div>
-            <div className="feature-card tilt">👫 {t('home.use.social')}</div>
+          <div className="mosaic">
+            <div className="tile half tilt">🎓 {t('home.use.psych')}</div>
+            <div className="tile half tilt">🏫 {t('home.use.edu')}</div>
+            <div className="tile half tilt">🧪 {t('home.use.paper')}</div>
+            <div className="tile half tilt">👫 {t('home.use.social')}</div>
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="row">
-        <div className="span-12 feature-wrap">
+      <section className="section">
+        <div className="feature-wrap">
           <h3 className="section-title">{t('home.features.title')}</h3>
           <div className="feat-grid">
-            <div className="feat feature-card tilt">
+            <div className="feat tile tilt">
               <div className="feat-k">{t('home.features.online.k')}</div>
               <div className="muted">{t('home.features.online.v')}</div>
             </div>
-            <div className="feat feature-card tilt">
+            <div className="feat tile tilt">
               <div className="feat-k">{t('home.features.progress.k')}</div>
               <div className="muted">{t('home.features.progress.v')}</div>
             </div>
-            <div className="feat feature-card tilt">
+            <div className="feat tile tilt">
               <div className="feat-k">{t('home.features.export.k')}</div>
               <div className="muted">{t('home.features.export.v')}</div>
             </div>
-            <div className="feat feature-card tilt">
+            <div className="feat tile tilt">
               <div className="feat-k">{t('home.features.i18n.k')}</div>
               <div className="muted">{t('home.features.i18n.v')}</div>
             </div>
@@ -92,8 +114,8 @@ export function Home() {
       </section>
 
       {/* Demo CTA + Preview */}
-      <section className="row">
-        <div className="span-12 demo-wrap neo-panel">
+      <section className="section">
+        <div className="demo-wrap neo-panel">
           <div className="panel-head">
             <h3 className="section-title">Demo</h3>
           </div>
@@ -141,8 +163,8 @@ export function Home() {
       </section>
 
       {/* Final CTA */}
-      <section className="row">
-        <div className="span-12 neo-panel" style={{textAlign:'center'}}>
+      <section className="section">
+        <div className="neo-panel" style={{textAlign:'center'}}>
           <h3 className="section-title">{t('home.cta.title')}</h3>
           <div style={{height:10}} />
           <Link className="btn btn-primary" to="/auth">{t('home.cta.button')}</Link>
