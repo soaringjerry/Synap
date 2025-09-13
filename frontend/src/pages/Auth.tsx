@@ -18,8 +18,12 @@ export function Auth() {
       const body: any = { email, password }
       if (mode === 'register') body.tenant_name = tenant
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data || res.statusText)
+      let data: any = null
+      try { data = await res.json() } catch {}
+      if (!res.ok) {
+        const msg = (data && (data.error || data.message)) || res.statusText
+        throw new Error(msg)
+      }
       localStorage.setItem('token', data.token)
       nav('/admin')
     } catch (e: any) {
