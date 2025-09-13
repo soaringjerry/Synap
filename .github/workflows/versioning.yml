@@ -21,6 +21,30 @@ jobs:
           node-version: 20
       - name: Install release deps
         run: npm i --no-audit --no-fund
+      - name: Pre-check and cleanup conflicting release tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          # Compute next version via dry-run
+          NEXT=$(npx semantic-release --dry-run 2>&1 | sed -n "s/.*The next release version is \([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p" | tail -n1 || true)
+          echo "Computed next version: $NEXT"
+          if [ -n "$NEXT" ]; then
+            # Find remote tag commit SHA (peeled first)
+            SHA=$(git ls-remote --tags origin "refs/tags/v$NEXT^{}" | awk '{print $1}')
+            if [ -z "$SHA" ]; then
+              SHA=$(git ls-remote --tags origin "refs/tags/v$NEXT" | awk '{print $1}')
+            fi
+            if [ -n "$SHA" ]; then
+              echo "Remote tag v$NEXT exists at $SHA; checking reachability..."
+              if git merge-base --is-ancestor "$SHA" HEAD; then
+                echo "Tag is reachable from HEAD; leaving as-is."
+              else
+                echo "Tag exists but is not on current history; deleting to avoid semantic-release conflict."
+                git push origin :refs/tags/v$NEXT
+              fi
+            fi
+          fi
       - name: Semantic Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

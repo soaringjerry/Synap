@@ -4,6 +4,7 @@ import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { Home } from './pages/Home'
 import { CookieBanner } from './components/CookieBanner'
 import { Privacy } from './pages/Privacy'
+import { Terms } from './pages/Terms'
 import { Admin } from './pages/Admin'
 import { Auth } from './pages/Auth'
 import { Survey } from './pages/Survey'
@@ -16,7 +17,8 @@ function RootLayout() {
         <div className="nav-actions">
           <Link className="btn btn-ghost" to="/">Home</Link>
           <Link className="btn btn-ghost" to="/admin">Admin</Link>
-          <Link className="btn btn-primary" to="/auth">Auth</Link>
+          <Link className="btn btn-ghost" to="/legal/privacy">Privacy</Link>
+          <Link className="btn btn-ghost" to="/legal/terms">Terms</Link>
           <button className="btn btn-ghost" onClick={()=> (window as any).openCookiePrefs?.() }>Cookies</button>
           <LanguageSwitcher />
           <VersionBadge />
@@ -27,6 +29,15 @@ function RootLayout() {
           <Outlet />
         </div>
       </main>
+      <footer className="app-footer">
+        <div className="container" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+          <div className="muted">© 2025 Synap · GDPR & PDPA aligned · Data in Singapore · Cloudflare CDN</div>
+          <div style={{display:'flex',gap:8}}>
+            <Link className="btn btn-ghost" to="/legal/privacy">Privacy</Link>
+            <Link className="btn btn-ghost" to="/legal/terms">Terms</Link>
+          </div>
+        </div>
+      </footer>
       <CookieBanner />
     </>
   )
@@ -46,6 +57,7 @@ const router = createBrowserRouter([
     { path: '/auth', element: <Auth/> },
     { path: '/survey/:scaleId', element: <Survey/> },
     { path: '/legal/privacy', element: <Privacy/> },
+    { path: '/legal/terms', element: <Terms/> },
   ]}
 ])
 

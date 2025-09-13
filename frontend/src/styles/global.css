@@ -90,6 +90,8 @@ a:hover, a:focus { text-decoration: none; }
 
 .page { padding-top: 88px; }
 .container { max-width: 1160px; margin: 0 auto; padding: 0 20px 72px; }
+/* Footer */
+.app-footer { position: sticky; top: 100%; padding: 16px 0; border-top: 1px solid var(--border); background: linear-gradient(180deg, rgba(16,23,51,0.35), rgba(16,23,51,0.6)); backdrop-filter: blur(8px) saturate(1.1); }
 
 .version-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; opacity: 0.9; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(109, 240, 255, 0.35); background: rgba(18, 18, 37, 0.6); box-shadow: 0 0 6px rgba(109, 240, 255, 0.25); }
 @media (max-width: 560px) { .version-badge { display: none; } }

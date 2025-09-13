@@ -115,8 +115,11 @@ More options in `docs/deploy.md`.
 
 ## Data & Privacy
 
-* Raw IPs are **not stored**. Only derived fields (country/locale/ASN) are kept for quality control.
-* Region-aware compliance: PDPA by default; if participant region requires stricter rules (e.g., GDPR), the stricter rules apply.
+- Primary storage is in Singapore. Transport is HTTPS/TLS; at-rest encryption configurable.
+- We use Cloudflare CDN for performance and security. Requests may pass through edge nodes, but survey/response data resides only in our Singapore origin and is not retained at the edge. Cloudflare may temporarily process limited network metadata (e.g., IP) for routing/security; it is not used for advertising. See Privacy.
+- Raw IPs are **not stored** in content data. Only minimal technical logs may be kept for security/quality control.
+- GDPR/PDPA alignment: we aim to follow core principles. Controllers remain responsible for lawful basis and data-subject rights.
+- See: `/legal/privacy` (website) and `docs/legal/privacy.md`. Terms: `/legal/terms` and `docs/legal/terms.md`.
 
 ## Roadmap
 
