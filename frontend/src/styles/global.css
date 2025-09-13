@@ -52,6 +52,13 @@ pre, code { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhe
   0% { transform: scale(1.05) translate3d(0,0,0); }
   100% { transform: scale(1.12) translate3d(-2%, -2%, 0); }
 }
+/* Cookie banner */
+.cookie-banner { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 60; display:flex; gap:12px; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 12px; border:1px solid var(--border); background: rgba(16,23,51,0.75); backdrop-filter: blur(10px) saturate(1.2); }
+.cookie-text { font-size: 14px; }
+.cookie-options { display:flex; gap:12px; margin-top:6px; }
+.cookie-actions { display:flex; gap:8px; flex:0 0 auto; }
+.cookie-actions .btn { height: 36px; }
+@media (max-width:680px) { .cookie-banner { flex-direction: column; align-items: stretch; } .cookie-actions { justify-content: flex-end; } }
 
 /* Links: remove default underline for a cleaner, product-grade look */
 a { text-decoration: none; color: inherit; }

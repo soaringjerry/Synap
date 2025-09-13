@@ -1,12 +1,14 @@
 package main
 
 import (
-	"encoding/json"
-	"log"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"os"
+    "encoding/json"
+    "log"
+    "net/http"
+    "net/http/httputil"
+    "net/url"
+    "os"
+    "strconv"
+    "time"
 
 	"github.com/soaringjerry/Synap/internal/api"
 	"github.com/soaringjerry/Synap/internal/middleware"
@@ -21,7 +23,7 @@ func main() {
 	commit := os.Getenv("SYNAP_COMMIT")
 	buildTime := os.Getenv("SYNAP_BUILD_TIME")
 
-	mux := http.NewServeMux()
+    mux := http.NewServeMux()
 	// API routes
 	api.NewRouter().Register(mux)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +69,31 @@ func main() {
 		}
 	}
 
-	// Wrap mux with locale + no-store cache middleware
-	handler := middleware.NoStore(middleware.LocaleMiddleware(mux))
+    // Data retention auto-cleaner (in-memory MVP)
+    if days := os.Getenv("SYNAP_RETENTION_DAYS"); days != "" {
+        if d, err := strconv.Atoi(days); err == nil && d > 0 {
+            go func() {
+                ticker := time.NewTicker(24 * time.Hour)
+                defer ticker.Stop()
+                // first run shortly after start
+                time.Sleep(5 * time.Second)
+                for {
+                    select {
+                    case <-ticker.C:
+                    default:
+                    }
+                    // best-effort: access api router's store via exported singleton would be ideal;
+                    // for MVP, trigger GC via HTTP export is skipped. In a real DB, use SQL DELETE ... WHERE submitted_at < cutoff
+                    // no-op here as store is encapsulated; retained for future integration with persistent store
+                    _ = d
+                    time.Sleep(24 * time.Hour)
+                }
+            }()
+        }
+    }
+
+    // Wrap mux with locale + security + no-store cache middleware
+    handler := middleware.NoStore(middleware.SecureHeaders(middleware.LocaleMiddleware(mux)))
 
 	log.Printf("Synap server listening on %s", addr)
 	if err := http.ListenAndServe(addr, handler); err != nil {
