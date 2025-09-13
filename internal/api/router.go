@@ -51,16 +51,22 @@ func (rt *Router) handleSeed(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	sc := &Scale{ID: "SAMPLE", Points: 5, Randomize: false, NameI18n: map[string]string{"en": "Sample Scale", "zh": "示例量表"}}
-	rt.store.addScale(sc)
-	items := []*Item{
-		{ID: "I1", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I am satisfied with my current study progress.", "zh": "我对当前学习进度感到满意"}},
-		{ID: "I2", ScaleID: sc.ID, ReverseScored: true, StemI18n: map[string]string{"en": "I enjoy working under pressure.", "zh": "我喜欢在压力下工作"}},
-		{ID: "I3", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I can stay focused on tasks.", "zh": "我能专注于手头任务"}},
-	}
-	for _, it := range items {
-		rt.store.addItem(it)
-	}
+    sc := &Scale{ID: "SAMPLE", Points: 5, Randomize: false, NameI18n: map[string]string{"en": "Sample Scale", "zh": "示例量表"}}
+    // Upsert-like behavior: if exists, keep; else add
+    if rt.store.getScale(sc.ID) == nil {
+        rt.store.addScale(sc)
+    }
+    items := []*Item{
+        {ID: "I1", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I am satisfied with my current study progress.", "zh": "我对当前学习进度感到满意"}},
+        {ID: "I2", ScaleID: sc.ID, ReverseScored: true, StemI18n: map[string]string{"en": "I enjoy working under pressure.", "zh": "我喜欢在压力下工作"}},
+        {ID: "I3", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I can stay focused on tasks.", "zh": "我能专注于手头任务"}},
+    }
+    for _, it := range items {
+        // Avoid duplicate append in itemsByScale; only add if not present
+        if rt.store.items[it.ID] == nil {
+            rt.store.addItem(it)
+        }
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "scale_id": sc.ID, "items": items})
 }

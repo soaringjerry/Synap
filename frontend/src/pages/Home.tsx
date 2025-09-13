@@ -17,7 +17,7 @@ export function Home() {
           <p className="muted lead" style={{maxWidth: '72ch'}}>{t('home.hero.subtitle')}</p>
           <div className="cta-row">
             <Link className="btn btn-primary" to="/auth">{t('home.hero.cta_primary')}</Link>
-            <Link className="btn btn-ghost" to="/admin">{t('home.hero.cta_secondary')}</Link>
+            <Link className="btn btn-ghost" to="/survey/SAMPLE">{t('home.hero.cta_secondary')}</Link>
           </div>
           <div className="hero-decoration" aria-hidden>
             <div className="neon-divider" />
@@ -123,7 +123,7 @@ export function Home() {
             <div className="demo-copy">
               <p className="muted" style={{maxWidth:'68ch'}}>{t('home.demo.text')}</p>
               <div className="cta-row" style={{marginTop:12}}>
-                <Link className="btn btn-primary" to="/admin">{t('home.demo.button')}</Link>
+                <Link className="btn btn-primary" to="/survey/SAMPLE">{t('home.demo.button')}</Link>
               </div>
             </div>
             <div className="demo-preview tilt" aria-label="Survey Preview">
