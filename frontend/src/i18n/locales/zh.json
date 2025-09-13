@@ -86,7 +86,27 @@
         "resources": "资源：帮助中心 · 常见问题",
         "company": "公司：关于我们 · 联系方式",
         "copyright": "© 2025 Synap. 数据保护符合 GDPR & PDPA。"
+      },
+      "privacy": {
+        "title": "隐私与合规",
+        "server": "我们的服务器和数据库主要位于新加坡，个人数据将存储和处理在该地区。",
+        "cdn": "为了提高全球访问速度，我们使用 Cloudflare 提供的内容分发网络（CDN）和边缘缓存服务。用户的请求在传输过程中可能会经过 Cloudflare 的边缘节点，但实际的问卷数据仅存储在新加坡服务器，不会长期存放在边缘节点。",
+        "metadata": "Cloudflare 在传输过程中会短暂处理部分网络元数据（如 IP 地址）用于路由与安全保护，不用于广告或未经同意的用途。",
+        "assure": "我们确保上述处理符合 GDPR（欧盟通用数据保护条例）和 PDPA（新加坡个人资料保护法）的要求。",
+        "dpa": "Cloudflare 作为我们的数据处理者（processor），并签订了数据处理协议（DPA）。",
+        "dpa_link": "查看 Cloudflare DPA",
+        "learn_more": "详见《隐私政策》"
+      },
+      "cookie": {
+        "title": "Cookies",
+        "desc": "我们使用必要 Cookie 保证网站运行。你可以选择是否开启分析或第三方 Cookie。本服务使用 Cloudflare CDN 提升性能与安全。",
+        "nec": "必要",
+        "analytics": "分析",
+        "third": "第三方",
+        "only": "仅必要",
+        "save": "保存",
+        "learn": "了解更多"
       }
-    }
   }
+}
 }

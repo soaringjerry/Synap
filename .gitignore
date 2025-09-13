@@ -38,6 +38,11 @@ frontend/.vite/
 frontend/.env
 frontend/.env.*
 
+# If any Next.js experiment leftovers exist locally, ignore them on main
+**/.next/
+**/tsconfig.tsbuildinfo
+**/.vercel/
+web/
+
 # Root npm lock is not required (semantic-release tooling only)
 /package-lock.json
-

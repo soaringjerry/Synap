@@ -86,7 +86,27 @@
         "resources": "Resources: Help Center · FAQ",
         "company": "Company: About Us · Contact",
         "copyright": "© 2025 Synap. Data protection compliant with GDPR & PDPA."
+      },
+      "privacy": {
+        "title": "Privacy & Compliance",
+        "server": "Our servers and databases are primarily located in Singapore, where personal data is stored and processed.",
+        "cdn": "To improve global performance, we use Cloudflare for content delivery and edge caching. User requests may pass through Cloudflare’s edge nodes during transmission, but actual survey data is stored only in our Singapore servers and not retained at the edge.",
+        "metadata": "Cloudflare may temporarily process limited network metadata (such as IP addresses) for routing and security, and it is not used for advertising or any unauthorized purposes.",
+        "assure": "We ensure this processing remains compliant with GDPR (EU General Data Protection Regulation) and PDPA (Singapore Personal Data Protection Act).",
+        "dpa": "Cloudflare acts as our data processor under a DPA.",
+        "dpa_link": "View Cloudflare DPA",
+        "learn_more": "Learn more in our Privacy Policy"
+      },
+      "cookie": {
+        "title": "Cookies",
+        "desc": "We use necessary cookies to run the site. You can opt in to analytics or third‑party cookies. This service uses Cloudflare CDN for performance and security.",
+        "nec": "Necessary",
+        "analytics": "Analytics",
+        "third": "3rd‑party",
+        "only": "Only necessary",
+        "save": "Save",
+        "learn": "Learn more"
       }
-    }
   }
+}
 }
