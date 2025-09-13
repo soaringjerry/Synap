@@ -44,6 +44,8 @@
     "language": "Language",
     "lang_en": "English",
     "lang_zh": "中文",
+    "admin_console": "Admin Console",
+    "admin_console_sub": "Publish surveys · Manage items · Export data",
     "share": "Share",
     "copy": "Copy",
     "copied": "Copied",

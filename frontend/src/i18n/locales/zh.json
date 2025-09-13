@@ -44,6 +44,8 @@
     "language": "语言",
     "lang_en": "English",
     "lang_zh": "中文",
+    "admin_console": "管理控制台",
+    "admin_console_sub": "发布问卷 · 管理题目 · 导出数据",
     "share": "分享",
     "copy": "复制",
     "copied": "已复制",
