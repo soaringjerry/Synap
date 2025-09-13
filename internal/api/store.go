@@ -86,6 +86,52 @@ func (s *memoryStore) addScale(sc *Scale) {
 	s.saveLocked()
 }
 
+func (s *memoryStore) updateScale(sc *Scale) bool {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    old := s.scales[sc.ID]
+    if old == nil {
+        return false
+    }
+    // Update allowed fields
+    if sc.NameI18n != nil {
+        old.NameI18n = sc.NameI18n
+    }
+    if sc.Points != 0 {
+        old.Points = sc.Points
+    }
+    old.Randomize = sc.Randomize
+    s.saveLocked()
+    return true
+}
+
+// deleteScale removes the scale, its items, and responses associated with those items
+func (s *memoryStore) deleteScale(id string) bool {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    if s.scales[id] == nil {
+        return false
+    }
+    // collect item IDs
+    itemIDs := map[string]struct{}{}
+    for _, it := range s.itemsByScale[id] {
+        itemIDs[it.ID] = struct{}{}
+        delete(s.items, it.ID)
+    }
+    delete(s.itemsByScale, id)
+    delete(s.scales, id)
+    // filter responses not belonging to removed items
+    nr := make([]*Response, 0, len(s.responses))
+    for _, r := range s.responses {
+        if _, ok := itemIDs[r.ItemID]; !ok {
+            nr = append(nr, r)
+        }
+    }
+    s.responses = nr
+    s.saveLocked()
+    return true
+}
+
 func (s *memoryStore) addItem(it *Item) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -94,6 +140,49 @@ func (s *memoryStore) addItem(it *Item) {
 	// keep stable order by id
 	sort.Slice(s.itemsByScale[it.ScaleID], func(i, j int) bool { return s.itemsByScale[it.ScaleID][i].ID < s.itemsByScale[it.ScaleID][j].ID })
 	s.saveLocked()
+}
+
+func (s *memoryStore) updateItem(it *Item) bool {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    old := s.items[it.ID]
+    if old == nil {
+        return false
+    }
+    // allow updating stems and reverse flag; keep same scale
+    if it.StemI18n != nil {
+        old.StemI18n = it.StemI18n
+    }
+    old.ReverseScored = it.ReverseScored
+    s.saveLocked()
+    return true
+}
+
+func (s *memoryStore) deleteItem(id string) bool {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    it := s.items[id]
+    if it == nil {
+        return false
+    }
+    // remove from items map
+    delete(s.items, id)
+    // remove from itemsByScale slice
+    if list := s.itemsByScale[it.ScaleID]; len(list) > 0 {
+        nl := make([]*Item, 0, len(list))
+        for _, x := range list {
+            if x.ID != id { nl = append(nl, x) }
+        }
+        s.itemsByScale[it.ScaleID] = nl
+    }
+    // remove responses for this item
+    nr := make([]*Response, 0, len(s.responses))
+    for _, r := range s.responses {
+        if r.ItemID != id { nr = append(nr, r) }
+    }
+    s.responses = nr
+    s.saveLocked()
+    return true
 }
 
 func (s *memoryStore) listItems(scaleID string) []*Item {
