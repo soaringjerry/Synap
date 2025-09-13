@@ -77,9 +77,11 @@
         "alpha": "信度",
         "progress": "作答趋势",
         "spark_hint": "最近 10 个时间段",
-        "heatmap": "题目 × 受试者 覆盖"
+        "heatmap": "题目 × 受试者 覆盖",
+        "exports_title": "导出",
+        "exports_desc": "CSV（长/宽/分数）· 可导入 SPSS / R / JASP"
       },
-      "demo": { "text": "立即尝试一个示例问卷，体验从填写到结果展示的全过程。", "button": "立即体验" },
+      "demo": { "title": "演示", "text": "立即尝试一个示例问卷，体验从填写到结果展示的全过程。", "button": "立即体验", "preview_title": "李克特量表预览" },
       "cred": {
         "title": "为科研而生的问卷平台",
         "rigorous": { "k": "严谨", "v": "支持科研常用的数据格式与分析流程" },
@@ -115,6 +117,27 @@
         "all": "全部同意",
         "learn": "了解更多"
       }
+  },
+  "nav": {
+    "home": "首页",
+    "admin": "管理",
+    "auth": "登录/注册",
+    "logout": "退出登录"
+  },
+  "survey": {
+    "title": "问卷",
+    "scale": "量表：",
+    "email_optional": "邮箱（可选）",
+    "loading": "正在加载题目……",
+    "reload": "重新加载题目",
+    "reset": "重置",
+    "consent_title": "研究参与者知情同意",
+    "consent_collect": "我们收集：你的作答（以及可选邮箱）。",
+    "consent_use": "用途：仅用于学术研究与汇总统计。",
+    "consent_retention": "保留：有限期限；你可以提出删除请求。",
+    "consent_rights": "权利：查阅/更正/删除/可携。",
+    "consent_agree": "同意并继续",
+    "consent_decline": "不同意"
   }
 }
 }

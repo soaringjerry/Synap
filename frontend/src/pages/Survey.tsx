@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { listItems, submitBulk, seedSample } from '../api/client'
+import { useTranslation } from 'react-i18next'
 
 export function Survey() {
   const { scaleId = '' } = useParams()
   const nav = useNavigate()
+  const { t } = useTranslation()
   const [lang] = useState<string>(()=> new URLSearchParams(location.search).get('lang') || 'en')
   const [consented, setConsented] = useState(false)
   const [items, setItems] = useState<{id:string; stem:string; reverse_scored?: boolean}[]>([])
@@ -40,16 +42,16 @@ export function Survey() {
   if (!consented) {
     return (
       <div className="card span-12">
-        <h3 style={{marginTop:0}}>Research Participant Consent</h3>
+        <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
         <ul>
-          <li>What we collect: your responses (and optional email if provided).</li>
-          <li>How we use: academic research and aggregate statistics only.</li>
-          <li>Retention: limited duration; you may request deletion.</li>
-          <li>Rights: access / rectification / deletion / portability.</li>
+          <li>{t('survey.consent_collect')}</li>
+          <li>{t('survey.consent_use')}</li>
+          <li>{t('survey.consent_retention')}</li>
+          <li>{t('survey.consent_rights')}</li>
         </ul>
         <div className="cta-row" style={{marginTop:12}}>
-          <button className="btn btn-primary" onClick={()=>setConsented(true)}>Agree and continue</button>
-          <button className="btn btn-ghost" onClick={()=>nav('/')}>Decline</button>
+          <button className="btn btn-primary" onClick={()=>setConsented(true)}>{t('survey.consent_agree')}</button>
+          <button className="btn btn-ghost" onClick={()=>nav('/')}>{t('survey.consent_decline')}</button>
         </div>
       </div>
     )
@@ -57,9 +59,9 @@ export function Survey() {
 
   return (
     <div className="card span-12">
-      <h3 style={{marginTop:0}}>Survey</h3>
+      <h3 style={{marginTop:0}}>{t('survey.title')}</h3>
       <div className="muted" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-        <div>Scale: <b>{scaleId}</b></div>
+        <div>{t('survey.scale')} <b>{scaleId}</b></div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{width:140, height:8, background:'rgba(255,255,255,0.08)', borderRadius:999}}>
             <div style={{width:`${progress}%`, height:'100%', background:'linear-gradient(90deg, #22d3ee, #a78bfa)', borderRadius:999}} />
@@ -68,10 +70,10 @@ export function Survey() {
         </div>
       </div>
       <div className="item">
-        <div className="label">Email (optional)</div>
+        <div className="label">{t('survey.email_optional')}</div>
         <input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
       </div>
-      {loading && <div className="muted">Loading items…</div>}
+      {loading && <div className="muted">{t('survey.loading')}</div>}
       {!loading && items.map(it=> (
         <div key={it.id} className="item">
           <div className="label">{it.stem}</div>
@@ -92,9 +94,9 @@ export function Survey() {
           } catch(e:any) { setMsg(e.message||String(e)) }
         }}>Submit</button>
         {scaleId.toUpperCase()==='SAMPLE' && (
-          <button className="btn btn-ghost" onClick={loadOrSeed}>Reload items</button>
+          <button className="btn btn-ghost" onClick={loadOrSeed}>{t('survey.reload')}</button>
         )}
-        <button className="btn btn-ghost" onClick={()=>{ setAnswers({}); setMsg('') }}>Reset</button>
+        <button className="btn btn-ghost" onClick={()=>{ setAnswers({}); setMsg('') }}>{t('survey.reset')}</button>
       </div>
       {msg && <div className="muted" style={{marginTop:8}}>{msg}</div>}
     </div>

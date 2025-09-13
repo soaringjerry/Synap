@@ -10,6 +10,7 @@ import { Auth } from './pages/Auth'
 import { Survey } from './pages/Survey'
 
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 function useAuthStatus() {
   const [authed, setAuthed] = React.useState<boolean>(() => !!localStorage.getItem('token'))
@@ -29,18 +30,19 @@ async function logout(setAuthed: (b:boolean)=>void) {
 
 function RootLayout() {
   const { authed, setAuthed } = useAuthStatus()
+  const { t } = useTranslation()
   return (
     <>
       <header className="app-header">
         <div className="brand">Synap</div>
         <div className="nav-actions">
-          <Link className="btn btn-ghost" to="/">Home</Link>
-          <Link className="btn btn-ghost" to="/admin">Admin</Link>
+          <Link className="btn btn-ghost" to="/">{t('nav.home')}</Link>
+          <Link className="btn btn-ghost" to="/admin">{t('nav.admin')}</Link>
           {/* Moved Privacy / Terms / Cookies to footer for cleaner header */}
           {authed ? (
-            <button className="btn" onClick={()=>logout(setAuthed)}>Logout</button>
+            <button className="btn" onClick={()=>logout(setAuthed)}>{t('nav.logout')}</button>
           ) : (
-            <Link className="btn" to="/auth">Auth</Link>
+            <Link className="btn" to="/auth">{t('nav.auth')}</Link>
           )}
           <LanguageSwitcher />
           <VersionBadge />
