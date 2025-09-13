@@ -7,7 +7,7 @@
 * **Survey Builder** — customizable questionnaires (not limited to Likert scales)
 * **Automated Metrics** — reliability checks such as Cronbach’s α
 * **Region-Aware Privacy** — PDPA by default; GDPR/CCPA/PIPL applied when stricter
-* **Lightweight & Fast** — Go + TypeScript with SQLite as default storage
+* **Lightweight & Fast** — Go + TypeScript with encrypted snapshot storage (DB backends planned)
 * **AI Integration (Planned)** — automated analysis, summarization, adaptive survey design
 
 ## Why Synap
@@ -18,7 +18,7 @@
 
 ## Tech Stack
 
-* **Backend:** Go + SQLite
+* **Backend:** Go
 * **Frontend:** TypeScript + React (Vite)
 * **API Contract:** OpenAPI (auto-generated SDKs)
 
@@ -48,6 +48,7 @@ Environment variables (examples):
 
 ```bash
 export SYNAP_DB_PATH=./data/synap.db
+export SYNAP_ENC_KEY=$(openssl rand -base64 32)
 export SYNAP_ADDR=:8080
 ```
 
@@ -108,14 +109,15 @@ More options in `docs/deploy.md`.
 
 ## Configuration
 
-* `SYNAP_DB_PATH` — SQLite database file path (default `./data/synap.db`)
+* `SYNAP_DB_PATH` — Encrypted snapshot file path (default `./data/synap.db`)
+* `SYNAP_ENC_KEY` — 32‑byte encryption key (Base64 or raw; required for persistence)
 * `SYNAP_ADDR` — server listen address (default `:8080`)
 * `SYNAP_REGION_MODE` — privacy mode: `auto` (geo-aware) or `pdpa`/`gdpr`/`ccpa`/`pipl`
 * `SYNAP_STATIC_DIR` — when set, backend serves static files from this directory (used by fullstack image)
 
 ## Data & Privacy
 
-- Primary storage is in Singapore. Transport is HTTPS/TLS; at-rest encryption configurable.
+- Primary storage is in Singapore. Transport is HTTPS/TLS; at‑rest encryption is required for persistence.
 - We use Cloudflare CDN for performance and security. Requests may pass through edge nodes, but survey/response data resides only in our Singapore origin and is not retained at the edge. Cloudflare may temporarily process limited network metadata (e.g., IP) for routing/security; it is not used for advertising. See Privacy.
 - Raw IPs are **not stored** in content data. Only minimal technical logs may be kept for security/quality control.
 - GDPR/PDPA alignment: we aim to follow core principles. Controllers remain responsible for lawful basis and data-subject rights.
@@ -143,7 +145,7 @@ For **commercial use**, please contact the author for a commercial license.
 Author: [Jerry](https://github.com/soaringjerry)
 Email: *synap@forgotmail.com*
 
-Additional docs: see `docs/ci-cd.md`, `docs/deploy.md`, `docs/i18n.md`.
+Additional docs: see `docs/ci-cd.md`, `docs/deploy.md`, `docs/i18n.md`, `docs/persistence.md`.
 More docs:
 - Installation: `docs/installation.md`
 - Quick Start: `docs/quick-start.md`
