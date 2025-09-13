@@ -142,7 +142,11 @@
         "consent_rights": "权利：查阅/更正/删除/可携。",
         "consent_agree": "同意并继续",
         "consent_decline": "不同意"
-      }
+      },
+      "consent_custom": "知情同意",
+      "consent_en": "知情同意（英文）",
+      "consent_zh": "知情同意（中文）",
+      "consent_hint": "可选，留空则使用默认知情同意文案。换行会保留。"
     },
     "title": "Synap — 赛博问卷",
     "tagline": "霓虹氛围 · 轻微混乱 · 专注研究"

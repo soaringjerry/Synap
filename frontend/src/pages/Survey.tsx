@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { listItems, submitBulk, seedSample } from '../api/client'
+import { listItems, submitBulk, seedSample, getScaleMeta } from '../api/client'
 import { useTranslation } from 'react-i18next'
 
 export function Survey() {
@@ -14,11 +14,18 @@ export function Survey() {
   const [email, setEmail] = useState('')
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [consentCustom, setConsentCustom] = useState('')
 
   async function loadOrSeed() {
     setLoading(true)
     setMsg('')
     try {
+      // Load scale meta for consent
+      try {
+        const meta = await getScaleMeta(scaleId)
+        const c = (meta.consent_i18n && (meta.consent_i18n[lang] || meta.consent_i18n['en'])) || ''
+        setConsentCustom(c || '')
+      } catch {}
       const d = await listItems(scaleId, lang)
       if (d.items.length === 0 && scaleId.toUpperCase() === 'SAMPLE') {
         await seedSample()
@@ -43,12 +50,16 @@ export function Survey() {
     return (
       <div className="card span-12">
         <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
-        <ul>
-          <li>{t('survey.consent_collect')}</li>
-          <li>{t('survey.consent_use')}</li>
-          <li>{t('survey.consent_retention')}</li>
-          <li>{t('survey.consent_rights')}</li>
-        </ul>
+        {consentCustom ? (
+          <div style={{whiteSpace:'pre-wrap'}} className="muted consent-content">{consentCustom}</div>
+        ) : (
+          <ul>
+            <li>{t('survey.consent_collect')}</li>
+            <li>{t('survey.consent_use')}</li>
+            <li>{t('survey.consent_retention')}</li>
+            <li>{t('survey.consent_rights')}</li>
+          </ul>
+        )}
         <div className="cta-row" style={{marginTop:12}}>
           <button className="btn btn-primary" onClick={()=>setConsented(true)}>{t('survey.consent_agree')}</button>
           <button className="btn btn-ghost" onClick={()=>nav('/')}>{t('survey.consent_decline')}</button>

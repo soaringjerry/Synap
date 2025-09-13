@@ -1,4 +1,4 @@
-export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string> }
+export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string> }
 export type ItemOut = { id: string; stem: string; reverse_scored?: boolean }
 
 const base = '' // relative to same origin
@@ -73,4 +73,9 @@ export async function adminUpdateItem(id: string, input: { reverse_scored: boole
 export async function adminDeleteItem(id: string) {
   const res = await fetch(`/api/admin/items/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders() })
   return j<{ok:true}>(res)
+}
+
+export async function getScaleMeta(id: string) {
+  const res = await fetch(`${base}/api/scale/${encodeURIComponent(id)}`)
+  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string> }>(res)
 }

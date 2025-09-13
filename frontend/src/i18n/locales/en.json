@@ -142,7 +142,11 @@
         "consent_rights": "Rights: access / rectification / deletion / portability.",
         "consent_agree": "Agree and continue",
         "consent_decline": "Decline"
-      }
+      },
+      "consent_custom": "Consent",
+      "consent_en": "Consent (EN)",
+      "consent_zh": "Consent (ZH)",
+      "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved."
     },
     "title": "Synap — Cyber Survey",
     "tagline": "Neon vibes · subtle chaos · focused research"
