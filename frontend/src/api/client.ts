@@ -79,3 +79,18 @@ export async function getScaleMeta(id: string) {
   const res = await fetch(`${base}/api/scale/${encodeURIComponent(id)}`)
   return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string> }>(res)
 }
+
+export type AnalyticsSummary = {
+  scale_id: string
+  points: number
+  total_responses: number
+  items: { id:string; stem_i18n?: Record<string,string>; reverse_scored?: boolean; histogram: number[]; total: number }[]
+  timeseries: { date: string; count: number }[]
+  alpha: number
+  n: number
+}
+
+export async function adminAnalyticsSummary(scaleId: string) {
+  const res = await fetch(`/api/admin/analytics/summary?scale_id=${encodeURIComponent(scaleId)}`, { headers: authHeaders() })
+  return j<AnalyticsSummary>(res)
+}

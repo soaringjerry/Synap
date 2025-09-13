@@ -30,6 +30,10 @@
     "no_items": "暂无题目。",
     "randomize_items": "题目随机顺序",
     "manage_scale": "管理量表",
+    "analytics": "数据分析",
+    "total_responses": "作答总数",
+    "responses_over_time": "按时间的作答趋势",
+    "item_score_heatmap": "题目 × 分值 热力图",
 
     "email": "邮箱",
     "password": "密码",

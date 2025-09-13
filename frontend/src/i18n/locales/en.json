@@ -30,6 +30,10 @@
     "no_items": "No items yet.",
     "randomize_items": "Randomize items",
     "manage_scale": "Manage scale",
+    "analytics": "Analytics",
+    "total_responses": "Total responses",
+    "responses_over_time": "Responses over time",
+    "item_score_heatmap": "Item × score heatmap",
 
     "email": "Email",
     "password": "Password",

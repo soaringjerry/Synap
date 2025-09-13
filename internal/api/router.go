@@ -39,7 +39,8 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/auth/login", rt.handleLogin)
 	mux.HandleFunc("/api/auth/logout", rt.handleLogout)
 	mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
-	mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
+    mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
+    mux.Handle("/api/admin/analytics/summary", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAnalyticsSummary)))
 	// Admin: scale & item management
 	mux.Handle("/api/admin/scales/", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScaleOps)))
 	mux.Handle("/api/admin/items/", middleware.WithAuth(http.HandlerFunc(rt.handleAdminItemOps)))
@@ -532,6 +533,102 @@ func (rt *Router) handleAdminStats(w http.ResponseWriter, r *http.Request) {
 	rs := rt.store.listResponsesByScale(scaleID)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"count": len(rs)})
+}
+
+// GET /api/admin/analytics/summary?scale_id=...
+// Returns per-item histograms, daily timeseries counts, and Cronbach's alpha.
+func (rt *Router) handleAdminAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
+    scaleID := r.URL.Query().Get("scale_id")
+    if scaleID == "" {
+        http.Error(w, "scale_id required", http.StatusBadRequest)
+        return
+    }
+    sc := rt.store.getScale(scaleID)
+    if sc == nil {
+        http.Error(w, "scale not found", http.StatusNotFound)
+        return
+    }
+    items := rt.store.listItems(scaleID)
+    points := sc.Points
+    if points <= 0 {
+        points = 5
+    }
+    // histograms per item
+    type itemOut struct {
+        ID        string            `json:"id"`
+        StemI18n  map[string]string `json:"stem_i18n,omitempty"`
+        Reverse   bool              `json:"reverse_scored"`
+        Histogram []int             `json:"histogram"`
+        Total     int               `json:"total"`
+    }
+    itemIndex := map[string]int{}
+    outItems := make([]itemOut, 0, len(items))
+    for i, it := range items {
+        outItems = append(outItems, itemOut{ID: it.ID, StemI18n: it.StemI18n, Reverse: it.ReverseScored, Histogram: make([]int, points)})
+        itemIndex[it.ID] = i
+    }
+    // timeseries by day
+    countsByDay := map[string]int{}
+    rs := rt.store.listResponsesByScale(scaleID)
+    for _, r2 := range rs {
+        // histogram
+        if idx, ok := itemIndex[r2.ItemID]; ok {
+            v := r2.ScoreValue
+            if v < 1 {
+                v = 1
+            }
+            if v > points {
+                v = points
+            }
+            outItems[idx].Histogram[v-1]++
+            outItems[idx].Total++
+        }
+        // timeseries (UTC day)
+        day := r2.SubmittedAt.UTC().Format("2006-01-02")
+        countsByDay[day]++
+    }
+    // Build alpha matrix (participants with complete rows)
+    // map[pid]map[itemID]score
+    mp := map[string]map[string]float64{}
+    for _, r2 := range rs {
+        if mp[r2.ParticipantID] == nil {
+            mp[r2.ParticipantID] = map[string]float64{}
+        }
+        mp[r2.ParticipantID][r2.ItemID] = float64(r2.ScoreValue)
+    }
+    iids := make([]string, 0, len(items))
+    for _, it := range items { iids = append(iids, it.ID) }
+    sort.Strings(iids)
+    matrix := make([][]float64, 0, len(mp))
+    for _, m := range mp {
+        row := make([]float64, 0, len(iids))
+        complete := true
+        for _, id := range iids {
+            v, ok := m[id]
+            if !ok { complete = false; break }
+            row = append(row, v)
+        }
+        if complete { matrix = append(matrix, row) }
+    }
+    alpha := services.CronbachAlpha(matrix)
+    // timeseries array sorted by day
+    days := make([]string, 0, len(countsByDay))
+    for d := range countsByDay { days = append(days, d) }
+    sort.Strings(days)
+    type ts struct { Date string `json:"date"`; Count int `json:"count"` }
+    series := make([]ts, 0, len(days))
+    for _, d := range days { series = append(series, ts{Date: d, Count: countsByDay[d]}) }
+
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(map[string]any{
+        "scale_id": scaleID,
+        "points": points,
+        "total_responses": len(rs),
+        "items": outItems,
+        "timeseries": series,
+        "alpha": alpha,
+        "n": len(matrix),
+    })
 }
 
 // --- Admin scale/item ops ---

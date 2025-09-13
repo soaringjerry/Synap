@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem } from '../api/client'
+import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary } from '../api/client'
 
 export function AdminScale() {
   const { id = '' } = useParams()
@@ -14,6 +14,7 @@ export function AdminScale() {
   const [newStemZh, setNewStemZh] = useState('')
   const [newReverse, setNewReverse] = useState(false)
   const [shareLang, setShareLang] = useState<'en'|'zh'>('en')
+  const [analytics, setAnalytics] = useState<any|null>(null)
 
   async function load() {
     setMsg('')
@@ -22,6 +23,7 @@ export function AdminScale() {
       const its = await adminGetScaleItems(id)
       setScale(s)
       setItems(its.items||[])
+      try { const a = await adminAnalyticsSummary(id); setAnalytics(a) } catch {}
     } catch (e:any) { setMsg(e.message||String(e)) }
   }
   useEffect(()=>{ load() }, [id])
@@ -119,6 +121,52 @@ export function AdminScale() {
               <div className="muted">{t('consent_hint')||'Optional, leave blank to use default consent text. Newlines preserved.'}</div>
             </div>
           </div>
+        </section>
+      </div>
+
+      <div className="row" style={{marginTop:16}}>
+        <section className="card span-12">
+          <h3 style={{marginTop:0}}>{t('analytics')||'Analytics'}</h3>
+          {!analytics && <div className="muted">{t('loading')}…</div>}
+          {analytics && (
+            <>
+              <div className="item" style={{display:'flex',gap:16,flexWrap:'wrap',alignItems:'center'}}>
+                <div><b>α</b>: {analytics.alpha?.toFixed(3)} (n={analytics.n})</div>
+                <div>{t('total_responses')||'Total responses'}: <b>{analytics.total_responses}</b></div>
+              </div>
+              {/* Timeseries */}
+              <div className="item">
+                <div className="label">{t('responses_over_time')||'Responses over time'}</div>
+                {/* Simple sparkline as counts */}
+                <div style={{display:'flex',gap:6,alignItems:'flex-end'}}>
+                  {analytics.timeseries.map((d:any)=>(
+                    <div key={d.date} title={`${d.date}: ${d.count}`} style={{width:6,height:Math.max(3, d.count*6), background:'linear-gradient(180deg,#22d3ee,#a78bfa)', borderRadius:2}} />
+                  ))}
+                </div>
+              </div>
+              {/* Heatmap item x score */}
+              <div className="item">
+                <div className="label">{t('item_score_heatmap')||'Item × score heatmap'}</div>
+                <div style={{overflowX:'auto'}}>
+                  {/* Build table-like heatmap using CSS grid (reuse .heatmap styles) */}
+                  <div style={{display:'grid', gridTemplateColumns:`180px repeat(${analytics.points}, 1fr)`, gap:8, alignItems:'center'}}>
+                    <div />
+                    {Array.from({length: analytics.points}, (_,i)=> (
+                      <div key={i} className="muted" style={{textAlign:'center'}}>{i+1}</div>
+                    ))}
+                    {analytics.items.map((it:any)=> (
+                      <React.Fragment key={it.id}>
+                        <div className="muted" style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis'}}>{it.stem_i18n?.en || it.id}</div>
+                        {it.histogram.map((v:number,ci:number)=> (
+                          <div key={`${it.id}-${ci}`} title={`${v}`} style={{height:18, borderRadius:3, background:`hsla(${200+(v/Math.max(1,it.total))*80},90%,55%,${0.15+0.85*(v/Math.max(1,it.total))})`}} />
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </section>
       </div>
 
