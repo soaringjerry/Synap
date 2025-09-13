@@ -66,14 +66,14 @@ export function Admin() {
           {scales.length===0 && <div className="muted">{t('no_scales')}</div>}
           {scales.map((s:any)=>(
             <div key={s.id} className="item" style={{display:'flex',justifyContent:'space-between', alignItems:'center'}}>
-              <div><b>{s.id}</b> · {(s.name_i18n?.en||'')}{s.name_i18n?.zh?` / ${s.name_i18n.zh}`:''} · {s.points} points</div>
+              <div><b>{s.id}</b> · {(s.name_i18n?.en||'')}{s.name_i18n?.zh?` / ${s.name_i18n.zh}`:''} · {s.points} {t('points')}</div>
               <div style={{display:'flex',gap:8}}>
-                <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Long</a>
-                <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Wide</a>
-                <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Score</a>
-                <button className="btn" onClick={()=>copyLink(s.id)}>{t('share')||'Share'}</button>
-                <a className="btn btn-ghost" href={shareLink(s.id)} target="_blank" rel="noreferrer">{t('open')||'Open'}</a>
-                <Link className="btn btn-primary" to={`/admin/scale/${encodeURIComponent(s.id)}`}>Manage</Link>
+                <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_long_csv')}</a>
+                <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_wide_csv')}</a>
+                <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_score_csv')}</a>
+                <button className="btn" onClick={()=>copyLink(s.id)}>{t('share')}</button>
+                <a className="btn btn-ghost" href={shareLink(s.id)} target="_blank" rel="noreferrer">{t('open')}</a>
+                <Link className="btn btn-primary" to={`/admin/scale/${encodeURIComponent(s.id)}`}>{t('manage')||'Manage'}</Link>
               </div>
             </div>
           ))}
