@@ -26,10 +26,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
+          # Ensure local tags are up to date
+          git fetch --tags --force --prune || true
           # Compute next version via dry-run
           NEXT=$(npx semantic-release --dry-run 2>&1 | sed -n "s/.*The next release version is \([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p" | tail -n1 || true)
           echo "Computed next version: $NEXT"
           if [ -n "$NEXT" ]; then
+            # If a local tag with the next version exists but is not on current history, delete it to avoid local tag conflicts
+            if git rev-parse -q --verify "refs/tags/v$NEXT" >/dev/null 2>&1; then
+              TSHA=$(git rev-parse -q --verify "refs/tags/v$NEXT^{commit}" || true)
+              if [ -n "$TSHA" ]; then
+                if git merge-base --is-ancestor "$TSHA" HEAD; then
+                  echo "Local tag v$NEXT exists and is on current history; leaving local tag (semantic-release should not target same version)."
+                else
+                  echo "Local tag v$NEXT exists but is not on current history; deleting local tag to avoid conflict."
+                  git tag -d "v$NEXT" || true
+                fi
+              fi
+            fi
             # Find remote tag commit SHA (peeled first)
             SHA=$(git ls-remote --tags origin "refs/tags/v$NEXT^{}" | awk '{print $1}')
             if [ -z "$SHA" ]; then
