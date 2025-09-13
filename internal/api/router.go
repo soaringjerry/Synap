@@ -1,19 +1,19 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
-	"bytes"
 	"github.com/google/uuid"
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
 	"golang.org/x/crypto/bcrypt"
-	"io/ioutil"
-	"strconv"
 )
 
 type Router struct {
@@ -587,7 +587,7 @@ func (rt *Router) handleAdminAITranslatePreview(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
 		b, _ := ioutil.ReadAll(resp.Body)
 		http.Error(w, string(b), http.StatusBadGateway)

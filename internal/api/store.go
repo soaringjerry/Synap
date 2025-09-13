@@ -224,11 +224,7 @@ func (s *memoryStore) updateItem(it *Item) bool {
 			old.Step = it.Step
 		}
 	}
-	if it.Required {
-		old.Required = it.Required
-	} else if it.Required == false {
-		old.Required = false
-	}
+	old.Required = it.Required
 	s.saveLocked()
 	return true
 }
