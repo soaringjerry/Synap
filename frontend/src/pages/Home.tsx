@@ -28,20 +28,20 @@ export function Home() {
 
       {/* Stats strip for quick trust signals */}
       <section className="section">
-        <div className="stats">
-          <div className="stat">
-            <div className="num">99.9%</div>
-            <div className="text">Uptime-friendly architecture（single binary + CDN）</div>
+          <div className="stats">
+            <div className="stat">
+              <div className="num">99.9%</div>
+              <div className="text">{t('home.stats_strip.uptime')}</div>
+            </div>
+            <div className="stat">
+              <div className="num">GDPR/PDPA</div>
+              <div className="text">{t('home.stats_strip.privacy_first')}</div>
+            </div>
+            <div className="stat">
+              <div className="num">α</div>
+              <div className="text">{t('home.stats_strip.reliability')}</div>
+            </div>
           </div>
-          <div className="stat">
-            <div className="num">GDPR/PDPA</div>
-            <div className="text">Privacy-first defaults · Singapore storage · Cloudflare edge transit</div>
-          </div>
-          <div className="stat">
-            <div className="num">α</div>
-            <div className="text">Reliability & exports designed for research workflows</div>
-          </div>
-        </div>
       </section>
 
       {/* Showcase: visually communicate research capability */}
@@ -68,8 +68,8 @@ export function Home() {
               <Heatmap rows={7} cols={12} />
             </div>
             <div className="tile half tile-ghost tilt">
-              <div className="title">Exports</div>
-              <div className="muted">CSV (long/wide/score) · Open formats for SPSS/R/JASP</div>
+              <div className="title">{t('home.showcase.exports_title')}</div>
+              <div className="muted">{t('home.showcase.exports_desc')}</div>
             </div>
           </div>
         </div>
@@ -117,7 +117,7 @@ export function Home() {
       <section className="section">
         <div className="demo-wrap neo-panel">
           <div className="panel-head">
-            <h3 className="section-title">Demo</h3>
+            <h3 className="section-title">{t('home.demo.title')}</h3>
           </div>
           <div className="demo-grid">
             <div className="demo-copy">
@@ -128,7 +128,7 @@ export function Home() {
             </div>
             <div className="demo-preview tilt" aria-label="Survey Preview">
               <div className="demo-card">
-                <div className="demo-title">Likert Preview</div>
+                <div className="demo-title">{t('home.demo.preview_title')}</div>
                 <div className="demo-item">I stay focused on tasks.
                   <div className="scale" style={{marginTop:8}}>
                     {[1,2,3,4,5].map(v=> (

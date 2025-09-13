@@ -77,9 +77,11 @@
         "alpha": "Reliability",
         "progress": "Response Trend",
         "spark_hint": "Last 10 intervals",
-        "heatmap": "Item × Participant Coverage"
+        "heatmap": "Item × Participant Coverage",
+        "exports_title": "Exports",
+        "exports_desc": "CSV (long/wide/score) · Open formats for SPSS/R/JASP"
       },
-      "demo": { "text": "Try a sample survey now and see how responses turn into insights.", "button": "Try Demo" },
+      "demo": { "title": "Demo", "text": "Try a sample survey now and see how responses turn into insights.", "button": "Try Demo", "preview_title": "Likert Preview" },
       "cred": {
         "title": "A survey platform built for research",
         "rigorous": { "k": "Rigorous", "v": "Compatible with formats and workflows used in academia" },
@@ -115,6 +117,27 @@
         "all": "Accept all",
         "learn": "Learn more"
       }
+  },
+  "nav": {
+    "home": "Home",
+    "admin": "Admin",
+    "auth": "Auth",
+    "logout": "Logout"
+  },
+  "survey": {
+    "title": "Survey",
+    "scale": "Scale:",
+    "email_optional": "Email (optional)",
+    "loading": "Loading items…",
+    "reload": "Reload items",
+    "reset": "Reset",
+    "consent_title": "Research Participant Consent",
+    "consent_collect": "What we collect: your responses (and optional email if provided).",
+    "consent_use": "How we use: academic research and aggregate statistics only.",
+    "consent_retention": "Retention: limited duration; you may request deletion.",
+    "consent_rights": "Rights: access / rectification / deletion / portability.",
+    "consent_agree": "Agree and continue",
+    "consent_decline": "Decline"
   }
 }
 }
