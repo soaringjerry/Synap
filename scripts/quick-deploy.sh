@@ -82,6 +82,15 @@ prepare_files() {
     dev_front_url="http://127.0.0.1:5173"
   fi
 
+  # Generate encryption key for at-rest storage (AES-256-GCM)
+  local enc_key
+  if command -v openssl >/dev/null 2>&1; then
+    enc_key=$(openssl rand -base64 32)
+  else
+    echo "[synap] openssl not found; generating placeholder encryption key. Please replace SYNAP_ENC_KEY in .env." >&2
+    enc_key="CHANGE-ME-BASE64-32"
+  fi
+
   cat > .env <<EOF
 GHCR_OWNER=${OWNER}
 SYNAP_IMAGE=${image}
@@ -92,6 +101,7 @@ WATCH_INTERVAL=${WATCH_INTERVAL}
 PORT=${PORT}
 FRONT_PORT=${FRONT_PORT}
 DEV_FRONTEND_URL=${dev_front_url}
+SYNAP_ENC_KEY=${enc_key}
 EOF
 
   # Write compose file
@@ -106,6 +116,7 @@ services:
     environment:
       - SYNAP_ADDR=:8080
       - SYNAP_DB_PATH=/data/synap.db
+      - SYNAP_ENC_KEY=${SYNAP_ENC_KEY}
       - SYNAP_STATIC_DIR=/public
       - SYNAP_DEV_FRONTEND_URL=${DEV_FRONTEND_URL}
     volumes:
@@ -154,6 +165,7 @@ services:
     environment:
       - SYNAP_ADDR=:8080
       - SYNAP_DB_PATH=/data/synap.db
+      - SYNAP_ENC_KEY=${SYNAP_ENC_KEY}
       - SYNAP_STATIC_DIR=/public
       - SYNAP_DEV_FRONTEND_URL=${DEV_FRONTEND_URL}
     ports:

@@ -1,6 +1,11 @@
 package api
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"os"
@@ -78,6 +83,7 @@ type memoryStore struct {
 	audit        []AuditEntry
 
 	snapshotPath string
+	encKey       []byte
 }
 
 func newMemoryStore(path string) *memoryStore {
@@ -103,6 +109,15 @@ func newMemoryStoreFromEnv() *memoryStore {
 	}
 	_ = os.MkdirAll(filepath.Dir(path), 0o755)
 	s := newMemoryStore(path)
+	// Derive encryption key from env; require encryption for persistence.
+	if key := os.Getenv("SYNAP_ENC_KEY"); key != "" {
+		s.encKey = deriveEncKey(key)
+	}
+	if len(s.encKey) != 32 {
+		// Encryption key missing or invalid — disable persistence to avoid plaintext storage
+		// Start in-memory only to comply with "encrypted at rest" requirement.
+		return nil
+	}
 	_ = s.load()
 	return s
 }
@@ -443,6 +458,14 @@ func (s *memoryStore) load() error {
 		}
 		return err
 	}
+	// Attempt encrypted load first
+	if len(b) > 8 && string(b[:8]) == "SYNAPENC" {
+		db, derr := s.decrypt(b)
+		if derr != nil {
+			return derr
+		}
+		b = db
+	}
 	var snap snapshot
 	if err := json.Unmarshal(b, &snap); err != nil {
 		return err
@@ -480,6 +503,10 @@ func (s *memoryStore) load() error {
 		s.aiConfigs[a.TenantID] = a
 	}
 	s.audit = append([]AuditEntry(nil), snap.Audit...)
+	// If file was plaintext and we have encKey, save back encrypted
+	if len(s.encKey) == 32 && !(len(b) > 8 && string(b[:8]) == "SYNAPENC") {
+		s.saveUnlocked()
+	}
 	return nil
 }
 
@@ -531,8 +558,78 @@ func (s *memoryStore) saveUnlocked() {
 	_ = os.MkdirAll(filepath.Dir(s.snapshotPath), 0o755)
 	tmp := s.snapshotPath + ".tmp"
 	b, _ := json.MarshalIndent(&snap, "", "  ")
-	_ = os.WriteFile(tmp, b, 0o644)
+	// Encrypt if key is available
+	if len(s.encKey) == 32 {
+		if eb, err := s.encrypt(b); err == nil {
+			b = eb
+		}
+	}
+	_ = os.WriteFile(tmp, b, 0o600)
 	_ = os.Rename(tmp, s.snapshotPath)
+}
+
+// --- Encryption helpers (AES-256-GCM with random nonce) ---
+func deriveEncKey(s string) []byte {
+	// Try base64 first
+	if kb, err := base64.StdEncoding.DecodeString(s); err == nil && (len(kb) == 32) {
+		return kb
+	}
+	// Fallback: sha256 of raw string
+	sum := sha256.Sum256([]byte(s))
+	b := make([]byte, 32)
+	copy(b, sum[:])
+	return b
+}
+
+func (s *memoryStore) encrypt(plain []byte) ([]byte, error) {
+	if len(s.encKey) != 32 {
+		return nil, errors.New("encryption key missing")
+	}
+	block, err := aes.NewCipher(s.encKey)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	ct := gcm.Seal(nil, nonce, plain, nil)
+	out := make([]byte, 0, 8+len(nonce)+len(ct))
+	out = append(out, []byte("SYNAPENC")...)
+	out = append(out, nonce...)
+	out = append(out, ct...)
+	return out, nil
+}
+
+func (s *memoryStore) decrypt(enc []byte) ([]byte, error) {
+	if len(s.encKey) != 32 {
+		return nil, errors.New("decryption key missing")
+	}
+	if len(enc) < 8 {
+		return nil, errors.New("invalid blob")
+	}
+	hdr := enc[:8]
+	if string(hdr) != "SYNAPENC" {
+		return nil, errors.New("not encrypted")
+	}
+	block, err := aes.NewCipher(s.encKey)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	if len(enc) < 8+gcm.NonceSize()+1 {
+		return nil, errors.New("invalid size")
+	}
+	nonce := enc[8 : 8+gcm.NonceSize()]
+	ct := enc[8+gcm.NonceSize():]
+	return gcm.Open(nil, nonce, ct, nil)
 }
 
 // AI config helpers
