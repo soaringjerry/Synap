@@ -134,6 +134,9 @@ a:hover, a:focus { text-decoration: none; }
 .glitch::before { color: var(--accent-2); transform: translate(1px, 0); animation: shift 6s infinite linear; opacity: 0.75; }
 .glitch::after { color: var(--accent); transform: translate(-1px, 0); animation: shift 5s infinite linear reverse; opacity: 0.75; }
 
+/* Prevent glitch headings from overflowing containers on small screens */
+.glitch { max-width: 100%; overflow: hidden; }
+
 @keyframes shift {
   0% { clip-path: inset(0 0 0 0); }
   10% { clip-path: inset(10% 0 82% 0); }
@@ -169,8 +172,9 @@ a:hover, a:focus { text-decoration: none; }
 .muted { color: var(--muted); }
 
 /* Buttons */
-.neon-btn, .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 16px; border: 1px solid var(--border); color: var(--text); cursor: pointer; transition: all 140ms ease; background: rgba(255,255,255,0.04); position: relative; line-height: 1; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
-.btn-primary { background: var(--accent-grad); color: #0a0a12; border-color: transparent; box-shadow: 0 6px 20px rgba(125,211,252,0.22); }
+.neon-btn, .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 16px; border: 1px solid var(--border); color: var(--text); cursor: pointer; transition: all 140ms ease; background: rgba(255,255,255,0.04); position: relative; line-height: 1; white-space: nowrap; -webkit-tap-highlight-color: transparent; overflow: hidden; }
+.btn-primary { color: #0a0a12; border: 0; background: transparent; box-shadow: 0 6px 20px rgba(125,211,252,0.22); }
+.btn-primary::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent-grad); z-index: -1; }
 .btn-primary:hover { filter: brightness(1.03); transform: translateY(-1px); }
 .btn-ghost { background: transparent; border-color: var(--border); }
 .btn-ghost:hover { background: rgba(255,255,255,0.06); }
