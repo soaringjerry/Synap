@@ -9,7 +9,26 @@ import { Admin } from './pages/Admin'
 import { Auth } from './pages/Auth'
 import { Survey } from './pages/Survey'
 
+import React from 'react'
+
+function useAuthStatus() {
+  const [authed, setAuthed] = React.useState<boolean>(() => !!localStorage.getItem('token'))
+  React.useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'token') setAuthed(!!e.newValue) }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+  return { authed, setAuthed }
+}
+
+async function logout(setAuthed: (b:boolean)=>void) {
+  try { await fetch('/api/auth/logout', { method: 'POST' }) } catch {}
+  localStorage.removeItem('token')
+  setAuthed(false)
+}
+
 function RootLayout() {
+  const { authed, setAuthed } = useAuthStatus()
   return (
     <>
       <header className="app-header">
@@ -20,6 +39,11 @@ function RootLayout() {
           <Link className="btn btn-ghost" to="/legal/privacy">Privacy</Link>
           <Link className="btn btn-ghost" to="/legal/terms">Terms</Link>
           <button className="btn btn-ghost" onClick={()=> (window as any).openCookiePrefs?.() }>Cookies</button>
+          {authed ? (
+            <button className="btn" onClick={()=>logout(setAuthed)}>Logout</button>
+          ) : (
+            <Link className="btn" to="/auth">Auth</Link>
+          )}
           <LanguageSwitcher />
           <VersionBadge />
         </div>

@@ -1,11 +1,11 @@
 package api
 
 import (
-	"encoding/json"
-	"net/http"
-	"sort"
-	"strings"
-	"time"
+    "encoding/json"
+    "net/http"
+    "sort"
+    "strings"
+    "time"
 
 	"github.com/google/uuid"
 	"github.com/soaringjerry/Synap/internal/middleware"
@@ -14,11 +14,16 @@ import (
 )
 
 type Router struct {
-	store *memoryStore
+    store *memoryStore
 }
 
 func NewRouter() *Router {
-	return &Router{store: newMemoryStore()}
+    // Optionally load snapshot from disk via SYNAP_DB_PATH (MVP persistence)
+    // If empty or unavailable, fall back to pure in-memory.
+    if s := newMemoryStoreFromEnv(); s != nil {
+        return &Router{store: s}
+    }
+    return &Router{store: newMemoryStore("")}
 }
 
 func (rt *Router) Register(mux *http.ServeMux) {
@@ -30,7 +35,8 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	mux.Handle("/api/export", middleware.WithAuth(http.HandlerFunc(rt.handleExport)))       // GET (auth)
 	mux.Handle("/api/metrics/alpha", middleware.WithAuth(http.HandlerFunc(rt.handleAlpha))) // GET (auth)
 	mux.HandleFunc("/api/auth/register", rt.handleRegister)
-	mux.HandleFunc("/api/auth/login", rt.handleLogin)
+    mux.HandleFunc("/api/auth/login", rt.handleLogin)
+    mux.HandleFunc("/api/auth/logout", rt.handleLogout)
 	mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
 	mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
 	// Participant data rights (admin-triggered for now)
@@ -431,9 +437,21 @@ func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tok, _ := middleware.SignToken(u.ID, u.TenantID, u.Email, 30*24*time.Hour)
-	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": u.TenantID, "user_id": u.ID})
+    http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": u.TenantID, "user_id": u.ID})
+}
+
+// POST /api/auth/logout — expire auth cookie; frontend should also clear token
+func (rt *Router) handleLogout(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+    // Expire the cookie
+    http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: "", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: -1, Expires: time.Unix(0, 0)})
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
 
 // GET /api/admin/scales -> list scales for tenant
