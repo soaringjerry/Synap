@@ -6,6 +6,16 @@
     <title>Synap</title>
   </head>
   <body>
+    <!--
+      main inspirations: 
+      https://glass.motion.dev/
+      https://pixflow.net/product/refracto-glass-effects/
+      https://x.com/Ibelick/status/1736868297625501768
+    -->
+    <div class="bg-stage">
+      <img class="bg-img" src="https://images.unsplash.com/photo-1520974735194-5f1086c7cd89?q=80&w=1920&fit=crop" alt="ambient" />
+      <div class="bg-vignette"></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
@@ -14,7 +24,9 @@
 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none">
   <defs>
     <filter id="fractal-glass">
-      <feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="1" result="warp" />
+      <feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="1" result="warp">
+        <animate attributeName="baseFrequency" dur="24s" values="0.08;0.12;0.08" repeatCount="indefinite" />
+      </feTurbulence>
       <feDisplacementMap xChannelSelector="R" yChannelSelector="G" scale="24" in="SourceGraphic" in2="warp" />
     </filter>
     <filter id="ambilight">
