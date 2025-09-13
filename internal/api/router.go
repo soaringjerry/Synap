@@ -7,10 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"bytes"
 	"github.com/google/uuid"
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
 	"golang.org/x/crypto/bcrypt"
+	"io/ioutil"
 	"strconv"
 )
 
@@ -49,6 +51,9 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	mux.Handle("/api/admin/participant/export", middleware.WithAuth(http.HandlerFunc(rt.handleExportParticipant)))
 	mux.Handle("/api/admin/participant/delete", middleware.WithAuth(http.HandlerFunc(rt.handleDeleteParticipant)))
 	mux.Handle("/api/admin/audit", middleware.WithAuth(http.HandlerFunc(rt.handleAudit)))
+	// AI config + translation preview
+	mux.Handle("/api/admin/ai/config", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAIConfig)))
+	mux.Handle("/api/admin/ai/translate/preview", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAITranslatePreview)))
 }
 
 // POST /api/seed — create a sample scale+items
@@ -451,6 +456,165 @@ func (rt *Router) handleDeleteParticipant(w http.ResponseWriter, r *http.Request
 	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "delete_participant", Target: email, Note: map[bool]string{true: "hard", false: "soft"}[hard]})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
+}
+
+// --- Admin AI config ---
+// GET -> fetch current tenant AI config
+// PUT -> update AI config { openai_key?, openai_base?, allow_external, store_logs }
+func (rt *Router) handleAdminAIConfig(w http.ResponseWriter, r *http.Request) {
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		cfg := rt.store.getAIConfig(tid)
+		if cfg == nil {
+			cfg = &TenantAIConfig{TenantID: tid, AllowExternal: false, StoreLogs: false}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(cfg)
+		return
+	case http.MethodPut:
+		var in TenantAIConfig
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		in.TenantID = tid
+		rt.store.upsertAIConfig(&in)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		return
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}
+
+// POST /api/admin/ai/translate/preview
+// { scale_id: string, target_langs: ["en","zh"], model?: string, scope?: ["items","name","consent"] }
+// Returns: { items: { [id]: { [lang]: string } }, name_i18n?: {...}, consent_i18n?: {...} }
+func (rt *Router) handleAdminAITranslatePreview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var req struct {
+		ScaleID     string   `json:"scale_id"`
+		TargetLangs []string `json:"target_langs"`
+		Model       string   `json:"model"`
+		Scope       []string `json:"scope"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.ScaleID == "" || len(req.TargetLangs) == 0 {
+		http.Error(w, "scale_id and target_langs required", http.StatusBadRequest)
+		return
+	}
+	sc := rt.store.getScale(req.ScaleID)
+	if sc == nil || sc.TenantID != tid {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	cfg := rt.store.getAIConfig(tid)
+	if cfg == nil || !cfg.AllowExternal || cfg.OpenAIKey == "" {
+		http.Error(w, "external AI disabled or missing key", http.StatusBadRequest)
+		return
+	}
+	if req.Model == "" {
+		req.Model = "gpt-4o-mini"
+	}
+	// Build source payload
+	items := rt.store.listItems(req.ScaleID)
+	type srcItem struct{ ID, Text string }
+	src := struct {
+		Items       []srcItem         `json:"items"`
+		NameI18n    map[string]string `json:"name_i18n,omitempty"`
+		ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
+		Targets     []string          `json:"targets"`
+	}{Items: []srcItem{}, NameI18n: sc.NameI18n, ConsentI18n: sc.ConsentI18n, Targets: req.TargetLangs}
+	for _, it := range items {
+		text := it.StemI18n["en"]
+		if text == "" {
+			// pick any available
+			for _, v := range it.StemI18n {
+				text = v
+				break
+			}
+		}
+		src.Items = append(src.Items, srcItem{ID: it.ID, Text: text})
+	}
+	body, _ := json.Marshal(src)
+	prompt := "Translate the following JSON payload into the target languages. Return ONLY a JSON object with fields: items (map of item_id to {lang:text}), name_i18n (map), consent_i18n (map). Keep placeholders and numeric scales intact."
+	// Call OpenAI Chat Completions
+	endpoint := strings.TrimRight(cfg.OpenAIBase, "/")
+	if endpoint == "" {
+		endpoint = "https://api.openai.com"
+	}
+	if strings.HasSuffix(endpoint, "/chat/completions") {
+		// ok
+	} else if strings.HasSuffix(endpoint, "/v1") {
+		endpoint = endpoint + "/chat/completions"
+	} else if strings.HasSuffix(endpoint, "/v1/") {
+		endpoint = strings.TrimRight(endpoint, "/") + "/chat/completions"
+	} else {
+		endpoint = endpoint + "/v1/chat/completions"
+	}
+	pay := map[string]any{
+		"model":       req.Model,
+		"temperature": 0.2,
+		"messages": []map[string]string{
+			{"role": "system", "content": prompt},
+			{"role": "user", "content": string(body)},
+		},
+		"response_format": map[string]string{"type": "json_object"},
+	}
+	pb, _ := json.Marshal(pay)
+	httpReq, _ := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(pb))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+cfg.OpenAIKey)
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := ioutil.ReadAll(resp.Body)
+		http.Error(w, string(b), http.StatusBadGateway)
+		return
+	}
+	var cc struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&cc); err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	if len(cc.Choices) == 0 {
+		http.Error(w, "no choices", http.StatusBadGateway)
+		return
+	}
+	var out map[string]any
+	if err := json.Unmarshal([]byte(cc.Choices[0].Message.Content), &out); err != nil {
+		http.Error(w, "invalid JSON from model", http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 // GET /api/admin/audit

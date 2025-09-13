@@ -56,6 +56,15 @@ type Response struct {
 	RawJSON string `json:"raw_json,omitempty"`
 }
 
+// TenantAIConfig stores per-tenant AI provider settings.
+type TenantAIConfig struct {
+	TenantID      string `json:"tenant_id"`
+	OpenAIKey     string `json:"openai_key,omitempty"`
+	OpenAIBase    string `json:"openai_base,omitempty"`
+	AllowExternal bool   `json:"allow_external"`
+	StoreLogs     bool   `json:"store_logs"`
+}
+
 type memoryStore struct {
 	mu           sync.RWMutex
 	scales       map[string]*Scale
@@ -65,6 +74,7 @@ type memoryStore struct {
 	responses    []*Response
 	tenants      map[string]*Tenant
 	usersByEmail map[string]*User
+	aiConfigs    map[string]*TenantAIConfig
 	audit        []AuditEntry
 
 	snapshotPath string
@@ -79,6 +89,7 @@ func newMemoryStore(path string) *memoryStore {
 		responses:    []*Response{},
 		tenants:      map[string]*Tenant{},
 		usersByEmail: map[string]*User{},
+		aiConfigs:    map[string]*TenantAIConfig{},
 		audit:        []AuditEntry{},
 		snapshotPath: path,
 	}
@@ -411,13 +422,14 @@ func (s *memoryStore) listScalesByTenant(tid string) []*Scale {
 
 // --- snapshot persistence (MVP JSON) ---
 type snapshot struct {
-	Scales       []*Scale       `json:"scales"`
-	Items        []*Item        `json:"items"`
-	Participants []*Participant `json:"participants"`
-	Responses    []*Response    `json:"responses"`
-	Tenants      []*Tenant      `json:"tenants"`
-	Users        []*User        `json:"users"`
-	Audit        []AuditEntry   `json:"audit"`
+	Scales       []*Scale          `json:"scales"`
+	Items        []*Item           `json:"items"`
+	Participants []*Participant    `json:"participants"`
+	Responses    []*Response       `json:"responses"`
+	Tenants      []*Tenant         `json:"tenants"`
+	Users        []*User           `json:"users"`
+	AIConfigs    []*TenantAIConfig `json:"ai_configs"`
+	Audit        []AuditEntry      `json:"audit"`
 }
 
 func (s *memoryStore) load() error {
@@ -463,6 +475,10 @@ func (s *memoryStore) load() error {
 	for _, u := range snap.Users {
 		s.usersByEmail[strings.ToLower(u.Email)] = u
 	}
+	s.aiConfigs = map[string]*TenantAIConfig{}
+	for _, a := range snap.AIConfigs {
+		s.aiConfigs[a.TenantID] = a
+	}
 	s.audit = append([]AuditEntry(nil), snap.Audit...)
 	return nil
 }
@@ -490,6 +506,7 @@ func (s *memoryStore) saveUnlocked() {
 		Responses:    []*Response{},
 		Tenants:      []*Tenant{},
 		Users:        []*User{},
+		AIConfigs:    []*TenantAIConfig{},
 		Audit:        append([]AuditEntry(nil), s.audit...),
 	}
 	for _, sc := range s.scales {
@@ -508,9 +525,39 @@ func (s *memoryStore) saveUnlocked() {
 	for _, u := range s.usersByEmail {
 		snap.Users = append(snap.Users, u)
 	}
+	for _, a := range s.aiConfigs {
+		snap.AIConfigs = append(snap.AIConfigs, a)
+	}
 	_ = os.MkdirAll(filepath.Dir(s.snapshotPath), 0o755)
 	tmp := s.snapshotPath + ".tmp"
 	b, _ := json.MarshalIndent(&snap, "", "  ")
 	_ = os.WriteFile(tmp, b, 0o644)
 	_ = os.Rename(tmp, s.snapshotPath)
+}
+
+// AI config helpers
+func (s *memoryStore) getAIConfig(tenantID string) *TenantAIConfig {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.aiConfigs[tenantID]
+}
+func (s *memoryStore) upsertAIConfig(cfg *TenantAIConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if cfg.TenantID == "" {
+		return
+	}
+	if old := s.aiConfigs[cfg.TenantID]; old != nil {
+		if cfg.OpenAIKey != "" {
+			old.OpenAIKey = cfg.OpenAIKey
+		}
+		if cfg.OpenAIBase != "" {
+			old.OpenAIBase = cfg.OpenAIBase
+		}
+		old.AllowExternal = cfg.AllowExternal
+		old.StoreLogs = cfg.StoreLogs
+	} else {
+		s.aiConfigs[cfg.TenantID] = cfg
+	}
+	s.saveLocked()
 }

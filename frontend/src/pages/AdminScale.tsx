@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary } from '../api/client'
+import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview } from '../api/client'
 
 export function AdminScale() {
   const { id = '' } = useParams()
@@ -24,6 +24,9 @@ export function AdminScale() {
   const [newPhZh, setNewPhZh] = useState('')
   const [shareLang, setShareLang] = useState<'en'|'zh'|'auto'>('auto')
   const [analytics, setAnalytics] = useState<any|null>(null)
+  const [aiTargets, setAiTargets] = useState('zh')
+  const [aiPreview, setAiPreview] = useState<any|null>(null)
+  const [aiMsg, setAiMsg] = useState('')
 
   async function load() {
     setMsg('')
@@ -102,6 +105,67 @@ export function AdminScale() {
             <a className="btn btn-ghost" href={`${window.location.origin}/survey/${encodeURIComponent(id)}${shareLang==='auto' ? '' : `?lang=${shareLang}`}`} target="_blank" rel="noreferrer">{t('open')||'Open'}</a>
           </div>
           <div className="muted">{t('share_desc')||'Share this URL with participants. The link opens the survey directly.'}</div>
+        </section>
+      </div>
+      <div className="row">
+        <section className="card span-12">
+          <h3 style={{marginTop:0}}>AI Translation</h3>
+          <div className="item" style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            <div className="label">Target languages (comma)</div>
+            <input className="input" style={{maxWidth:300}} value={aiTargets} onChange={e=> setAiTargets(e.target.value)} placeholder="zh,en,fr" />
+            <a className="btn btn-ghost" href="/admin/ai">Provider Settings</a>
+            <button className="btn" onClick={async()=>{
+              setAiMsg('')
+              try {
+                const langs = aiTargets.split(',').map(s=>s.trim()).filter(Boolean)
+                const p = await adminAITranslatePreview(id, langs)
+                setAiPreview(p)
+              } catch(e:any) { setAiMsg(e.message||String(e)) }
+            }}>Preview</button>
+          </div>
+          {aiMsg && <div className="muted">{aiMsg}</div>}
+          {aiPreview && (
+            <div className="item" style={{overflowX:'auto'}}>
+              <div className="muted">Review translations and click Apply to save into item stems.</div>
+              {items.map((it:any)=> (
+                <div key={it.id} style={{borderTop:'1px solid var(--border)', paddingTop:12, marginTop:8}}>
+                  <div><b>{it.id}</b> · {it.stem_i18n?.en || it.id}</div>
+                  <div className="row">
+                    {Object.entries((aiPreview.items||{})[it.id]||{}).map(([lang, val]: any)=> (
+                      <div key={lang} className="card span-6">
+                        <div className="label">{lang}</div>
+                        <textarea className="input" rows={3} defaultValue={val as string} onChange={e=> {
+                          // mutate local preview cache for edits
+                          setAiPreview((p:any)=> ({...p, items: {...p.items, [it.id]: {...(p.items[it.id]||{}), [lang]: e.target.value }}}))
+                        }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="cta-row" style={{marginTop:12}}>
+                <button className="btn btn-primary" onClick={async()=>{
+                  try {
+                    // apply to items via existing update API
+                    for (const it of items) {
+                      const add = (aiPreview.items||{})[it.id]||{}
+                      if (Object.keys(add).length===0) continue
+                      await adminUpdateItem(it.id, { stem_i18n: { ...(it.stem_i18n||{}), ...(add as any) } })
+                    }
+                    // apply to scale name/consent if provided
+                    const upd:any = {}
+                    if (aiPreview.name_i18n) upd.name_i18n = { ...(scale.name_i18n||{}), ...aiPreview.name_i18n }
+                    if (aiPreview.consent_i18n) upd.consent_i18n = { ...(scale.consent_i18n||{}), ...aiPreview.consent_i18n }
+                    if (Object.keys(upd).length>0) await adminUpdateScale(id, upd)
+                    setMsg(t('saved') as string)
+                    setAiPreview(null)
+                    load()
+                  } catch(e:any) { setMsg(e.message||String(e)) }
+                }}>Apply</button>
+                <button className="btn btn-ghost" onClick={()=> setAiPreview(null)}>Discard</button>
+              </div>
+            </div>
+          )}
         </section>
       </div>
       <div className="row">

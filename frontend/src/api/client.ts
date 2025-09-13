@@ -105,3 +105,18 @@ export async function adminAnalyticsSummary(scaleId: string) {
   const res = await fetch(`/api/admin/analytics/summary?scale_id=${encodeURIComponent(scaleId)}`, { headers: authHeaders() })
   return j<AnalyticsSummary>(res)
 }
+
+// --- Admin AI config & translation ---
+export type AIConfig = { tenant_id: string; openai_key?: string; openai_base?: string; allow_external: boolean; store_logs: boolean }
+export async function adminGetAIConfig() {
+  const res = await fetch(`/api/admin/ai/config`, { headers: authHeaders() })
+  return j<AIConfig>(res)
+}
+export async function adminUpdateAIConfig(input: Partial<AIConfig>) {
+  const res = await fetch(`/api/admin/ai/config`, { method:'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  return j<{ok:true}>(res)
+}
+export async function adminAITranslatePreview(scale_id: string, target_langs: string[], model?: string) {
+  const res = await fetch(`/api/admin/ai/translate/preview`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ scale_id, target_langs, model }) })
+  return j<{ items: Record<string, Record<string,string>>; name_i18n?: Record<string,string>; consent_i18n?: Record<string,string> }>(res)
+}
