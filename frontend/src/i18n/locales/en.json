@@ -72,6 +72,13 @@
         "export": { "k": "Data export", "v": "CSV/Excel for SPSS, R, JASP compatibility" },
         "i18n": { "k": "Multi-language", "v": "Ideal for cross-cultural and international studies" }
       },
+      "showcase": {
+        "title": "Live Research Overview",
+        "alpha": "Reliability",
+        "progress": "Response Trend",
+        "spark_hint": "Last 10 intervals",
+        "heatmap": "Item × Participant Coverage"
+      },
       "demo": { "text": "Try a sample survey now and see how responses turn into insights.", "button": "Try Demo" },
       "cred": {
         "title": "A survey platform built for research",
