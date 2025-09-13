@@ -45,6 +45,48 @@
     "create_account": "Create account",
     "language": "Language",
     "lang_en": "English",
-    "lang_zh": "中文"
+    "lang_zh": "中文",
+    "home": {
+      "hero": {
+        "title": "Psychology research, from surveys to insights.",
+        "subtitle": "Synap is built for psychology and social sciences — collect, analyze, and export your study data with ease.",
+        "cta_primary": "Start Free",
+        "cta_secondary": "See Examples"
+      },
+      "why": {
+        "research": "Research-focused: Designed for psychology and social science studies.",
+        "stats": "Instant stats: Track responses in real-time with quick descriptive analysis.",
+        "privacy": "Privacy & compliance: Fully aligned with GDPR and PDPA standards to safeguard participant data."
+      },
+      "use": {
+        "title": "Use Cases",
+        "psych": "Psychology experiments: behavioral measures and task-based surveys",
+        "edu": "Educational research: classroom studies and learning feedback",
+        "paper": "Academic papers: large-scale data collection and analysis",
+        "social": "Social research: attitudes, cognition, and behavior studies"
+      },
+      "features": {
+        "title": "Features",
+        "online": { "k": "Online surveys", "v": "Easy setup and distribution" },
+        "progress": { "k": "Real-time tracking", "v": "Monitor responses instantly" },
+        "export": { "k": "Data export", "v": "CSV/Excel for SPSS, R, JASP compatibility" },
+        "i18n": { "k": "Multi-language", "v": "Ideal for cross-cultural and international studies" }
+      },
+      "demo": { "text": "Try a sample survey now and see how responses turn into insights.", "button": "Try Demo" },
+      "cred": {
+        "title": "A survey platform built for research",
+        "rigorous": { "k": "Rigorous", "v": "Compatible with formats and workflows used in academia" },
+        "reliable": { "k": "Reliable", "v": "Encrypted storage, aligned with research ethics" },
+        "global": { "k": "Global-ready", "v": "Designed for cross-language and cross-cultural studies" },
+        "compliant": { "k": "Compliant", "v": "Meets GDPR and PDPA standards" }
+      },
+      "cta": { "title": "Launch your next psychology study today.", "button": "Start Free" },
+      "footer": {
+        "product": "Product: Features · Examples · Pricing",
+        "resources": "Resources: Help Center · FAQ",
+        "company": "Company: About Us · Contact",
+        "copyright": "© 2025 Synap. Data protection compliant with GDPR & PDPA."
+      }
+    }
   }
 }
