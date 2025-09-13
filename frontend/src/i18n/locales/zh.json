@@ -139,7 +139,8 @@
       "home": "首页",
       "admin": "管理",
       "auth": "登录/注册",
-      "logout": "退出登录"
+      "logout": "退出登录",
+      "github": "GitHub"
     },
     "survey": {
       "title": "问卷",

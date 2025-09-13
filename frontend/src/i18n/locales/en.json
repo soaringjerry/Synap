@@ -139,7 +139,8 @@
       "home": "Home",
       "admin": "Admin",
       "auth": "Auth",
-      "logout": "Logout"
+      "logout": "Logout",
+      "github": "GitHub"
     },
     "survey": {
       "title": "Survey",

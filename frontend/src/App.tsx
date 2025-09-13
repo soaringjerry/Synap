@@ -44,6 +44,7 @@ function RootLayout() {
         <div className="nav-actions">
           <Link className="btn btn-ghost" to="/">{t('nav.home')}</Link>
           <Link className="btn btn-ghost" to="/admin">{t('nav.admin')}</Link>
+          <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap" target="_blank" rel="noreferrer">{t('nav.github')}</a>
           {/* Moved Privacy / Terms / Cookies to footer for cleaner header */}
           {authed ? (
             <button className="btn" onClick={()=>logout(setAuthed, navigate)}>{t('nav.logout')}</button>
