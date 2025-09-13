@@ -7,6 +7,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strings"
 	"strconv"
 	"time"
 
@@ -51,8 +52,7 @@ func main() {
 	// 1) Static files if SYNAP_STATIC_DIR is set (fullstack image)
 	// 2) Dev proxy if SYNAP_DEV_FRONTEND_URL is set (proxy / to Vite dev)
 	if staticDir := os.Getenv("SYNAP_STATIC_DIR"); staticDir != "" {
-		fs := http.FileServer(http.Dir(staticDir))
-		mux.Handle("/", fs)
+		mux.Handle("/", spaFileServer(staticDir))
 	} else if devURL := os.Getenv("SYNAP_DEV_FRONTEND_URL"); devURL != "" {
 		if u, err := url.Parse(devURL); err == nil {
 			rp := httputil.NewSingleHostReverseProxy(u)
@@ -99,4 +99,36 @@ func main() {
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+// spaFileServer serves static files with an SPA fallback: unknown routes return index.html
+func spaFileServer(dir string) http.Handler {
+    fs := http.Dir(dir)
+    index := "index.html"
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Try to open the requested path
+        f, err := fs.Open(r.URL.Path)
+        if err == nil {
+            // If it's a directory, try to serve index inside it; otherwise serve file
+            stat, _ := f.Stat()
+            _ = f.Close()
+            if stat != nil && stat.IsDir() {
+                // Attempt directory index file
+                http.ServeFile(w, r, dir+"/"+strings.TrimPrefix(r.URL.Path, "/")+"/"+index)
+                return
+            }
+            http.FileServer(fs).ServeHTTP(w, r)
+            return
+        }
+        // Fallback to SPA index for GET/HEAD and HTML requests
+        if r.Method == http.MethodGet || r.Method == http.MethodHead {
+            // Only fallback for navigations (HTML)
+            if strings.Contains(r.Header.Get("Accept"), "text/html") || !strings.Contains(r.URL.Path, ".") {
+                http.ServeFile(w, r, dir+"/"+index)
+                return
+            }
+        }
+        // Otherwise 404
+        http.NotFound(w, r)
+    })
 }
