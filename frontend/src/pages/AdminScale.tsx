@@ -83,6 +83,58 @@ export function AdminScale() {
     } catch(e:any) { setMsg(e.message||String(e)) }
   }
 
+  function PreviewBubbleRow({ count }:{ count:number }) {
+    return (
+      <div className="scale">
+        {Array.from({length: count}, (_,i)=> i+1).map(x=> (
+          <button key={x} className={`bubble ${x===Math.ceil(count/2)?'active':''}`}>{x}</button>
+        ))}
+      </div>
+    )
+  }
+
+  function renderNewPreview() {
+    const pts = Number(scale?.points || 5)
+    const opts = (newOptsEn || 'Option A\nOption B').split(/\n/).map(s=>s.trim()).filter(Boolean).slice(0,3)
+    const min = newMin!=='' ? Number(newMin) : 0
+    const max = newMax!=='' ? Number(newMax) : (newType==='rating'?10:100)
+    const step = newStep!=='' ? Number(newStep) : 1
+    switch (newType) {
+      case 'likert':
+        return <PreviewBubbleRow count={pts} />
+      case 'single':
+        return <div>{opts.map(o=> (
+          <label key={o} style={{display:'inline-flex',gap:6,marginRight:12,alignItems:'center'}}>
+            <input className="radio" type="radio" checked={o===opts[0]} readOnly /> {o}
+          </label>
+        ))}</div>
+      case 'multiple':
+        return <div>{opts.map((o,i)=> (
+          <label key={o} style={{display:'inline-flex',gap:6,marginRight:12,alignItems:'center'}}>
+            <input className="checkbox" type="checkbox" checked={i===0} readOnly /> {o}
+          </label>
+        ))}</div>
+      case 'dropdown':
+        return <select className="select" defaultValue={opts[0]||''}>{opts.map(o=> <option key={o} value={o}>{o}</option>)}</select>
+      case 'rating':
+        return <PreviewBubbleRow count={Math.max(1, (max-min+1))} />
+      case 'numeric':
+        return <input className="input" type="number" min={min} max={max} step={step} defaultValue={min} readOnly />
+      case 'slider':
+        return <input className="input" type="range" min={min} max={max} step={step} defaultValue={min + Math.floor((max-min)/2)} readOnly />
+      case 'short_text':
+        return <input className="input" type="text" placeholder={newPhEn||'Short answer...'} readOnly />
+      case 'long_text':
+        return <textarea className="input" rows={4} placeholder={newPhEn||'Long answer...'} readOnly />
+      case 'date':
+        return <input className="input" type="date" readOnly />
+      case 'time':
+        return <input className="input" type="time" readOnly />
+      default:
+        return null
+    }
+  }
+
   if (!scale) return <div className="card span-12"><div className="muted">{t('loading')}…</div>{msg && <div className="muted">{msg}</div>}</div>
 
   return (
@@ -249,6 +301,13 @@ export function AdminScale() {
                   <div className="card span-6"><div className="label">占位（中文）</div><input className="input" value={newPhZh} onChange={e=> setNewPhZh(e.target.value)} /></div>
                 </div>
               )}
+              {/* Type preview */}
+              <div className="item">
+                <div className="label">{t('preview')||'Preview'}</div>
+                <div className="tile" style={{padding:12}}>
+                  {renderNewPreview()}
+                </div>
+              </div>
               <div className="item"><label><input className="checkbox" type="checkbox" checked={newRequired} onChange={e=> setNewRequired(e.target.checked)} /> Required</label></div>
               <button className="btn btn-primary" onClick={addItem}>{t('add')}</button>
             </div>
@@ -330,6 +389,49 @@ export function AdminScale() {
                 <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
               )}
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> Required</label></div>
+              {/* Preview for existing item */}
+              <div className="item">
+                <div className="label">{t('preview')||'Preview'}</div>
+                <div className="tile" style={{padding:12}}>
+                  {(() => {
+                    const tpe = it.type || 'likert'
+                    if (tpe==='likert') return (
+                      <div className="scale">{Array.from({length: scale.points||5}, (_,i)=> i+1).map(n=> <button key={n} className={`bubble ${n===3?'active':''}`}>{n}</button>)}</div>
+                    )
+                    if (tpe==='single') return (
+                      <div>{(it.options_i18n?.en||['Option A','Option B']).slice(0,3).map((o:string,idx:number)=> (
+                        <label key={o} style={{display:'inline-flex',gap:6,marginRight:12,alignItems:'center'}}>
+                          <input className="radio" type="radio" checked={idx===0} readOnly /> {o}
+                        </label>
+                      ))}</div>
+                    )
+                    if (tpe==='multiple') return (
+                      <div>{(it.options_i18n?.en||['Option A','Option B']).slice(0,3).map((o:string,idx:number)=> (
+                        <label key={o} style={{display:'inline-flex',gap:6,marginRight:12,alignItems:'center'}}>
+                          <input className="checkbox" type="checkbox" checked={idx===0} readOnly /> {o}
+                        </label>
+                      ))}</div>
+                    )
+                    if (tpe==='dropdown') return (
+                      <select className="select" defaultValue={(it.options_i18n?.en||['Option A'])[0]}>{(it.options_i18n?.en||['Option A']).slice(0,3).map((o:string)=> <option key={o} value={o}>{o}</option>)}</select>
+                    )
+                    if (tpe==='rating') return (
+                      <div className="scale">{Array.from({length: (it.max||10)-(it.min||0)+1}, (_,i)=> (it.min||0)+i).map((n:number)=> <button key={n} className={`bubble ${n===(it.min||0)+2?'active':''}`}>{n}</button>)}</div>
+                    )
+                    if (tpe==='numeric') return (
+                      <input className="input" type="number" min={it.min||0} max={it.max||10} step={it.step||1} defaultValue={it.min||0} readOnly />
+                    )
+                    if (tpe==='slider') return (
+                      <input className="input" type="range" min={it.min||0} max={it.max||100} step={it.step||1} defaultValue={(it.min||0)+Math.floor(((it.max||100)-(it.min||0))/2)} readOnly />
+                    )
+                    if (tpe==='short_text') return <input className="input" type="text" placeholder={it.placeholder_i18n?.en||'Short answer...'} readOnly />
+                    if (tpe==='long_text') return <textarea className="input" rows={4} placeholder={it.placeholder_i18n?.en||'Long answer...'} readOnly />
+                    if (tpe==='date') return <input className="input" type="date" readOnly />
+                    if (tpe==='time') return <input className="input" type="time" readOnly />
+                    return null
+                  })()}
+                </div>
+              </div>
               <div className="cta-row">
                 <button className="btn" onClick={()=> saveItem(items.find(x=>x.id===it.id))}>{t('save')}</button>
                 <button className="btn btn-ghost" onClick={()=> removeItem(it.id)}>{t('delete')}</button>
