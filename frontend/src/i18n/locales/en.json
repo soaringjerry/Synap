@@ -22,6 +22,9 @@
     "stem_en": "Stem (EN)",
     "stem_zh": "Stem (ZH)",
     "reverse_scored": "Reverse-scored",
+    "export_long_csv": "Export Long CSV",
+    "export_wide_csv": "Export Wide CSV",
+    "export_score_csv": "Export Score CSV",
     "create": "Create",
     "add": "Add",
     "your_scales": "Your Scales",
@@ -42,6 +45,8 @@
     "register": "Register",
     "login": "Login",
     "create_account": "Create account",
+    "admin_access": "Admin Access",
+    "admin_sub": "Create surveys, manage items, export data",
     "language": "Language",
     "lang_en": "English",
     "lang_zh": "中文",
@@ -161,6 +166,18 @@
         "all": "Accept all",
         "learn": "Learn more"
       }
+    ,
+    "cookie": {
+      "title": "Cookies",
+      "desc": "We use necessary cookies to run the site. You can opt in to analytics or third‑party cookies. This service uses Cloudflare CDN for performance and security.",
+      "nec": "Necessary",
+      "analytics": "Analytics",
+      "third": "3rd‑party",
+      "only": "Only necessary",
+      "save": "Save",
+      "all": "Accept all",
+      "learn": "Learn more"
+    }
     ,
     "nav": {
       "home": "Home",

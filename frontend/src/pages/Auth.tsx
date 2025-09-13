@@ -47,7 +47,7 @@ export function Auth() {
             <button role="tab" aria-selected={mode==='register'} className="neon-btn" onClick={() => setMode('register')}>{t('register')}</button>
             <button role="tab" aria-selected={mode==='login'} className="neon-btn" onClick={() => setMode('login')}>{t('login')}</button>
           </div>
-          <h3 style={{marginTop:0}}>{mode==='register'? t('auth.title_register') : t('auth.title_login')}</h3>
+          <h3 style={{marginTop:0}}>{mode==='register'? t('auth:title_register') : t('auth:title_login')}</h3>
           <div className="item"><div className="label">{t('email')}</div>
             <input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" inputMode="email" />
           </div>
