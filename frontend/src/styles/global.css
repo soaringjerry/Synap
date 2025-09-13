@@ -301,9 +301,9 @@ a:hover, a:focus { text-decoration: none; }
 
 /* Stats strip */
 .stats { display:grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
-.stat { grid-column: span 12; display:flex; align-items:center; gap: 12px; padding: 14px; border-radius: 14px; border:1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03)); }
-.stat .num { font-family: 'Space Grotesk', Inter, sans-serif; font-weight: 800; font-size: 24px; background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.stat .text { color: var(--muted); }
+.stat { grid-column: span 12; display:flex; align-items:center; gap: 12px; padding: 14px; border-radius: 14px; border:1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03)); min-width: 0; }
+.stat .num { display:inline-block; line-height: 1; font-family: 'Space Grotesk', Inter, sans-serif; font-weight: 800; font-size: clamp(18px, 4vw, 24px); background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; color: transparent; max-width: 100%; overflow-wrap: anywhere; }
+.stat .text { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
 @media (min-width: 860px){ .stat { grid-column: span 4; } }
 
 /* Feature / use-case grids with airy spacing */

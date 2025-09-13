@@ -396,23 +396,31 @@ func (rt *Router) handleAlpha(w http.ResponseWriter, r *http.Request) {
 // --- Auth & Admin ---
 // POST /api/auth/register {email,password,tenant_name}
 func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	var req struct{ Email, Password, TenantName string }
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if req.Email == "" || req.Password == "" {
-		http.Error(w, "email/password required", http.StatusBadRequest)
-		return
-	}
-	if rt.store.findUserByEmail(req.Email) != nil {
-		http.Error(w, "email exists", http.StatusConflict)
-		return
-	}
+    if r.Method != http.MethodPost {
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusMethodNotAllowed)
+        _ = json.NewEncoder(w).Encode(map[string]any{"error": "method not allowed"})
+        return
+    }
+    var req struct{ Email, Password, TenantName string }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusBadRequest)
+        _ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+        return
+    }
+    if req.Email == "" || req.Password == "" {
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusBadRequest)
+        _ = json.NewEncoder(w).Encode(map[string]any{"error": "email/password required"})
+        return
+    }
+    if rt.store.findUserByEmail(req.Email) != nil {
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusConflict)
+        _ = json.NewEncoder(w).Encode(map[string]any{"error": "email exists"})
+        return
+    }
 	tid := "t" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
 	rt.store.addTenant(&Tenant{ID: tid, Name: req.TenantName})
 	// hash password
@@ -428,20 +436,26 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/auth/login {email,password}
 func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	var req struct{ Email, Password string }
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	u := rt.store.findUserByEmail(req.Email)
-	if u == nil || bcrypt.CompareHashAndPassword(u.PassHash, []byte(req.Password)) != nil {
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
-		return
-	}
+    if r.Method != http.MethodPost {
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusMethodNotAllowed)
+        _ = json.NewEncoder(w).Encode(map[string]any{"error": "method not allowed"})
+        return
+    }
+    var req struct{ Email, Password string }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusBadRequest)
+        _ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+        return
+    }
+    u := rt.store.findUserByEmail(req.Email)
+    if u == nil || bcrypt.CompareHashAndPassword(u.PassHash, []byte(req.Password)) != nil {
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusUnauthorized)
+        _ = json.NewEncoder(w).Encode(map[string]any{"error": "invalid credentials"})
+        return
+    }
 	tok, _ := middleware.SignToken(u.ID, u.TenantID, u.Email, 30*24*time.Hour)
     http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
     w.Header().Set("Content-Type", "application/json")
