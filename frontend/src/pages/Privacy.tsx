@@ -1,37 +1,35 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 export function Privacy() {
+  const { t, i18n } = useTranslation()
+  const isZh = i18n.language.startsWith('zh')
   return (
     <div className="card span-12" style={{padding:'20px'}}>
-      <h2 className="section-title" style={{marginTop:0}}>Privacy & Compliance</h2>
-      <p className="muted">GDPR / PDPA alignment · Data minimization · Participant rights</p>
+      <h2 className="section-title" style={{marginTop:0}}>{t('home.privacy.title', { defaultValue: 'Privacy & Compliance' })}</h2>
       <div className="divider" />
-      <h3>Cookie & Tracking</h3>
+
+      <h3>{isZh ? '服务器与地区' : 'Servers & Regions'}</h3>
+      <p className="muted">{t('home.privacy.server')}</p>
+
+      <h3>{isZh ? 'Cloudflare CDN 与边缘节点' : 'Cloudflare CDN & Edge'}</h3>
+      <p className="muted">{t('home.privacy.cdn')}</p>
+      <p className="muted">{t('home.privacy.metadata')}</p>
+      <p className="muted">{t('home.privacy.assure')} <a href="https://www.cloudflare.com/trust-hub/gdpr/" target="_blank" rel="noreferrer">GDPR</a> · <a href="https://www.pdpc.gov.sg/" target="_blank" rel="noreferrer">PDPA</a>. {t('home.privacy.dpa')} (<a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noreferrer">{t('home.privacy.dpa_link')}</a>).</p>
+
+      <h3>{isZh ? 'Cookie 与偏好' : 'Cookies & Preferences'}</h3>
       <ul>
-        <li>Necessary cookies only by default; analytics/3rd‑party are opt‑in.</li>
-        <li>Granular control: Only necessary / Custom consent; change anytime.</li>
+        <li>{isZh ? '默认仅启用必要 Cookie；分析/第三方需用户同意。' : 'Necessary only by default; analytics/3rd‑party are opt‑in.'}</li>
+        <li>{isZh ? '支持“仅必要/自定义同意”，且可随时修改。' : 'Granular control (only necessary/custom consent) and change anytime.'}</li>
       </ul>
-      <h3>Consent</h3>
+
+      <h3>{isZh ? '参与者权利' : 'Participant Rights'}</h3>
       <ul>
-        <li>Inform what we collect (anonymous / personal), how we use it and retention.</li>
-        <li>Participants can withdraw at any time.</li>
+        <li>{isZh ? '访问/更正/删除/数据可携（CSV/JSON）。' : 'Access / Rectification / Deletion / Portability (CSV/JSON).'} </li>
       </ul>
-      <h3>Storage & Security</h3>
-      <ul>
-        <li>Transport encryption (HTTPS/TLS). At‑rest encryption configurable.</li>
-        <li>Access control enforced; least‑privilege for researcher accounts.</li>
-      </ul>
-      <h3>Participant Rights</h3>
-      <ul>
-        <li>Access / Rectification / Deletion / Portability (CSV/JSON by request).</li>
-      </ul>
-      <h3>Retention</h3>
-      <ul>
-        <li>Clear retention policy; periodic cleanup after study completion.</li>
-      </ul>
-      <h3>Contact</h3>
+
+      <h3>{isZh ? '联系我们' : 'Contact'}</h3>
       <p>Data Protection Contact: privacy@synap.local</p>
     </div>
   )
 }
-

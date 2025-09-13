@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react'
+import { useTranslation } from 'react-i18next'
 
 type Consent = { necessary: true; analytics: boolean; thirdParty: boolean; ts: number }
 const KEY = 'cookieConsent'
@@ -10,6 +11,7 @@ function getSaved(): Consent | null {
 function save(c: Consent) { localStorage.setItem(KEY, JSON.stringify(c)); (window as any).synapConsent = c }
 
 export function CookieBanner() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [analytics, setAnalytics] = useState(false)
   const [third, setThird] = useState(false)
@@ -24,18 +26,17 @@ export function CookieBanner() {
   return (
     <div className="cookie-banner">
       <div className="cookie-text">
-        <b>Cookies</b> · We use necessary cookies to run the site. You can opt in to analytics or third‑party cookies.
+        <b>{t('cookie.title')}</b> · {t('cookie.desc')} <a href="/legal/privacy" className="btn btn-ghost" style={{marginLeft:8, padding:'4px 8px'}}>{t('cookie.learn')}</a>
         <div className="cookie-options">
-          <label><input type="checkbox" checked disabled /> Necessary</label>
-          <label><input type="checkbox" checked={analytics} onChange={e=>setAnalytics(e.target.checked)} /> Analytics</label>
-          <label><input type="checkbox" checked={third} onChange={e=>setThird(e.target.checked)} /> 3rd‑party</label>
+          <label><input type="checkbox" checked disabled /> {t('cookie.nec')}</label>
+          <label><input type="checkbox" checked={analytics} onChange={e=>setAnalytics(e.target.checked)} /> {t('cookie.analytics')}</label>
+          <label><input type="checkbox" checked={third} onChange={e=>setThird(e.target.checked)} /> {t('cookie.third')}</label>
         </div>
       </div>
       <div className="cookie-actions">
-        <button className="btn" onClick={()=>{ save({necessary:true, analytics:false, thirdParty:false, ts:Date.now()}); setOpen(false) }}>Only necessary</button>
-        <button className="btn btn-ghost" onClick={()=>{ save({necessary:true, analytics, thirdParty:third, ts:Date.now()}); setOpen(false) }}>Save</button>
+        <button className="btn" onClick={()=>{ save({necessary:true, analytics:false, thirdParty:false, ts:Date.now()}); setOpen(false) }}>{t('cookie.only')}</button>
+        <button className="btn btn-ghost" onClick={()=>{ save({necessary:true, analytics, thirdParty:third, ts:Date.now()}); setOpen(false) }}>{t('cookie.save')}</button>
       </div>
     </div>
   )
 }
-
