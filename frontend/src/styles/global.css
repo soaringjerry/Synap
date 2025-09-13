@@ -91,6 +91,19 @@ a:hover, a:focus { text-decoration: none; }
   margin: 16px 0 28px;
 }
 
+.section-title { margin: 0 0 10px; font-family: 'Space Grotesk', Inter, sans-serif; font-weight: 700; letter-spacing: .3px; }
+.value-bullets { display: grid; grid-template-columns: repeat(1, 1fr); gap: 12px; }
+@media (min-width: 720px) { .value-bullets { grid-template-columns: repeat(3, 1fr); } }
+.value-bullets .bullet { padding: 12px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 12px; }
+
+.use-grid { display:grid; grid-template-columns:repeat(1,1fr); gap:12px; }
+@media (min-width: 720px) { .use-grid { grid-template-columns:repeat(2,1fr) } }
+.feat-grid { display:grid; grid-template-columns: repeat(1,1fr); gap: 14px; }
+@media (min-width: 880px) { .feat-grid { grid-template-columns: repeat(4,1fr); } }
+.feat .feat-k { font-weight:700; margin-bottom: 4px; }
+.kv-list { margin: 0; padding-left: 16px; }
+.kv-list li { margin: 6px 0; }
+
 .glitch {
   position: relative;
   display: inline-block;
