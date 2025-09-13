@@ -20,6 +20,10 @@
   --radius-lg: 20px;
 }
 
+/* Layout safety baseline */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+
 html, body, #root { height: 100%; }
 
 body {
@@ -152,6 +156,7 @@ a:hover, a:focus { text-decoration: none; }
   font-weight: 700;
   letter-spacing: 0.6px;
   text-shadow: 0 2px 24px rgba(125, 211, 252, 0.20);
+  padding-inline: 2px;
 }
 .glitch::before,
 .glitch::after {
@@ -183,6 +188,14 @@ a:hover, a:focus { text-decoration: none; }
 }
 
 .row { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; }
+
+/* Grid span utilities for row children */
+.row > .span-12 { grid-column: 1 / -1; }
+@media (min-width: 820px) {
+  .row > .span-6 { grid-column: span 6; }
+  .row > .span-4 { grid-column: span 4; }
+  .row > .span-8 { grid-column: span 8; }
+}
 
 .card {
   grid-column: span 12;
