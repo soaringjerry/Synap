@@ -36,9 +36,7 @@ function RootLayout() {
         <div className="nav-actions">
           <Link className="btn btn-ghost" to="/">Home</Link>
           <Link className="btn btn-ghost" to="/admin">Admin</Link>
-          <Link className="btn btn-ghost" to="/legal/privacy">Privacy</Link>
-          <Link className="btn btn-ghost" to="/legal/terms">Terms</Link>
-          <button className="btn btn-ghost" onClick={()=> (window as any).openCookiePrefs?.() }>Cookies</button>
+          {/* Moved Privacy / Terms / Cookies to footer for cleaner header */}
           {authed ? (
             <button className="btn" onClick={()=>logout(setAuthed)}>Logout</button>
           ) : (
@@ -59,6 +57,7 @@ function RootLayout() {
           <div style={{display:'flex',gap:8}}>
             <Link className="btn btn-ghost" to="/legal/privacy">Privacy</Link>
             <Link className="btn btn-ghost" to="/legal/terms">Terms</Link>
+            <button className="btn btn-ghost" onClick={()=> (window as any).openCookiePrefs?.() }>Cookies</button>
           </div>
         </div>
       </footer>
