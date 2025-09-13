@@ -1,11 +1,11 @@
 package api
 
 import (
-    "encoding/json"
-    "net/http"
-    "sort"
-    "strings"
-    "time"
+	"encoding/json"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/soaringjerry/Synap/internal/middleware"
@@ -14,16 +14,16 @@ import (
 )
 
 type Router struct {
-    store *memoryStore
+	store *memoryStore
 }
 
 func NewRouter() *Router {
-    // Optionally load snapshot from disk via SYNAP_DB_PATH (MVP persistence)
-    // If empty or unavailable, fall back to pure in-memory.
-    if s := newMemoryStoreFromEnv(); s != nil {
-        return &Router{store: s}
-    }
-    return &Router{store: newMemoryStore("")}
+	// Optionally load snapshot from disk via SYNAP_DB_PATH (MVP persistence)
+	// If empty or unavailable, fall back to pure in-memory.
+	if s := newMemoryStoreFromEnv(); s != nil {
+		return &Router{store: s}
+	}
+	return &Router{store: newMemoryStore("")}
 }
 
 func (rt *Router) Register(mux *http.ServeMux) {
@@ -35,8 +35,8 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	mux.Handle("/api/export", middleware.WithAuth(http.HandlerFunc(rt.handleExport)))       // GET (auth)
 	mux.Handle("/api/metrics/alpha", middleware.WithAuth(http.HandlerFunc(rt.handleAlpha))) // GET (auth)
 	mux.HandleFunc("/api/auth/register", rt.handleRegister)
-    mux.HandleFunc("/api/auth/login", rt.handleLogin)
-    mux.HandleFunc("/api/auth/logout", rt.handleLogout)
+	mux.HandleFunc("/api/auth/login", rt.handleLogin)
+	mux.HandleFunc("/api/auth/logout", rt.handleLogout)
 	mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
 	mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
 	// Participant data rights (admin-triggered for now)
@@ -51,22 +51,22 @@ func (rt *Router) handleSeed(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-    sc := &Scale{ID: "SAMPLE", Points: 5, Randomize: false, NameI18n: map[string]string{"en": "Sample Scale", "zh": "示例量表"}}
-    // Upsert-like behavior: if exists, keep; else add
-    if rt.store.getScale(sc.ID) == nil {
-        rt.store.addScale(sc)
-    }
-    items := []*Item{
-        {ID: "I1", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I am satisfied with my current study progress.", "zh": "我对当前学习进度感到满意"}},
-        {ID: "I2", ScaleID: sc.ID, ReverseScored: true, StemI18n: map[string]string{"en": "I enjoy working under pressure.", "zh": "我喜欢在压力下工作"}},
-        {ID: "I3", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I can stay focused on tasks.", "zh": "我能专注于手头任务"}},
-    }
-    for _, it := range items {
-        // Avoid duplicate append in itemsByScale; only add if not present
-        if rt.store.items[it.ID] == nil {
-            rt.store.addItem(it)
-        }
-    }
+	sc := &Scale{ID: "SAMPLE", Points: 5, Randomize: false, NameI18n: map[string]string{"en": "Sample Scale", "zh": "示例量表"}}
+	// Upsert-like behavior: if exists, keep; else add
+	if rt.store.getScale(sc.ID) == nil {
+		rt.store.addScale(sc)
+	}
+	items := []*Item{
+		{ID: "I1", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I am satisfied with my current study progress.", "zh": "我对当前学习进度感到满意"}},
+		{ID: "I2", ScaleID: sc.ID, ReverseScored: true, StemI18n: map[string]string{"en": "I enjoy working under pressure.", "zh": "我喜欢在压力下工作"}},
+		{ID: "I3", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I can stay focused on tasks.", "zh": "我能专注于手头任务"}},
+	}
+	for _, it := range items {
+		// Avoid duplicate append in itemsByScale; only add if not present
+		if rt.store.items[it.ID] == nil {
+			rt.store.addItem(it)
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "scale_id": sc.ID, "items": items})
 }
@@ -396,31 +396,31 @@ func (rt *Router) handleAlpha(w http.ResponseWriter, r *http.Request) {
 // --- Auth & Admin ---
 // POST /api/auth/register {email,password,tenant_name}
 func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusMethodNotAllowed)
-        _ = json.NewEncoder(w).Encode(map[string]any{"error": "method not allowed"})
-        return
-    }
-    var req struct{ Email, Password, TenantName string }
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusBadRequest)
-        _ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
-        return
-    }
-    if req.Email == "" || req.Password == "" {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusBadRequest)
-        _ = json.NewEncoder(w).Encode(map[string]any{"error": "email/password required"})
-        return
-    }
-    if rt.store.findUserByEmail(req.Email) != nil {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusConflict)
-        _ = json.NewEncoder(w).Encode(map[string]any{"error": "email exists"})
-        return
-    }
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "method not allowed"})
+		return
+	}
+	var req struct{ Email, Password, TenantName string }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		return
+	}
+	if req.Email == "" || req.Password == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "email/password required"})
+		return
+	}
+	if rt.store.findUserByEmail(req.Email) != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "email exists"})
+		return
+	}
 	tid := "t" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
 	rt.store.addTenant(&Tenant{ID: tid, Name: req.TenantName})
 	// hash password
@@ -436,42 +436,42 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/auth/login {email,password}
 func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusMethodNotAllowed)
-        _ = json.NewEncoder(w).Encode(map[string]any{"error": "method not allowed"})
-        return
-    }
-    var req struct{ Email, Password string }
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusBadRequest)
-        _ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
-        return
-    }
-    u := rt.store.findUserByEmail(req.Email)
-    if u == nil || bcrypt.CompareHashAndPassword(u.PassHash, []byte(req.Password)) != nil {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusUnauthorized)
-        _ = json.NewEncoder(w).Encode(map[string]any{"error": "invalid credentials"})
-        return
-    }
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "method not allowed"})
+		return
+	}
+	var req struct{ Email, Password string }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		return
+	}
+	u := rt.store.findUserByEmail(req.Email)
+	if u == nil || bcrypt.CompareHashAndPassword(u.PassHash, []byte(req.Password)) != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "invalid credentials"})
+		return
+	}
 	tok, _ := middleware.SignToken(u.ID, u.TenantID, u.Email, 30*24*time.Hour)
-    http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
-    w.Header().Set("Content-Type", "application/json")
-    _ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": u.TenantID, "user_id": u.ID})
+	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": u.TenantID, "user_id": u.ID})
 }
 
 // POST /api/auth/logout — expire auth cookie; frontend should also clear token
 func (rt *Router) handleLogout(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-        http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
-    // Expire the cookie
-    http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: "", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: -1, Expires: time.Unix(0, 0)})
-    w.Header().Set("Content-Type", "application/json")
-    _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// Expire the cookie
+	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: "", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: -1, Expires: time.Unix(0, 0)})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
 
 // GET /api/admin/scales -> list scales for tenant

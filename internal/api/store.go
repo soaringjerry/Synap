@@ -54,46 +54,46 @@ type memoryStore struct {
 }
 
 func newMemoryStore(path string) *memoryStore {
-    return &memoryStore{
-        scales:       map[string]*Scale{},
-        items:        map[string]*Item{},
-        itemsByScale: map[string][]*Item{},
-        participants: map[string]*Participant{},
-        responses:    []*Response{},
-        tenants:      map[string]*Tenant{},
-        usersByEmail: map[string]*User{},
-        audit:        []AuditEntry{},
-        snapshotPath: path,
-    }
+	return &memoryStore{
+		scales:       map[string]*Scale{},
+		items:        map[string]*Item{},
+		itemsByScale: map[string][]*Item{},
+		participants: map[string]*Participant{},
+		responses:    []*Response{},
+		tenants:      map[string]*Tenant{},
+		usersByEmail: map[string]*User{},
+		audit:        []AuditEntry{},
+		snapshotPath: path,
+	}
 }
 
 // newMemoryStoreFromEnv loads snapshot from SYNAP_DB_PATH if set.
 func newMemoryStoreFromEnv() *memoryStore {
-    path := os.Getenv("SYNAP_DB_PATH")
-    if path == "" {
-        return nil
-    }
-    _ = os.MkdirAll(filepath.Dir(path), 0o755)
-    s := newMemoryStore(path)
-    _ = s.load()
-    return s
+	path := os.Getenv("SYNAP_DB_PATH")
+	if path == "" {
+		return nil
+	}
+	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+	s := newMemoryStore(path)
+	_ = s.load()
+	return s
 }
 
 func (s *memoryStore) addScale(sc *Scale) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    s.scales[sc.ID] = sc
-    s.saveLocked()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.scales[sc.ID] = sc
+	s.saveLocked()
 }
 
 func (s *memoryStore) addItem(it *Item) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    s.items[it.ID] = it
-    s.itemsByScale[it.ScaleID] = append(s.itemsByScale[it.ScaleID], it)
-    // keep stable order by id
-    sort.Slice(s.itemsByScale[it.ScaleID], func(i, j int) bool { return s.itemsByScale[it.ScaleID][i].ID < s.itemsByScale[it.ScaleID][j].ID })
-    s.saveLocked()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.items[it.ID] = it
+	s.itemsByScale[it.ScaleID] = append(s.itemsByScale[it.ScaleID], it)
+	// keep stable order by id
+	sort.Slice(s.itemsByScale[it.ScaleID], func(i, j int) bool { return s.itemsByScale[it.ScaleID][i].ID < s.itemsByScale[it.ScaleID][j].ID })
+	s.saveLocked()
 }
 
 func (s *memoryStore) listItems(scaleID string) []*Item {
@@ -109,17 +109,17 @@ func (s *memoryStore) getScale(id string) *Scale {
 }
 
 func (s *memoryStore) addParticipant(p *Participant) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    s.participants[p.ID] = p
-    s.saveLocked()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.participants[p.ID] = p
+	s.saveLocked()
 }
 
 func (s *memoryStore) addResponses(rs []*Response) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    s.responses = append(s.responses, rs...)
-    s.saveLocked()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.responses = append(s.responses, rs...)
+	s.saveLocked()
 }
 
 func (s *memoryStore) listResponsesByScale(scaleID string) []*Response {
@@ -138,20 +138,20 @@ func (s *memoryStore) listResponsesByScale(scaleID string) []*Response {
 
 // cleanup responses before cutoff time, return removed count
 func (s *memoryStore) cleanupBefore(cutoff time.Time) int {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    removed := 0
-    nr := make([]*Response, 0, len(s.responses))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	removed := 0
+	nr := make([]*Response, 0, len(s.responses))
 	for _, r := range s.responses {
 		if r.SubmittedAt.Before(cutoff) {
 			removed++
 			continue
 		}
 		nr = append(nr, r)
-    }
-    s.responses = nr
-    s.saveLocked()
-    return removed
+	}
+	s.responses = nr
+	s.saveLocked()
+	return removed
 }
 
 // audit log
@@ -164,10 +164,10 @@ type AuditEntry struct {
 }
 
 func (s *memoryStore) addAudit(e AuditEntry) {
-    s.mu.Lock()
-    s.audit = append(s.audit, e)
-    s.mu.Unlock()
-    s.save()
+	s.mu.Lock()
+	s.audit = append(s.audit, e)
+	s.mu.Unlock()
+	s.save()
 }
 func (s *memoryStore) listAudit() []AuditEntry {
 	s.mu.RLock()
@@ -200,8 +200,8 @@ func (s *memoryStore) exportParticipantByEmail(email string) ([]*Response, *Part
 	return rs, p
 }
 func (s *memoryStore) deleteParticipantByEmail(email string, hard bool) bool {
-    s.mu.Lock()
-    defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var pid string
 	for id, v := range s.participants {
 		if v.Email != "" && strings.EqualFold(v.Email, email) {
@@ -219,12 +219,12 @@ func (s *memoryStore) deleteParticipantByEmail(email string, hard bool) bool {
 			nr = append(nr, r)
 		}
 	}
-    s.responses = nr
-    if hard {
-        delete(s.participants, pid)
-    }
-    s.saveLocked()
-    return true
+	s.responses = nr
+	if hard {
+		delete(s.participants, pid)
+	}
+	s.saveLocked()
+	return true
 }
 
 // tenants & users (multi-tenant scaffolding)
@@ -237,12 +237,17 @@ type User struct {
 	CreatedAt time.Time
 }
 
-func (s *memoryStore) addTenant(t *Tenant) { s.mu.Lock(); defer s.mu.Unlock(); s.tenants[t.ID] = t; s.saveLocked() }
+func (s *memoryStore) addTenant(t *Tenant) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tenants[t.ID] = t
+	s.saveLocked()
+}
 func (s *memoryStore) addUser(u *User) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    s.usersByEmail[strings.ToLower(u.Email)] = u
-    s.saveLocked()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.usersByEmail[strings.ToLower(u.Email)] = u
+	s.saveLocked()
 }
 func (s *memoryStore) findUserByEmail(email string) *User {
 	s.mu.RLock()
@@ -326,7 +331,11 @@ func (s *memoryStore) save() {
 	s.saveUnlocked()
 }
 
-func (s *memoryStore) saveLocked() { if s.snapshotPath != "" { s.saveUnlocked() } }
+func (s *memoryStore) saveLocked() {
+	if s.snapshotPath != "" {
+		s.saveUnlocked()
+	}
+}
 
 func (s *memoryStore) saveUnlocked() {
 	if s.snapshotPath == "" {
