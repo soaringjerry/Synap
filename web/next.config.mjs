@@ -25,8 +25,9 @@ const nextConfig = {
       { key: 'Content-Security-Policy', value: [
         "default-src 'self'",
         "img-src 'self' data: blob:",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'", // allow Tailwind injected styles
+        // Temporarily allow inline scripts for hydration; follow-up: switch to nonce-based CSP
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
         "font-src 'self' data:",
         "connect-src 'self'",
         "frame-ancestors 'none'"
@@ -34,6 +35,15 @@ const nextConfig = {
     ]
     return [
       { source: '/:path*', headers: common }
+    ]
+  }
+  ,async redirects() {
+    return [
+      { source: '/', destination: '/en', permanent: false },
+      { source: '/dashboard', destination: '/en/dashboard', permanent: false },
+      { source: '/explore', destination: '/en/explore', permanent: false },
+      { source: '/settings', destination: '/en/settings', permanent: false },
+      { source: '/legal/privacy', destination: '/en/legal/privacy', permanent: false }
     ]
   }
 }
