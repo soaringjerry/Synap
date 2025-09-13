@@ -118,6 +118,10 @@
         "learn": "了解更多"
       }
   },
+  "auth": {
+    "title_login": "登录",
+    "title_register": "创建账户"
+  },
   "nav": {
     "home": "首页",
     "admin": "管理",
