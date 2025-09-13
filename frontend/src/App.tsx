@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Link, Outlet } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { VersionBadge } from './components/VersionBadge'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { Home } from './pages/Home'
@@ -27,10 +27,17 @@ function RootLayout() {
   )
 }
 
+function Protected({ children }: { children: React.ReactNode }) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const loc = useLocation()
+  if (!token) return <Navigate to="/auth" replace state={{ from: loc.pathname }} />
+  return <>{children}</>
+}
+
 const router = createBrowserRouter([
   { element: <RootLayout/>, children: [
     { path: '/', element: <Home/> },
-    { path: '/admin', element: <Admin/> },
+    { path: '/admin', element: <Protected><Admin/></Protected> },
     { path: '/auth', element: <Auth/> },
   ]}
 ])
