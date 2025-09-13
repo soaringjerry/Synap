@@ -14,6 +14,7 @@ import (
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 )
 
 type Router struct {
@@ -26,6 +27,7 @@ func NewRouter() *Router {
 	if s := newMemoryStoreFromEnv(); s != nil {
 		return &Router{store: s}
 	}
+	log.Printf("persistence disabled: set SYNAP_DB_PATH and SYNAP_ENC_KEY to enable encrypted storage")
 	return &Router{store: newMemoryStore("")}
 }
 
