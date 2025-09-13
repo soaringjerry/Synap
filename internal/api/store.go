@@ -28,34 +28,36 @@ type Participant struct {
 }
 
 type Response struct {
-	ParticipantID string    `json:"participant_id"`
-	ItemID        string    `json:"item_id"`
-	RawValue      int       `json:"raw_value"`
-	ScoreValue    int       `json:"score_value"`
-	SubmittedAt   time.Time `json:"submitted_at"`
+    ParticipantID string    `json:"participant_id"`
+    ItemID        string    `json:"item_id"`
+    RawValue      int       `json:"raw_value"`
+    ScoreValue    int       `json:"score_value"`
+    SubmittedAt   time.Time `json:"submitted_at"`
 }
 
 type memoryStore struct {
-	mu           sync.RWMutex
-	scales       map[string]*Scale
-	items        map[string]*Item
-	itemsByScale map[string][]*Item
-	participants map[string]*Participant
-	responses    []*Response
-	tenants      map[string]*Tenant
-	usersByEmail map[string]*User
+    mu           sync.RWMutex
+    scales       map[string]*Scale
+    items        map[string]*Item
+    itemsByScale map[string][]*Item
+    participants map[string]*Participant
+    responses    []*Response
+    tenants      map[string]*Tenant
+    usersByEmail map[string]*User
+    audit        []AuditEntry
 }
 
 func newMemoryStore() *memoryStore {
-	return &memoryStore{
-		scales:       map[string]*Scale{},
-		items:        map[string]*Item{},
-		itemsByScale: map[string][]*Item{},
-		participants: map[string]*Participant{},
-		responses:    []*Response{},
-		tenants:      map[string]*Tenant{},
-		usersByEmail: map[string]*User{},
-	}
+    return &memoryStore{
+        scales:       map[string]*Scale{},
+        items:        map[string]*Item{},
+        itemsByScale: map[string][]*Item{},
+        participants: map[string]*Participant{},
+        responses:    []*Response{},
+        tenants:      map[string]*Tenant{},
+        usersByEmail: map[string]*User{},
+        audit:        []AuditEntry{},
+    }
 }
 
 func (s *memoryStore) addScale(sc *Scale) {
@@ -98,17 +100,73 @@ func (s *memoryStore) addResponses(rs []*Response) {
 }
 
 func (s *memoryStore) listResponsesByScale(scaleID string) []*Response {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	out := make([]*Response, 0, len(s.responses))
-	// filter by item scale
-	for _, r := range s.responses {
-		it := s.items[r.ItemID]
-		if it != nil && it.ScaleID == scaleID {
-			out = append(out, r)
-		}
-	}
-	return out
+    s.mu.RLock()
+    defer s.mu.RUnlock()
+    out := make([]*Response, 0, len(s.responses))
+    // filter by item scale
+    for _, r := range s.responses {
+        it := s.items[r.ItemID]
+        if it != nil && it.ScaleID == scaleID {
+            out = append(out, r)
+        }
+    }
+    return out
+}
+
+// cleanup responses before cutoff time, return removed count
+func (s *memoryStore) cleanupBefore(cutoff time.Time) int {
+    s.mu.Lock(); defer s.mu.Unlock()
+    removed := 0
+    nr := make([]*Response, 0, len(s.responses))
+    for _, r := range s.responses {
+        if r.SubmittedAt.Before(cutoff) {
+            removed++
+            continue
+        }
+        nr = append(nr, r)
+    }
+    s.responses = nr
+    return removed
+}
+
+// audit log
+type AuditEntry struct {
+    Time   time.Time `json:"time"`
+    Actor  string    `json:"actor"`
+    Action string    `json:"action"`
+    Target string    `json:"target"`
+    Note   string    `json:"note,omitempty"`
+}
+func (s *memoryStore) addAudit(e AuditEntry) { s.mu.Lock(); s.audit = append(s.audit, e); s.mu.Unlock() }
+func (s *memoryStore) listAudit() []AuditEntry { s.mu.RLock(); defer s.mu.RUnlock(); out := make([]AuditEntry, len(s.audit)); copy(out, s.audit); return out }
+
+// participant-scope helpers
+func (s *memoryStore) exportParticipantByEmail(email string) ([]*Response, *Participant) {
+    s.mu.RLock(); defer s.mu.RUnlock()
+    var p *Participant
+    for _, v := range s.participants {
+        if v.Email != "" && strings.EqualFold(v.Email, email) { p = v; break }
+    }
+    if p == nil { return nil, nil }
+    rs := []*Response{}
+    for _, r := range s.responses {
+        if r.ParticipantID == p.ID { rs = append(rs, r) }
+    }
+    return rs, p
+}
+func (s *memoryStore) deleteParticipantByEmail(email string, hard bool) bool {
+    s.mu.Lock(); defer s.mu.Unlock()
+    var pid string
+    for id, v := range s.participants {
+        if v.Email != "" && strings.EqualFold(v.Email, email) { pid = id; break }
+    }
+    if pid == "" { return false }
+    // delete responses for pid
+    nr := make([]*Response, 0, len(s.responses))
+    for _, r := range s.responses { if r.ParticipantID != pid { nr = append(nr, r) } }
+    s.responses = nr
+    if hard { delete(s.participants, pid) }
+    return true
 }
 
 // tenants & users (multi-tenant scaffolding)

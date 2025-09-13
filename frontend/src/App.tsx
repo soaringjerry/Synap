@@ -2,8 +2,11 @@ import { createBrowserRouter, RouterProvider, Link, Outlet, useLocation, Navigat
 import { VersionBadge } from './components/VersionBadge'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { Home } from './pages/Home'
+import { CookieBanner } from './components/CookieBanner'
+import { Privacy } from './pages/Privacy'
 import { Admin } from './pages/Admin'
 import { Auth } from './pages/Auth'
+import { Survey } from './pages/Survey'
 
 function RootLayout() {
   return (
@@ -14,6 +17,7 @@ function RootLayout() {
           <Link className="btn btn-ghost" to="/">Home</Link>
           <Link className="btn btn-ghost" to="/admin">Admin</Link>
           <Link className="btn btn-primary" to="/auth">Auth</Link>
+          <button className="btn btn-ghost" onClick={()=> (window as any).openCookiePrefs?.() }>Cookies</button>
           <LanguageSwitcher />
           <VersionBadge />
         </div>
@@ -23,6 +27,7 @@ function RootLayout() {
           <Outlet />
         </div>
       </main>
+      <CookieBanner />
     </>
   )
 }
@@ -39,6 +44,8 @@ const router = createBrowserRouter([
     { path: '/', element: <Home/> },
     { path: '/admin', element: <Protected><Admin/></Protected> },
     { path: '/auth', element: <Auth/> },
+    { path: '/survey/:scaleId', element: <Survey/> },
+    { path: '/legal/privacy', element: <Privacy/> },
   ]}
 ])
 
