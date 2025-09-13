@@ -10,10 +10,12 @@ export function Auth() {
   const [password, setPassword] = useState('')
   const [tenant, setTenant] = useState('')
   const [msg, setMsg] = useState('')
+  const [loading, setLoading] = useState(false)
 
   async function submit() {
     setMsg('')
     try {
+      setLoading(true)
       const url = mode === 'register' ? '/api/auth/register' : '/api/auth/login'
       const body: any = { email, password }
       if (mode === 'register') body.tenant_name = tenant
@@ -28,6 +30,8 @@ export function Auth() {
       nav('/admin')
     } catch (e: any) {
       setMsg(e.message || String(e))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -39,12 +43,13 @@ export function Auth() {
       </div>
       <div className="row">
         <section className="card span-6">
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <button className="neon-btn" onClick={() => setMode('register')} aria-pressed={mode==='register'}>{t('register')}</button>
-            <button className="neon-btn" onClick={() => setMode('login')} aria-pressed={mode==='login'}>{t('login')}</button>
+          <div role="tablist" aria-label="auth mode" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button role="tab" aria-selected={mode==='register'} className="neon-btn" onClick={() => setMode('register')}>{t('register')}</button>
+            <button role="tab" aria-selected={mode==='login'} className="neon-btn" onClick={() => setMode('login')}>{t('login')}</button>
           </div>
+          <h3 style={{marginTop:0}}>{mode==='register'? t('auth.title_register') : t('auth.title_login')}</h3>
           <div className="item"><div className="label">{t('email')}</div>
-            <input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+            <input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" inputMode="email" />
           </div>
           <div className="item"><div className="label">{t('password')}</div>
             <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} />
@@ -55,8 +60,8 @@ export function Auth() {
             </div>
           )}
           <div style={{ height: 12 }} />
-          <button className="neon-btn" onClick={submit}>{mode==='register'?t('create_account'):t('login')}</button>
-          {msg && <div className="muted" style={{ marginTop:8 }}>{msg}</div>}
+          <button className="neon-btn" onClick={submit} disabled={loading}>{mode==='register'?t('create_account'):t('login')}</button>
+          {msg && <div className="muted" role="alert" style={{ marginTop:8 }}>{msg}</div>}
         </section>
       </div>
     </div>

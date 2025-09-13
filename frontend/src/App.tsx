@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Link, Outlet, useLocation, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Link, Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom'
 import { VersionBadge } from './components/VersionBadge'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { Home } from './pages/Home'
@@ -14,23 +14,28 @@ import { useTranslation } from 'react-i18next'
 
 function useAuthStatus() {
   const [authed, setAuthed] = React.useState<boolean>(() => !!localStorage.getItem('token'))
+  const loc = useLocation()
   React.useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'token') setAuthed(!!e.newValue) }
     window.addEventListener('storage', onStorage)
+    // Also refresh auth state on route changes (same‑tab login/logout)
+    setAuthed(!!localStorage.getItem('token'))
     return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  }, [loc.pathname])
   return { authed, setAuthed }
 }
 
-async function logout(setAuthed: (b:boolean)=>void) {
+async function logout(setAuthed: (b:boolean)=>void, navigate: (path:string)=>void) {
   try { await fetch('/api/auth/logout', { method: 'POST' }) } catch {}
   localStorage.removeItem('token')
   setAuthed(false)
+  navigate('/auth')
 }
 
 function RootLayout() {
   const { authed, setAuthed } = useAuthStatus()
   const { t } = useTranslation()
+  const navigate = useNavigate()
   return (
     <>
       <header className="app-header">
@@ -40,7 +45,7 @@ function RootLayout() {
           <Link className="btn btn-ghost" to="/admin">{t('nav.admin')}</Link>
           {/* Moved Privacy / Terms / Cookies to footer for cleaner header */}
           {authed ? (
-            <button className="btn" onClick={()=>logout(setAuthed)}>{t('nav.logout')}</button>
+            <button className="btn" onClick={()=>logout(setAuthed, navigate)}>{t('nav.logout')}</button>
           ) : (
             <Link className="btn" to="/auth">{t('nav.auth')}</Link>
           )}

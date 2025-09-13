@@ -118,6 +118,10 @@
         "learn": "Learn more"
       }
   },
+  "auth": {
+    "title_login": "Sign in",
+    "title_register": "Create account"
+  },
   "nav": {
     "home": "Home",
     "admin": "Admin",
