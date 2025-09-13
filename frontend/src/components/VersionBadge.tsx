@@ -25,7 +25,7 @@ export function VersionBadge() {
   if (!short && !stamp) return null
   return (
     <div className="version-badge" title={`${short || 'dev'} @ ${stamp}`}>
-      Commit {short || 'dev'} · {stamp}
+      {short || 'dev'} · {stamp}
     </div>
   )
 }

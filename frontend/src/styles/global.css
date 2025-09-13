@@ -78,19 +78,14 @@ a:hover, a:focus { text-decoration: none; }
   -webkit-background-clip: text; background-clip: text;
   color: transparent;
 }
-.nav-actions { display: flex; gap: 10px; align-items: center; }
+.nav-actions { display: flex; gap: 10px; align-items: center; flex-wrap: nowrap; }
+@media (max-width: 560px) { .nav-actions { gap: 8px; } }
 
 .page { padding-top: 88px; }
 .container { max-width: 1160px; margin: 0 auto; padding: 0 20px 72px; }
 
-.version-badge {
-  position: fixed; right: 12px; top: 10px;
-  font-size: 12px; opacity: 0.85;
-  padding: 6px 10px; border-radius: 999px;
-  border: 1px solid rgba(109, 240, 255, 0.35);
-  background: rgba(18, 18, 37, 0.6);
-  box-shadow: 0 0 6px rgba(109, 240, 255, 0.25);
-}
+.version-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; opacity: 0.9; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(109, 240, 255, 0.35); background: rgba(18, 18, 37, 0.6); box-shadow: 0 0 6px rgba(109, 240, 255, 0.25); }
+@media (max-width: 560px) { .version-badge { display: none; } }
 
 .hero {
   margin: 16px 0 28px;
@@ -159,6 +154,8 @@ a:hover, a:focus { text-decoration: none; }
 .btn-ghost:hover { background: rgba(255,255,255,0.06); }
 .neon-btn:hover, .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .neon-btn:active, .btn:active { transform: translateY(0); }
+/* Compact inline language switcher */
+.lang-switcher { height: 32px; padding: 6px 10px; font-size: 12px; }
 
 /* CTA row layout prevents overlap and ensures full clickable area */
 .cta-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
