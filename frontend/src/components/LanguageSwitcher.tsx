@@ -17,8 +17,7 @@ export function LanguageSwitcher() {
         url.searchParams.set('lang', v)
         window.history.replaceState({}, '', url.toString())
       }}
-      className="neon-btn bubble-glass"
-      style={{ position: 'fixed', right: 12, top: 46 }}
+      className="neon-btn lang-switcher"
     >
       <option value="en">{t('lang_en')}</option>
       <option value="zh">{t('lang_zh')}</option>
