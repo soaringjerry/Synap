@@ -40,7 +40,10 @@ function RootLayout() {
   return (
     <>
       <header className="app-header">
-        <div className="brand">Synap</div>
+        <div className="left-actions">
+          <div className="brand">Synap</div>
+          <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap" target="_blank" rel="noreferrer">{t('nav.github')}</a>
+        </div>
         <div className="nav-actions">
           <Link className="btn btn-ghost" to="/">{t('nav.home')}</Link>
           <Link className="btn btn-ghost" to="/admin">{t('nav.admin')}</Link>
