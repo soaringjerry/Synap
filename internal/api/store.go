@@ -109,10 +109,8 @@ func newMemoryStoreFromEnv() *memoryStore {
 	}
 	_ = os.MkdirAll(filepath.Dir(path), 0o755)
 	s := newMemoryStore(path)
-	// Derive encryption key from env; require encryption for persistence.
-	if key := os.Getenv("SYNAP_ENC_KEY"); key != "" {
-		s.encKey = deriveEncKey(key)
-	}
+	// Load/derive encryption key (env, file, or optional autogenerate)
+	s.encKey = loadOrAutogenEncKey()
 	if len(s.encKey) != 32 {
 		// Encryption key missing or invalid — disable persistence to avoid plaintext storage
 		// Start in-memory only to comply with "encrypted at rest" requirement.
@@ -575,6 +573,36 @@ func deriveEncKey(s string) []byte {
 	b := make([]byte, 32)
 	copy(b, sum[:])
 	return b
+}
+
+// loadOrAutogenEncKey loads the encryption key from:
+// 1) SYNAP_ENC_KEY
+// 2) SYNAP_ENC_KEY_FILE (read file content)
+// 3) SYNAP_ENC_AUTOGEN_FILE (generate base64 key on first run, write 0600, then read)
+// Returns 32-byte key or nil if not available.
+func loadOrAutogenEncKey() []byte {
+	if key := os.Getenv("SYNAP_ENC_KEY"); key != "" {
+		return deriveEncKey(key)
+	}
+	if f := os.Getenv("SYNAP_ENC_KEY_FILE"); f != "" {
+		if b, err := os.ReadFile(f); err == nil {
+			return deriveEncKey(strings.TrimSpace(string(b)))
+		}
+	}
+	if f := os.Getenv("SYNAP_ENC_AUTOGEN_FILE"); f != "" {
+		if b, err := os.ReadFile(f); err == nil {
+			return deriveEncKey(strings.TrimSpace(string(b)))
+		}
+		// Generate and persist (0600)
+		kb := make([]byte, 32)
+		if _, err := rand.Read(kb); err == nil {
+			enc := base64.StdEncoding.EncodeToString(kb)
+			_ = os.MkdirAll(filepath.Dir(f), 0o755)
+			_ = os.WriteFile(f, []byte(enc+"\n"), 0o600)
+			return deriveEncKey(enc)
+		}
+	}
+	return nil
 }
 
 func (s *memoryStore) encrypt(plain []byte) ([]byte, error) {

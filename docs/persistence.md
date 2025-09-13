@@ -15,10 +15,13 @@ This document explains how to enable encrypted persistence for Synap and avoid d
 - `SYNAP_ENC_KEY` (required for persistence)
   - 32‑byte key (Base64 recommended), or any string (SHA‑256 derived). Example key generation:
     - `openssl rand -base64 32`
+- Alternatives (choose one):
+  - `SYNAP_ENC_KEY_FILE` — path to a file that contains the key (first line is read).
+  - `SYNAP_ENC_AUTOGEN_FILE` — path where Synap may auto‑generate a Base64 key on first run (writes with 0600). On subsequent runs, the same file is used to load the key. Use this only if the file is on a persistent volume.
 - `SYNAP_ADDR` (optional)
   - Server listen address (default `:8080`).
 
-If `SYNAP_DB_PATH` or `SYNAP_ENC_KEY` is missing, Synap prints a warning and falls back to in‑memory storage:
+If `SYNAP_DB_PATH` or a usable encryption key is missing, Synap prints a warning and falls back to in‑memory storage:
 
 ```
 persistence disabled: set SYNAP_DB_PATH and SYNAP_ENC_KEY to enable encrypted storage
@@ -33,7 +36,10 @@ services:
     environment:
       - SYNAP_ADDR=:8080
       - SYNAP_DB_PATH=/data/synap.db
+      # Choose one of the following key sources:
       - SYNAP_ENC_KEY=${SYNAP_ENC_KEY}
+      # - SYNAP_ENC_KEY_FILE=/run/secrets/synap_enc_key
+      # - SYNAP_ENC_AUTOGEN_FILE=/data/synap.key   # persists key to volume on first run
       - SYNAP_STATIC_DIR=/public
     volumes:
       - synap-data:/data
@@ -104,4 +110,3 @@ The repository includes `scripts/quick-deploy.sh` which generates a random encry
 - The current persistence uses an application‑level encrypted snapshot for simplicity and portability.
 - A relational database backend (SQLite/Postgres) with transparent encryption/migrations is planned.
 - When rotating keys or switching backends, schedule a maintenance window and ensure you have verified backups.
-
