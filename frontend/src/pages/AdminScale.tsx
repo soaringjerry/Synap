@@ -13,6 +13,15 @@ export function AdminScale() {
   const [newStemEn, setNewStemEn] = useState('')
   const [newStemZh, setNewStemZh] = useState('')
   const [newReverse, setNewReverse] = useState(false)
+  const [newType, setNewType] = useState<'likert'|'single'|'multiple'|'dropdown'|'rating'|'short_text'|'long_text'|'numeric'|'date'|'time'|'slider'>('likert')
+  const [newRequired, setNewRequired] = useState(false)
+  const [newOptsEn, setNewOptsEn] = useState('')
+  const [newOptsZh, setNewOptsZh] = useState('')
+  const [newMin, setNewMin] = useState('')
+  const [newMax, setNewMax] = useState('')
+  const [newStep, setNewStep] = useState('')
+  const [newPhEn, setNewPhEn] = useState('')
+  const [newPhZh, setNewPhZh] = useState('')
   const [shareLang, setShareLang] = useState<'en'|'zh'|'auto'>('auto')
   const [analytics, setAnalytics] = useState<any|null>(null)
 
@@ -31,7 +40,7 @@ export function AdminScale() {
   async function saveScale() {
     try {
       setSaving(true)
-      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n })
+      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email })
       setMsg(t('saved'))
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
   }
@@ -42,7 +51,10 @@ export function AdminScale() {
   }
 
   async function saveItem(it:any) {
-    try { await adminUpdateItem(it.id, { reverse_scored: !!it.reverse_scored, stem_i18n: it.stem_i18n }); setMsg(t('saved')) } catch(e:any) { setMsg(e.message||String(e)) }
+    try {
+      await adminUpdateItem(it.id, { reverse_scored: !!it.reverse_scored, stem_i18n: it.stem_i18n, type: it.type, required: !!it.required })
+      setMsg(t('saved'))
+    } catch(e:any) { setMsg(e.message||String(e)) }
   }
   async function removeItem(itemId:string) {
     if (!confirm(t('confirm_delete_item'))) return
@@ -50,9 +62,21 @@ export function AdminScale() {
   }
   async function addItem() {
     try {
-      const res = await adminCreateItem({ scale_id: id, reverse_scored: newReverse, stem_i18n: { en: newStemEn, zh: newStemZh } })
+      const payload: any = { scale_id: id, reverse_scored: newReverse, stem_i18n: { en: newStemEn, zh: newStemZh }, type: newType, required: newRequired }
+      if (newType==='single' || newType==='multiple' || newType==='dropdown') {
+        payload.options_i18n = { en: newOptsEn.split(/\n/).map(s=>s.trim()).filter(Boolean), zh: newOptsZh.split(/\n/).map(s=>s.trim()).filter(Boolean) }
+      }
+      if (newType==='rating' || newType==='numeric' || newType==='slider') {
+        if (newMin !== '') payload.min = Number(newMin)
+        if (newMax !== '') payload.max = Number(newMax)
+        if (newStep !== '') payload.step = Number(newStep)
+      }
+      if (newType==='short_text' || newType==='long_text') {
+        payload.placeholder_i18n = { en: newPhEn, zh: newPhZh }
+      }
+      const res = await adminCreateItem(payload)
       setItems([...items, res])
-      setNewStemEn(''); setNewStemZh(''); setNewReverse(false)
+      setNewStemEn(''); setNewStemZh(''); setNewReverse(false); setNewType('likert'); setNewRequired(false); setNewOptsEn(''); setNewOptsZh(''); setNewMin(''); setNewMax(''); setNewStep(''); setNewPhEn(''); setNewPhZh('')
     } catch(e:any) { setMsg(e.message||String(e)) }
   }
 
@@ -95,6 +119,13 @@ export function AdminScale() {
                 <input className="input" type="number" min={2} max={9} value={scale.points||5} onChange={e=> setScale((s:any)=> ({...s, points: parseInt(e.target.value||'5')}))} />
               </div>
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!scale.randomize} onChange={e=> setScale((s:any)=> ({...s, randomize: e.target.checked}))} /> {t('randomize_items')||'Randomize items'}</label></div>
+              <div className="item"><div className="label">{t('collect_email')||'Collect email'}</div>
+                <select className="select" value={scale.collect_email||'optional'} onChange={e=> setScale((s:any)=> ({...s, collect_email: e.target.value }))}>
+                  <option value="off">{t('collect_email_off')||'Off'}</option>
+                  <option value="optional">{t('collect_email_optional')||'Optional'}</option>
+                  <option value="required">{t('collect_email_required')||'Required'}</option>
+                </select>
+              </div>
               <div className="cta-row" style={{marginTop:12}}>
                 <button className="btn btn-primary" onClick={saveScale} disabled={saving}>{t('save')}</button>
                 <button className="btn btn-ghost" onClick={removeScale}>{t('delete')}</button>
@@ -108,7 +139,53 @@ export function AdminScale() {
               <div className="item"><div className="label">{t('stem_zh')}</div>
                 <input className="input" value={newStemZh} onChange={e=>setNewStemZh(e.target.value)} />
               </div>
-              <div className="item"><label><input className="checkbox" type="checkbox" checked={newReverse} onChange={e=>setNewReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
+              <div className="item"><div className="label">Type</div>
+                <select className="select" value={newType} onChange={e=> setNewType(e.target.value as any)}>
+                  <option value="likert">Likert</option>
+                  <option value="single">Single choice</option>
+                  <option value="multiple">Multiple choice</option>
+                  <option value="dropdown">Dropdown</option>
+                  <option value="rating">Rating</option>
+                  <option value="numeric">Numeric</option>
+                  <option value="slider">Slider</option>
+                  <option value="short_text">Short text</option>
+                  <option value="long_text">Long text</option>
+                  <option value="date">Date</option>
+                  <option value="time">Time</option>
+                </select>
+              </div>
+              {newType==='likert' && (
+                <div className="item"><label><input className="checkbox" type="checkbox" checked={newReverse} onChange={e=>setNewReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
+              )}
+              {(newType==='single'||newType==='multiple'||newType==='dropdown') && (
+                <div className="item">
+                  <div className="muted">Options are language-specific; one per line.</div>
+                  <div className="row">
+                    <div className="card span-6">
+                      <div className="label">Options (EN)</div>
+                      <textarea className="input" rows={4} value={newOptsEn} onChange={e=> setNewOptsEn(e.target.value)} placeholder={"Yes\nNo"} />
+                    </div>
+                    <div className="card span-6">
+                      <div className="label">选项（中文）</div>
+                      <textarea className="input" rows={4} value={newOptsZh} onChange={e=> setNewOptsZh(e.target.value)} placeholder={"是\n否"} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {(newType==='rating'||newType==='numeric'||newType==='slider') && (
+                <div className="row">
+                  <div className="card span-4"><div className="label">Min</div><input className="input" type="number" placeholder="0" value={newMin} onChange={e=> setNewMin(e.target.value)} /></div>
+                  <div className="card span-4"><div className="label">Max</div><input className="input" type="number" placeholder="10" value={newMax} onChange={e=> setNewMax(e.target.value)} /></div>
+                  <div className="card span-4"><div className="label">Step</div><input className="input" type="number" placeholder="1" value={newStep} onChange={e=> setNewStep(e.target.value)} /></div>
+                </div>
+              )}
+              {(newType==='short_text'||newType==='long_text') && (
+                <div className="row">
+                  <div className="card span-6"><div className="label">Placeholder (EN)</div><input className="input" value={newPhEn} onChange={e=> setNewPhEn(e.target.value)} /></div>
+                  <div className="card span-6"><div className="label">占位（中文）</div><input className="input" value={newPhZh} onChange={e=> setNewPhZh(e.target.value)} /></div>
+                </div>
+              )}
+              <div className="item"><label><input className="checkbox" type="checkbox" checked={newRequired} onChange={e=> setNewRequired(e.target.checked)} /> Required</label></div>
               <button className="btn btn-primary" onClick={addItem}>{t('add')}</button>
             </div>
             <div className="card span-6">
@@ -184,7 +261,11 @@ export function AdminScale() {
               <div className="item"><div className="label">{t('stem_zh')}</div>
                 <input className="input" value={it.stem_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), zh: e.target.value }}:x))} />
               </div>
-              <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
+              <div className="muted">Type: <b>{it.type||'likert'}</b></div>
+              {(it.type===undefined || it.type==='likert') && (
+                <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
+              )}
+              <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> Required</label></div>
               <div className="cta-row">
                 <button className="btn" onClick={()=> saveItem(items.find(x=>x.id===it.id))}>{t('save')}</button>
                 <button className="btn btn-ghost" onClick={()=> removeItem(it.id)}>{t('delete')}</button>

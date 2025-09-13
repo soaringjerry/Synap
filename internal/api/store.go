@@ -18,6 +18,8 @@ type Scale struct {
 	Randomize   bool              `json:"randomize"`
 	NameI18n    map[string]string `json:"name_i18n,omitempty"`
 	ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
+	// CollectEmail controls whether participant email is collected: off|optional|required
+	CollectEmail string `json:"collect_email,omitempty"`
 }
 
 type Item struct {
@@ -25,6 +27,18 @@ type Item struct {
 	ScaleID       string            `json:"scale_id"`
 	ReverseScored bool              `json:"reverse_scored"`
 	StemI18n      map[string]string `json:"stem_i18n"`
+	// Type defines the rendering/answer type (likert|single|multiple|dropdown|rating|short_text|long_text|numeric|date|time|slider)
+	Type string `json:"type,omitempty"`
+	// OptionsI18n for choice-based items (single/multiple/dropdown)
+	OptionsI18n map[string][]string `json:"options_i18n,omitempty"`
+	// PlaceholderI18n for text inputs
+	PlaceholderI18n map[string]string `json:"placeholder_i18n,omitempty"`
+	// Validation / range
+	Min  int `json:"min,omitempty"`
+	Max  int `json:"max,omitempty"`
+	Step int `json:"step,omitempty"`
+	// Required indicates the question must be answered
+	Required bool `json:"required,omitempty"`
 }
 
 type Participant struct {
@@ -38,6 +52,8 @@ type Response struct {
 	RawValue      int       `json:"raw_value"`
 	ScoreValue    int       `json:"score_value"`
 	SubmittedAt   time.Time `json:"submitted_at"`
+	// RawJSON stores the raw answer for non-numeric types (JSON-encoded string/array/value)
+	RawJSON string `json:"raw_json,omitempty"`
 }
 
 type memoryStore struct {
@@ -105,6 +121,9 @@ func (s *memoryStore) updateScale(sc *Scale) bool {
 	if sc.ConsentI18n != nil {
 		old.ConsentI18n = sc.ConsentI18n
 	}
+	if sc.CollectEmail != "" {
+		old.CollectEmail = sc.CollectEmail
+	}
 	s.saveLocked()
 	return true
 }
@@ -158,6 +177,32 @@ func (s *memoryStore) updateItem(it *Item) bool {
 		old.StemI18n = it.StemI18n
 	}
 	old.ReverseScored = it.ReverseScored
+	if it.Type != "" {
+		old.Type = it.Type
+	}
+	if it.OptionsI18n != nil {
+		old.OptionsI18n = it.OptionsI18n
+	}
+	if it.PlaceholderI18n != nil {
+		old.PlaceholderI18n = it.PlaceholderI18n
+	}
+	if it.Min != 0 || it.Max != 0 || it.Step != 0 {
+		// set individually to allow zero values intentionally
+		if it.Min != 0 {
+			old.Min = it.Min
+		}
+		if it.Max != 0 {
+			old.Max = it.Max
+		}
+		if it.Step != 0 {
+			old.Step = it.Step
+		}
+	}
+	if it.Required {
+		old.Required = it.Required
+	} else if it.Required == false {
+		old.Required = false
+	}
 	s.saveLocked()
 	return true
 }

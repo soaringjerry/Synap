@@ -1,5 +1,16 @@
-export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string> }
-export type ItemOut = { id: string; stem: string; reverse_scored?: boolean }
+export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string>; collect_email?: 'off'|'optional'|'required' }
+export type ItemOut = {
+  id: string
+  stem: string
+  reverse_scored?: boolean
+  type?: 'likert'|'single'|'multiple'|'dropdown'|'rating'|'short_text'|'long_text'|'numeric'|'date'|'time'|'slider'
+  options?: string[]
+  min?: number
+  max?: number
+  step?: number
+  required?: boolean
+  placeholder?: string
+}
 
 const base = '' // relative to same origin
 
@@ -18,7 +29,7 @@ export async function listItems(scaleId: string, lang: string) {
   return j<{ scale_id: string; items: ItemOut[] }>(res)
 }
 
-export async function submitBulk(scaleId: string, email: string, answers: { item_id: string; raw_value: number }[]) {
+export async function submitBulk(scaleId: string, email: string, answers: { item_id: string; raw: any }[]) {
   const res = await fetch(`${base}/api/responses/bulk`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -62,11 +73,11 @@ export async function adminDeleteScale(id: string) {
   const res = await fetch(`/api/admin/scales/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders() })
   return j<{ok:true}>(res)
 }
-export async function adminCreateItem(input: { scale_id: string, reverse_scored: boolean, stem_i18n: Record<string,string> }) {
+export async function adminCreateItem(input: { scale_id: string, reverse_scored?: boolean, stem_i18n: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string> }) {
   const res = await fetch(`/api/items`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<any>(res)
 }
-export async function adminUpdateItem(id: string, input: { reverse_scored: boolean, stem_i18n: Record<string,string> }) {
+export async function adminUpdateItem(id: string, input: { reverse_scored?: boolean, stem_i18n?: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string> }) {
   const res = await fetch(`/api/admin/items/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<{ok:true}>(res)
 }
@@ -77,7 +88,7 @@ export async function adminDeleteItem(id: string) {
 
 export async function getScaleMeta(id: string) {
   const res = await fetch(`${base}/api/scale/${encodeURIComponent(id)}`)
-  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string> }>(res)
+  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string>; collect_email?: Scale['collect_email'] }>(res)
 }
 
 export type AnalyticsSummary = {

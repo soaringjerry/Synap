@@ -11,6 +11,7 @@ import (
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
 	"golang.org/x/crypto/bcrypt"
+	"strconv"
 )
 
 type Router struct {
@@ -160,9 +161,16 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 	}
 	items := rt.store.listItems(id)
 	type outItem struct {
-		ID            string `json:"id"`
-		ReverseScored bool   `json:"reverse_scored"`
-		Stem          string `json:"stem"`
+		ID            string   `json:"id"`
+		ReverseScored bool     `json:"reverse_scored"`
+		Stem          string   `json:"stem"`
+		Type          string   `json:"type,omitempty"`
+		Options       []string `json:"options,omitempty"`
+		Min           int      `json:"min,omitempty"`
+		Max           int      `json:"max,omitempty"`
+		Step          int      `json:"step,omitempty"`
+		Required      bool     `json:"required,omitempty"`
+		Placeholder   string   `json:"placeholder,omitempty"`
 	}
 	out := make([]outItem, 0, len(items))
 	for _, it := range items {
@@ -170,7 +178,33 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 		if stem == "" {
 			stem = it.StemI18n["en"]
 		}
-		out = append(out, outItem{ID: it.ID, ReverseScored: it.ReverseScored, Stem: stem})
+		opts := []string(nil)
+		if it.OptionsI18n != nil {
+			if v := it.OptionsI18n[lang]; len(v) > 0 {
+				opts = v
+			} else if v := it.OptionsI18n["en"]; len(v) > 0 {
+				opts = v
+			}
+		}
+		ph := ""
+		if it.PlaceholderI18n != nil {
+			ph = it.PlaceholderI18n[lang]
+			if ph == "" {
+				ph = it.PlaceholderI18n["en"]
+			}
+		}
+		out = append(out, outItem{
+			ID:            it.ID,
+			ReverseScored: it.ReverseScored,
+			Stem:          stem,
+			Type:          it.Type,
+			Options:       opts,
+			Min:           it.Min,
+			Max:           it.Max,
+			Step:          it.Step,
+			Required:      it.Required,
+			Placeholder:   ph,
+		})
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": id, "items": out})
@@ -190,16 +224,17 @@ func (rt *Router) handleScaleMeta(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"id":           sc.ID,
-		"name_i18n":    sc.NameI18n,
-		"points":       sc.Points,
-		"randomize":    sc.Randomize,
-		"consent_i18n": sc.ConsentI18n,
+		"id":            sc.ID,
+		"name_i18n":     sc.NameI18n,
+		"points":        sc.Points,
+		"randomize":     sc.Randomize,
+		"consent_i18n":  sc.ConsentI18n,
+		"collect_email": sc.CollectEmail,
 	})
 }
 
 // POST /api/responses/bulk
-// { participant: {email?: string}, scale_id: string, answers: [{item_id, raw_value}] }
+// { participant: {email?: string}, scale_id: string, answers: [{item_id, raw_value? , raw?}] }
 func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -211,8 +246,9 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		} `json:"participant"`
 		ScaleID string `json:"scale_id"`
 		Answers []struct {
-			ItemID string `json:"item_id"`
-			Raw    int    `json:"raw_value"`
+			ItemID string          `json:"item_id"`
+			Raw    json.RawMessage `json:"raw"`
+			RawInt *int            `json:"raw_value,omitempty"`
 		} `json:"answers"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -233,11 +269,60 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		if it == nil {
 			continue
 		}
-		score := a.Raw
-		if it.ReverseScored {
-			score = services.ReverseScore(score, sc.Points)
+		// Determine raw numeric if available
+		rawNum := 0
+		hadNum := false
+		if a.RawInt != nil {
+			rawNum = *a.RawInt
+			hadNum = true
+		} else if len(a.Raw) > 0 {
+			var tmpNum float64
+			if err := json.Unmarshal(a.Raw, &tmpNum); err == nil {
+				rawNum = int(tmpNum)
+				hadNum = true
+			}
 		}
-		rs = append(rs, &Response{ParticipantID: pid, ItemID: a.ItemID, RawValue: a.Raw, ScoreValue: score, SubmittedAt: now})
+		// Prepare Response
+		rec := &Response{ParticipantID: pid, ItemID: a.ItemID, SubmittedAt: now}
+		// If the item is Likert or numeric-like, use numeric raw/score
+		itype := it.Type
+		if itype == "" {
+			itype = "likert"
+		}
+		switch itype {
+		case "likert":
+			if !hadNum {
+				// attempt parse from raw JSON string
+				var s string
+				if len(a.Raw) > 0 && json.Unmarshal(a.Raw, &s) == nil {
+					if n, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
+						rawNum = n
+						hadNum = true
+					}
+				}
+			}
+			if hadNum {
+				rec.RawValue = rawNum
+				score := rawNum
+				if it.ReverseScored {
+					score = services.ReverseScore(score, sc.Points)
+				}
+				rec.ScoreValue = score
+			}
+		case "rating", "slider", "numeric":
+			if hadNum {
+				rec.RawValue = rawNum
+				rec.ScoreValue = rawNum
+			}
+		default:
+			// Non-numeric: store raw JSON as-is; keep score 0
+		}
+		if len(a.Raw) > 0 {
+			rec.RawJSON = string(a.Raw)
+		} else if hadNum {
+			rec.RawJSON = strconv.Itoa(rawNum)
+		}
+		rs = append(rs, rec)
 	}
 	rt.store.addResponses(rs)
 	w.Header().Set("Content-Type", "application/json")
@@ -569,7 +654,14 @@ func (rt *Router) handleAdminAnalyticsSummary(w http.ResponseWriter, r *http.Req
 	}
 	itemIndex := map[string]int{}
 	outItems := make([]itemOut, 0, len(items))
-	for i, it := range items {
+	// Only include Likert-type items for histograms/alpha
+	filtered := make([]*Item, 0, len(items))
+	for _, it := range items {
+		if it.Type == "" || it.Type == "likert" {
+			filtered = append(filtered, it)
+		}
+	}
+	for i, it := range filtered {
 		outItems = append(outItems, itemOut{ID: it.ID, StemI18n: it.StemI18n, Reverse: it.ReverseScored, Histogram: make([]int, points)})
 		itemIndex[it.ID] = i
 	}
@@ -580,14 +672,10 @@ func (rt *Router) handleAdminAnalyticsSummary(w http.ResponseWriter, r *http.Req
 		// histogram
 		if idx, ok := itemIndex[r2.ItemID]; ok {
 			v := r2.ScoreValue
-			if v < 1 {
-				v = 1
+			if v >= 1 && v <= points {
+				outItems[idx].Histogram[v-1]++
+				outItems[idx].Total++
 			}
-			if v > points {
-				v = points
-			}
-			outItems[idx].Histogram[v-1]++
-			outItems[idx].Total++
 		}
 		// timeseries (UTC day)
 		day := r2.SubmittedAt.UTC().Format("2006-01-02")
@@ -602,8 +690,8 @@ func (rt *Router) handleAdminAnalyticsSummary(w http.ResponseWriter, r *http.Req
 		}
 		mp[r2.ParticipantID][r2.ItemID] = float64(r2.ScoreValue)
 	}
-	iids := make([]string, 0, len(items))
-	for _, it := range items {
+	iids := make([]string, 0, len(filtered))
+	for _, it := range filtered {
 		iids = append(iids, it.ID)
 	}
 	sort.Strings(iids)
