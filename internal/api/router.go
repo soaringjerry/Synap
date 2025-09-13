@@ -1,16 +1,16 @@
 package api
 
 import (
-    "encoding/json"
-    "net/http"
-    "sort"
-    "strings"
-    "time"
+	"encoding/json"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
 
-    "github.com/google/uuid"
-    "github.com/soaringjerry/Synap/internal/middleware"
-    "github.com/soaringjerry/Synap/internal/services"
-    "golang.org/x/crypto/bcrypt"
+	"github.com/google/uuid"
+	"github.com/soaringjerry/Synap/internal/middleware"
+	"github.com/soaringjerry/Synap/internal/services"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Router struct {
@@ -22,21 +22,21 @@ func NewRouter() *Router {
 }
 
 func (rt *Router) Register(mux *http.ServeMux) {
-    mux.HandleFunc("/api/seed", rt.handleSeed) // POST
-    mux.Handle("/api/scales", middleware.WithAuth(http.HandlerFunc(rt.handleScales)))
-    mux.Handle("/api/items", middleware.WithAuth(http.HandlerFunc(rt.handleItems)))
-    mux.HandleFunc("/api/scales/", rt.handleScaleScoped)          // GET /api/scales/{id}/items
-    mux.HandleFunc("/api/responses/bulk", rt.handleBulkResponses) // POST
-    mux.Handle("/api/export", middleware.WithAuth(http.HandlerFunc(rt.handleExport)))               // GET (auth)
-    mux.Handle("/api/metrics/alpha", middleware.WithAuth(http.HandlerFunc(rt.handleAlpha)))         // GET (auth)
-    mux.HandleFunc("/api/auth/register", rt.handleRegister)
-    mux.HandleFunc("/api/auth/login", rt.handleLogin)
-    mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
-    mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
-    // Participant data rights (admin-triggered for now)
-    mux.Handle("/api/admin/participant/export", middleware.WithAuth(http.HandlerFunc(rt.handleExportParticipant)))
-    mux.Handle("/api/admin/participant/delete", middleware.WithAuth(http.HandlerFunc(rt.handleDeleteParticipant)))
-    mux.Handle("/api/admin/audit", middleware.WithAuth(http.HandlerFunc(rt.handleAudit)))
+	mux.HandleFunc("/api/seed", rt.handleSeed) // POST
+	mux.Handle("/api/scales", middleware.WithAuth(http.HandlerFunc(rt.handleScales)))
+	mux.Handle("/api/items", middleware.WithAuth(http.HandlerFunc(rt.handleItems)))
+	mux.HandleFunc("/api/scales/", rt.handleScaleScoped)
+	mux.HandleFunc("/api/responses/bulk", rt.handleBulkResponses)
+	mux.Handle("/api/export", middleware.WithAuth(http.HandlerFunc(rt.handleExport)))       // GET (auth)
+	mux.Handle("/api/metrics/alpha", middleware.WithAuth(http.HandlerFunc(rt.handleAlpha))) // GET (auth)
+	mux.HandleFunc("/api/auth/register", rt.handleRegister)
+	mux.HandleFunc("/api/auth/login", rt.handleLogin)
+	mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
+	mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
+	// Participant data rights (admin-triggered for now)
+	mux.Handle("/api/admin/participant/export", middleware.WithAuth(http.HandlerFunc(rt.handleExportParticipant)))
+	mux.Handle("/api/admin/participant/delete", middleware.WithAuth(http.HandlerFunc(rt.handleDeleteParticipant)))
+	mux.Handle("/api/admin/audit", middleware.WithAuth(http.HandlerFunc(rt.handleAudit)))
 }
 
 // POST /api/seed — create a sample scale+items
@@ -281,39 +281,58 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/admin/participant/export?email=...
 func (rt *Router) handleExportParticipant(w http.ResponseWriter, r *http.Request) {
-    email := strings.TrimSpace(r.URL.Query().Get("email"))
-    if email == "" { http.Error(w, "email required", http.StatusBadRequest); return }
-    rs, p := rt.store.exportParticipantByEmail(email)
-    if p == nil { http.Error(w, "not found", http.StatusNotFound); return }
-    // audit
-    actor := "admin"
-    if c, ok := middleware.ClaimsFromContext(r.Context()); ok { actor = c.Email }
-    rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "export_participant", Target: email})
-    w.Header().Set("Content-Type", "application/json")
-    _ = json.NewEncoder(w).Encode(map[string]any{"participant": p, "responses": rs})
+	email := strings.TrimSpace(r.URL.Query().Get("email"))
+	if email == "" {
+		http.Error(w, "email required", http.StatusBadRequest)
+		return
+	}
+	rs, p := rt.store.exportParticipantByEmail(email)
+	if p == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	// audit
+	actor := "admin"
+	if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
+		actor = c.Email
+	}
+	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "export_participant", Target: email})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"participant": p, "responses": rs})
 }
 
 // (removed)
 
 // POST /api/admin/participant/delete?email=...&hard=true
 func (rt *Router) handleDeleteParticipant(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost { http.Error(w, "method not allowed", http.StatusMethodNotAllowed); return }
-    email := strings.TrimSpace(r.URL.Query().Get("email"))
-    if email == "" { http.Error(w, "email required", http.StatusBadRequest); return }
-    hard := r.URL.Query().Get("hard") == "true"
-    ok := rt.store.deleteParticipantByEmail(email, hard)
-    if !ok { http.Error(w, "not found", http.StatusNotFound); return }
-    actor := "admin"
-    if c, ok := middleware.ClaimsFromContext(r.Context()); ok { actor = c.Email }
-    rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "delete_participant", Target: email, Note: map[bool]string{true: "hard", false: "soft"}[hard]})
-    w.Header().Set("Content-Type", "application/json")
-    _ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	email := strings.TrimSpace(r.URL.Query().Get("email"))
+	if email == "" {
+		http.Error(w, "email required", http.StatusBadRequest)
+		return
+	}
+	hard := r.URL.Query().Get("hard") == "true"
+	ok := rt.store.deleteParticipantByEmail(email, hard)
+	if !ok {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	actor := "admin"
+	if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
+		actor = c.Email
+	}
+	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "delete_participant", Target: email, Note: map[bool]string{true: "hard", false: "soft"}[hard]})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
 }
 
 // GET /api/admin/audit
 func (rt *Router) handleAudit(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
-    _ = json.NewEncoder(w).Encode(rt.store.listAudit())
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(rt.store.listAudit())
 }
 
 // GET /api/metrics/alpha?scale_id=...
@@ -388,11 +407,11 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	uid := "u" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
 	rt.store.addUser(&User{ID: uid, Email: req.Email, PassHash: hash, TenantID: tid, CreatedAt: time.Now().UTC()})
-    tok, _ := middleware.SignToken(uid, tid, req.Email, 30*24*time.Hour)
-    // Also set secure cookie for CSRF-safe usage
-    http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
-    w.Header().Set("Content-Type", "application/json")
-    _ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": tid, "user_id": uid})
+	tok, _ := middleware.SignToken(uid, tid, req.Email, 30*24*time.Hour)
+	// Also set secure cookie for CSRF-safe usage
+	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": tid, "user_id": uid})
 }
 
 // POST /api/auth/login {email,password}
@@ -411,10 +430,10 @@ func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
-    tok, _ := middleware.SignToken(u.ID, u.TenantID, u.Email, 30*24*time.Hour)
-    http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
-    w.Header().Set("Content-Type", "application/json")
-    _ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": u.TenantID, "user_id": u.ID})
+	tok, _ := middleware.SignToken(u.ID, u.TenantID, u.Email, 30*24*time.Hour)
+	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": u.TenantID, "user_id": u.ID})
 }
 
 // GET /api/admin/scales -> list scales for tenant

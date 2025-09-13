@@ -50,27 +50,27 @@ func parseToken(tok string) (*Claims, error) {
 
 // Attach auth claims to context if Authorization header present and valid.
 func WithAuth(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Prefer Authorization bearer
-        h := r.Header.Get("Authorization")
-        if strings.HasPrefix(h, "Bearer ") {
-            tok := strings.TrimSpace(strings.TrimPrefix(h, "Bearer "))
-            if c, err := parseToken(tok); err == nil {
-                ctx := context.WithValue(r.Context(), authKey, c)
-                next.ServeHTTP(w, r.WithContext(ctx))
-                return
-            }
-        }
-        // Fallback to cookie token
-        if ck, err := r.Cookie("synap_token"); err == nil {
-            if c, err2 := parseToken(strings.TrimSpace(ck.Value)); err2 == nil {
-                ctx := context.WithValue(r.Context(), authKey, c)
-                next.ServeHTTP(w, r.WithContext(ctx))
-                return
-            }
-        }
-        next.ServeHTTP(w, r)
-    })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Prefer Authorization bearer
+		h := r.Header.Get("Authorization")
+		if strings.HasPrefix(h, "Bearer ") {
+			tok := strings.TrimSpace(strings.TrimPrefix(h, "Bearer "))
+			if c, err := parseToken(tok); err == nil {
+				ctx := context.WithValue(r.Context(), authKey, c)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+		}
+		// Fallback to cookie token
+		if ck, err := r.Cookie("synap_token"); err == nil {
+			if c, err2 := parseToken(strings.TrimSpace(ck.Value)); err2 == nil {
+				ctx := context.WithValue(r.Context(), authKey, c)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func RequireAuth(next http.Handler) http.Handler {
@@ -84,14 +84,14 @@ func RequireAuth(next http.Handler) http.Handler {
 }
 
 func TenantIDFromContext(ctx context.Context) (string, bool) {
-    if c, ok := ctx.Value(authKey).(*Claims); ok && c.TID != "" {
-        return c.TID, true
-    }
-    return "", false
+	if c, ok := ctx.Value(authKey).(*Claims); ok && c.TID != "" {
+		return c.TID, true
+	}
+	return "", false
 }
 
 // ClaimsFromContext returns the auth claims if present.
 func ClaimsFromContext(ctx context.Context) (*Claims, bool) {
-    c, ok := ctx.Value(authKey).(*Claims)
-    return c, ok
+	c, ok := ctx.Value(authKey).(*Claims)
+	return c, ok
 }
