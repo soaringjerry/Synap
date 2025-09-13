@@ -1,9 +1,16 @@
-name: Versioning
+name: Versioning (manual)
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no tag/publish)'
+        required: false
+        default: 'false'
+      clean_conflicts:
+        description: 'Auto-delete conflicting unreachable tag before release'
+        required: false
+        default: 'true'
 
 jobs:
   semantic-release:
@@ -21,7 +28,7 @@ jobs:
           node-version: 20
       - name: Install release deps
         run: npm i --no-audit --no-fund
-      - name: Pre-check and cleanup conflicting release tag
+      - name: Pre-check and (optional) cleanup conflicting release tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -54,12 +61,17 @@ jobs:
               if git merge-base --is-ancestor "$SHA" HEAD; then
                 echo "Tag is reachable from HEAD; leaving as-is."
               else
-                echo "Tag exists but is not on current history; deleting to avoid semantic-release conflict."
-                git push origin :refs/tags/v$NEXT
+                if [ "${{ github.event.inputs.clean_conflicts }}" = "true" ]; then
+                  echo "Tag exists but is not on current history; deleting to avoid semantic-release conflict."
+                  git push origin :refs/tags/v$NEXT
+                else
+                  echo "Conflict detected (unreachable tag v$NEXT). Skipping deletion per input clean_conflicts=false." >&2
+                fi
               fi
             fi
           fi
       - name: Semantic Release
+        if: ${{ github.event.inputs.dry_run != 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release

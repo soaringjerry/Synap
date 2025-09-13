@@ -49,7 +49,8 @@
 
 * `.github/workflows/ci.yml` — 主 CI：commitlint、pre-commit、Go/前端的 lint/类型检查/测试、安全扫描（Go 1.23+ govulncheck）、构建、冒烟测试；前端步骤在不存在 `frontend/package.json` 时自动跳过。
 * `.github/workflows/compliance.yml` — 合规守门：隐私文档、LICENSE、导出代码、OpenAPI 修改时强制需要对应标签（`compliance-approved`、`license-approved`、`export-reviewed`、`api-approved`）。
-* `.github/workflows/release.yml` — 发布：发布事件触发，多平台构建并上传二进制；同时触发 Semantic Release 生成 Release Note。
+* `.github/workflows/release.yml` — 发布：发布事件触发，多平台构建并上传二进制。
+* `.github/workflows/versioning.yml` — 版本号与 Release（手动）：仅在手动触发（workflow_dispatch）时运行 `semantic-release` 进行版本计算与发布。不再在 `push` 到 `main` 时自动发布。
 * `.github/workflows/docker.yml` — GHCR 镜像构建与发布：
   - `ghcr.io/soaringjerry/synap-backend`（后端仅 API）
   - `ghcr.io/soaringjerry/synap`（一体化：前端静态 + 后端）
@@ -69,7 +70,17 @@
 * Require conversation resolution before merging。
 * Require CODEOWNERS review（对敏感路径生效）。
 
-## 5. Secrets（按需）
+## 5. 发布流程（手动）
+
+1. 在 GitHub 的 Actions 中手动运行 “Versioning (manual)” 工作流（可选择 Dry run 预检 / 是否清理冲突标签）。
+2. 或者直接在 GitHub Releases 页面创建一个 `vX.Y.Z` 的 Release（推荐发布说明）。
+   - 创建带有 `vX.Y.Z` tag 的 Release 会触发：
+     - `.github/workflows/docker.yml`（tags 触发）构建并推送镜像
+     - `.github/workflows/release.yml`（release: published）构建多平台二进制并上传
+
+> 注：默认分支 `main` 的 push 不会再自动发布版本或创建 tag，避免“自动发垃圾版”。
+
+## 6. Secrets（按需）
 
 预留以下 Secrets 以支持后续预览与部署（当前工作流不会强制使用）：
 
