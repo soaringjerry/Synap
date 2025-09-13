@@ -121,32 +121,33 @@
         "save": "Save",
         "all": "Accept all",
         "learn": "Learn more"
-      },
-      "nav": {
-        "home": "Home",
-        "admin": "Admin",
-        "auth": "Auth",
-        "logout": "Logout"
-      },
-      "survey": {
-        "title": "Survey",
-        "scale": "Scale:",
-        "email_optional": "Email (optional)",
-        "loading": "Loading items…",
-        "reload": "Reload items",
-        "reset": "Reset",
-        "consent_title": "Research Participant Consent",
-        "consent_collect": "What we collect: your responses (and optional email if provided).",
-        "consent_use": "How we use: academic research and aggregate statistics only.",
-        "consent_retention": "Retention: limited duration; you may request deletion.",
-        "consent_rights": "Rights: access / rectification / deletion / portability.",
-        "consent_agree": "Agree and continue",
-        "consent_decline": "Decline"
-      },
-      "consent_custom": "Consent",
-      "consent_en": "Consent (EN)",
-      "consent_zh": "Consent (ZH)",
-      "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved."
+      }
+    ,
+    "nav": {
+      "home": "Home",
+      "admin": "Admin",
+      "auth": "Auth",
+      "logout": "Logout"
+    },
+    "survey": {
+      "title": "Survey",
+      "scale": "Scale:",
+      "email_optional": "Email (optional)",
+      "loading": "Loading items…",
+      "reload": "Reload items",
+      "reset": "Reset",
+      "consent_title": "Research Participant Consent",
+      "consent_collect": "What we collect: your responses (and optional email if provided).",
+      "consent_use": "How we use: academic research and aggregate statistics only.",
+      "consent_retention": "Retention: limited duration; you may request deletion.",
+      "consent_rights": "Rights: access / rectification / deletion / portability.",
+      "consent_agree": "Agree and continue",
+      "consent_decline": "Decline"
+    },
+    "consent_custom": "Consent",
+    "consent_en": "Consent (EN)",
+    "consent_zh": "Consent (ZH)",
+    "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved."
     },
     "title": "Synap — Cyber Survey",
     "tagline": "Neon vibes · subtle chaos · focused research"
