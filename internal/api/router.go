@@ -37,8 +37,11 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/auth/register", rt.handleRegister)
 	mux.HandleFunc("/api/auth/login", rt.handleLogin)
 	mux.HandleFunc("/api/auth/logout", rt.handleLogout)
-	mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
-	mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
+    mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
+    mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
+    // Admin: scale & item management
+    mux.Handle("/api/admin/scales/", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScaleOps)))
+    mux.Handle("/api/admin/items/", middleware.WithAuth(http.HandlerFunc(rt.handleAdminItemOps)))
 	// Participant data rights (admin-triggered for now)
 	mux.Handle("/api/admin/participant/export", middleware.WithAuth(http.HandlerFunc(rt.handleExportParticipant)))
 	mux.Handle("/api/admin/participant/delete", middleware.WithAuth(http.HandlerFunc(rt.handleDeleteParticipant)))
@@ -506,4 +509,71 @@ func (rt *Router) handleAdminStats(w http.ResponseWriter, r *http.Request) {
 	rs := rt.store.listResponsesByScale(scaleID)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"count": len(rs)})
+}
+
+// --- Admin scale/item ops ---
+// GET /api/admin/scales/{id}    -> scale detail
+// GET /api/admin/scales/{id}/items -> full items
+// PUT /api/admin/scales/{id}    -> update name_i18n/points/randomize
+// DELETE /api/admin/scales/{id} -> delete scale with items/responses
+func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
+    rest := strings.TrimPrefix(r.URL.Path, "/api/admin/scales/")
+    if rest == "" { http.NotFound(w, r); return }
+    parts := strings.Split(rest, "/")
+    id := parts[0]
+    switch r.Method {
+    case http.MethodGet:
+        if len(parts) == 2 && parts[1] == "items" {
+            items := rt.store.listItems(id)
+            w.Header().Set("Content-Type", "application/json")
+            _ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+            return
+        }
+        sc := rt.store.getScale(id)
+        if sc == nil { http.NotFound(w, r); return }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(sc)
+        return
+    case http.MethodPut:
+        var in Scale
+        if err := json.NewDecoder(r.Body).Decode(&in); err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
+        in.ID = id
+        if ok := rt.store.updateScale(&in); !ok { http.NotFound(w, r); return }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+        return
+    case http.MethodDelete:
+        if ok := rt.store.deleteScale(id); !ok { http.NotFound(w, r); return }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+        return
+    default:
+        http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+}
+
+// PUT /api/admin/items/{id}  -> update item (stem_i18n, reverse_scored)
+// DELETE /api/admin/items/{id}
+func (rt *Router) handleAdminItemOps(w http.ResponseWriter, r *http.Request) {
+    id := strings.TrimPrefix(r.URL.Path, "/api/admin/items/")
+    if id == "" { http.NotFound(w, r); return }
+    switch r.Method {
+    case http.MethodPut:
+        var in Item
+        if err := json.NewDecoder(r.Body).Decode(&in); err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
+        in.ID = id
+        if ok := rt.store.updateItem(&in); !ok { http.NotFound(w, r); return }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+        return
+    case http.MethodDelete:
+        if ok := rt.store.deleteItem(id); !ok { http.NotFound(w, r); return }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+        return
+    default:
+        http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
 }

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
+import { adminListScales, adminCreateScale } from '../api/client'
 
 async function authed(path: string, init: RequestInit = {}) {
   const token = localStorage.getItem('token')
@@ -23,7 +25,7 @@ export function Admin() {
 
   async function loadScales() {
     try {
-      const { scales } = await authed('/api/admin/scales')
+      const { scales } = await adminListScales()
       setScales(scales)
     } catch (e: any) { setMsg(e.message||String(e)) }
   }
@@ -33,7 +35,7 @@ export function Admin() {
     setMsg('')
     try {
       const body = { name_i18n: { en: nameEn, zh: nameZh }, points }
-      const sc = await authed('/api/scales', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+      const sc = await adminCreateScale(body as any)
       setScaleId(sc.id); setNameEn(''); setNameZh(''); setPoints(5); loadScales()
     } catch (e:any) { setMsg(e.message||String(e)) }
   }
@@ -80,6 +82,7 @@ export function Admin() {
                 <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Long</a>
                 <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Wide</a>
                 <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(s.id)}`} target="_blank">Export Score</a>
+                <Link className="btn btn-primary" to={`/admin/scale/${encodeURIComponent(s.id)}`}>Manage</Link>
               </div>
             </div>
           ))}
