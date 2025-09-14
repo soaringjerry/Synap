@@ -115,10 +115,16 @@ a:hover, a:focus { text-decoration: none; }
   position: fixed; inset: 0 0 auto 0; height: 64px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 16px;
-  background: linear-gradient(180deg, rgba(16, 23, 51, 0.8), rgba(16, 23, 51, 0.5));
-  backdrop-filter: blur(10px) saturate(1.2);
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
-  border-bottom: 1px solid var(--border);
+  /* Softer glass with layered gradients to avoid harsh banding */
+  background:
+    radial-gradient(60% 120% at 0% 0%, rgba(125,211,252,0.08), rgba(125,211,252,0) 60%),
+    radial-gradient(60% 120% at 100% 0%, rgba(192,132,252,0.08), rgba(192,132,252,0) 60%),
+    linear-gradient(180deg, rgba(16, 23, 51, 0.78), rgba(16, 23, 51, 0.52));
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+  /* Replace hard border with subtle divider + shadow */
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 -1px 0 rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   z-index: 50;
 }
 .left-actions { display: flex; align-items: center; gap: 10px; }
@@ -137,7 +143,12 @@ a:hover, a:focus { text-decoration: none; }
 .page { padding-top: 92px; }
 .container { max-width: 1160px; margin: 0 auto; padding: 0 var(--space-5) var(--space-8); }
 /* Footer */
-.app-footer { position: sticky; top: 100%; padding: 16px 0; border-top: 1px solid var(--border); background: linear-gradient(180deg, rgba(16,23,51,0.35), rgba(16,23,51,0.6)); backdrop-filter: blur(8px) saturate(1.1); }
+.app-footer { position: sticky; top: 100%; padding: 16px 0; border-top: 1px solid rgba(255,255,255,0.08); background: linear-gradient(180deg, rgba(16,23,51,0.35), rgba(16,23,51,0.58)); backdrop-filter: blur(10px) saturate(1.15); box-shadow: 0 -8px 24px rgba(0,0,0,0.35); }
+
+/* Header buttons: soften hover and unify tones */
+.app-header .btn-ghost { border-color: rgba(255,255,255,0.14); background: transparent; }
+.app-header .btn-ghost:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.18); }
+.app-header .btn { height: 36px; }
 
 .version-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; opacity: 0.9; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(109, 240, 255, 0.35); background: rgba(18, 18, 37, 0.6); box-shadow: 0 0 6px rgba(109, 240, 255, 0.25); }
 @media (max-width: 560px) { .version-badge { display: none; } }

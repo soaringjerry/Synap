@@ -694,7 +694,7 @@ export function Survey() {
             }
             setAnswers({})
           } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
-        }}>Submit</button>
+        }}>{t('submit')||'Submit'}</button>
         {scaleId.toUpperCase()==='SAMPLE' && (
           <button className="btn btn-ghost" onClick={loadOrSeed}>{t('survey.reload')}</button>
         )}
