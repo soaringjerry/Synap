@@ -1391,12 +1391,12 @@ func (rt *Router) adminScaleDelete(w http.ResponseWriter, r *http.Request, id st
 }
 
 func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id string) {
-	var raw map[string]any
-	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	in := Scale{ID: id}
+    var raw map[string]any
+    if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    in := Scale{ID: id}
 	if v, ok := raw["name_i18n"]; ok {
 		if m, ok2 := v.(map[string]any); ok2 {
 			in.NameI18n = map[string]string{}
@@ -1419,18 +1419,45 @@ func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id strin
 			}
 		}
 	}
-	if v, ok := raw["collect_email"].(string); ok {
-		in.CollectEmail = v
-	}
-	if v, ok := raw["region"].(string); ok {
-		in.Region = v
-	}
+    if v, ok := raw["collect_email"].(string); ok {
+        in.CollectEmail = v
+    }
+    if v, ok := raw["region"].(string); ok {
+        in.Region = v
+    }
+    // Parse consent_config if provided
+    if v, ok := raw["consent_config"]; ok && v != nil {
+        if m, ok2 := v.(map[string]any); ok2 {
+            cc := &ConsentConfig{}
+            if ver, ok3 := m["version"].(string); ok3 { cc.Version = ver }
+            if sr, ok3 := m["signature_required"].(bool); ok3 { cc.SignatureRequired = sr }
+            if arr, ok3 := m["options"].([]any); ok3 {
+                opts := make([]ConsentOptionConf, 0, len(arr))
+                for _, it := range arr {
+                    if om, ok4 := it.(map[string]any); ok4 {
+                        opt := ConsentOptionConf{}
+                        if k, ok5 := om["key"].(string); ok5 { opt.Key = k }
+                        if req, ok5 := om["required"].(bool); ok5 { opt.Required = req }
+                        if li, ok5 := om["label_i18n"]; ok5 {
+                            if lm, ok6 := li.(map[string]any); ok6 {
+                                opt.LabelI18n = map[string]string{}
+                                for lk, lv := range lm { opt.LabelI18n[lk] = toString(lv) }
+                            }
+                        }
+                        if opt.Key != "" { opts = append(opts, opt) }
+                    }
+                }
+                cc.Options = opts
+            }
+            in.ConsentConfig = cc
+        }
+    }
 
-	old := rt.store.getScale(id)
-	if ok := rt.store.updateScale(&in); !ok {
-		http.NotFound(w, r)
-		return
-	}
+    old := rt.store.getScale(id)
+    if ok := rt.store.updateScale(&in); !ok {
+        http.NotFound(w, r)
+        return
+    }
 	if old != nil {
 		if v, ok := raw["e2ee_enabled"].(bool); ok && v != old.E2EEEnabled {
 			http.Error(w, "e2ee_enabled cannot be modified after creation", http.StatusBadRequest)
