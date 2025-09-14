@@ -268,8 +268,8 @@ export function Survey() {
             </div>
           ))}
         </div>
-        {/* Signature (optional if disabled) */}
-        {!!(consentConfig?.signature_required ?? true) && (
+        {/* Signature (shown only when explicitly required) */}
+        {consentConfig?.signature_required === true && (
           <div className="item">
             <div className="label">{t('survey.signature_title')||'Signature'}</div>
             <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
@@ -290,7 +290,7 @@ export function Survey() {
             // required options must be true, and at least one signature action
             const opts = consentConfig?.options||[{key:'withdrawal', required:true}, {key:'data_use', required:true}]
             for (const o of opts) if (o.required && !consentChoices[o.key]) return true
-            const sigReq = consentConfig?.signature_required ?? true
+            const sigReq = consentConfig?.signature_required === true
             if (sigReq && !sigChecked && !sigImage) return true
             return false
           })()} onClick={handleConsentAgree}>{t('survey.consent_agree')}</button>
