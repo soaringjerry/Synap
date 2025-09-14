@@ -112,6 +112,13 @@
     "consent_hint": "可选，留空则使用默认知情同意文案。换行会保留。",
     "admin_console": "管理控制台",
     "admin_console_sub": "发布问卷 · 管理题目 · 导出数据",
+    "ai": {
+      "steps": "使用步骤：1）配置供应商，2）选择目标语言，3）预览，4）应用",
+      "targets": "目标语言（逗号分隔）",
+      "provider": "供应商设置",
+      "review": "请检查翻译，点击“应用”写入题干。",
+      "not_ready": "未配置 API Key 或未开启外部 AI。请在“供应商设置”中配置并开启。"
+    },
     "preview": "预览",
     "collect_email": "收集邮箱",
     "collect_email_off": "关闭",

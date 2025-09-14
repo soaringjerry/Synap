@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport, adminPurgeResponses } from '../api/client'
+import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport, adminPurgeResponses, adminGetAIConfig } from '../api/client'
 import { decryptSingleWithX25519 } from '../crypto/e2ee'
 
 export function AdminScale() {
@@ -28,6 +28,9 @@ export function AdminScale() {
   const [aiTargets, setAiTargets] = useState('zh')
   const [aiPreview, setAiPreview] = useState<any|null>(null)
   const [aiMsg, setAiMsg] = useState('')
+  const [aiReady, setAiReady] = useState(false)
+  const [aiWorking, setAiWorking] = useState(false)
+  const [aiInclude, setAiInclude] = useState<Record<string, boolean>>({})
   const [keys, setKeys] = useState<any[]>([])
   const [newPub, setNewPub] = useState('')
   const [newAlg, setNewAlg] = useState<'x25519+xchacha20'|'rsa+aesgcm'>('x25519+xchacha20')
@@ -60,6 +63,7 @@ export function AdminScale() {
       setItems(its.items||[])
       try { const a = await adminAnalyticsSummary(id); setAnalytics(a) } catch {}
       try { const k = await adminListProjectKeys(id); setKeys(k.keys||[]) } catch {}
+      try { const cfg = await adminGetAIConfig(); setAiReady(!!cfg.openai_key && !!cfg.allow_external) } catch {}
     } catch (e:any) { setMsg(e.message||String(e)) }
   }
   useEffect(()=>{ load() }, [id])
@@ -186,26 +190,42 @@ export function AdminScale() {
       <div className="row">
         <section className="card span-12">
           <h3 style={{marginTop:0}}>AI Translation</h3>
+          <div className="muted" style={{marginBottom:8}}>
+            {t('ai.steps')||'Steps: 1) Configure provider, 2) Pick target languages, 3) Preview, 4) Apply.'}
+          </div>
           <div className="item" style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-            <div className="label">Target languages (comma)</div>
+            <div className="label">{t('ai.targets')||'Target languages (comma)'}</div>
             <input className="input" style={{maxWidth:300}} value={aiTargets} onChange={e=> setAiTargets(e.target.value)} placeholder="zh,en,fr" />
-            <a className="btn btn-ghost" href="/admin/ai">Provider Settings</a>
-            <button className="btn" onClick={async()=>{
-              setAiMsg('')
+            <div className="cta-row">
+              <button className="btn btn-ghost" onClick={()=> setAiTargets('zh')}>EN→ZH</button>
+              <button className="btn btn-ghost" onClick={()=> setAiTargets('en')}>ZH→EN</button>
+              <button className="btn btn-ghost" onClick={()=> setAiTargets('zh,en,fr,de')}>+Common</button>
+            </div>
+            <a className="btn btn-ghost" href="/admin/ai" target="_blank" rel="noreferrer">{t('ai.provider')||'Provider Settings'}</a>
+            <button className="btn" disabled={!aiReady || aiWorking} onClick={async()=>{
+              setAiMsg(''); setAiWorking(true)
               try {
                 const langs = aiTargets.split(',').map(s=>s.trim()).filter(Boolean)
                 const p = await adminAITranslatePreview(id, langs)
                 setAiPreview(p)
-              } catch(e:any) { setAiMsg(e.message||String(e)) }
-            }}>Preview</button>
+                // default include ON for all items
+                const inc: Record<string,boolean> = {}
+                for (const it of items) inc[it.id] = true
+                setAiInclude(inc)
+              } catch(e:any) { setAiMsg(e.message||String(e)) } finally { setAiWorking(false) }
+            }}>{aiWorking ? (t('loading')||'Loading') : (t('preview')||'Preview')}</button>
           </div>
+          {!aiReady && <div className="tile" style={{padding:8, border:'1px solid #b36b00', background:'#fffaf0', color:'#b36b00'}}>{t('ai.not_ready')||'Provider not configured or external AI disabled. Set API key and enable external AI in Provider Settings.'}</div>}
           {aiMsg && <div className="muted">{aiMsg}</div>}
           {aiPreview && (
             <div className="item" style={{overflowX:'auto'}}>
-              <div className="muted">Review translations and click Apply to save into item stems.</div>
+              <div className="muted">{t('ai.review')||'Review translations and click Apply to save into item stems.'}</div>
               {items.map((it:any)=> (
                 <div key={it.id} style={{borderTop:'1px solid var(--border)', paddingTop:12, marginTop:8}}>
-                  <div><b>{it.id}</b> · {it.stem_i18n?.en || it.id}</div>
+                  <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+                    <label style={{display:'inline-flex',alignItems:'center',gap:6}}><input className="checkbox" type="checkbox" checked={!!aiInclude[it.id]} onChange={e=> setAiInclude(s=> ({...s, [it.id]: e.target.checked}))} />Include</label>
+                    <div><b>{it.id}</b> · {it.stem_i18n?.en || it.id}</div>
+                  </div>
                   <div className="row">
                     {Object.entries((aiPreview.items||{})[it.id]||{}).map(([lang, val]: any)=> (
                       <div key={lang} className="card span-6">
@@ -224,6 +244,7 @@ export function AdminScale() {
                   try {
                     // apply to items via existing update API
                     for (const it of items) {
+                      if (!aiInclude[it.id]) continue
                       const add = (aiPreview.items||{})[it.id]||{}
                       if (Object.keys(add).length===0) continue
                       await adminUpdateItem(it.id, { stem_i18n: { ...(it.stem_i18n||{}), ...(add as any) } })

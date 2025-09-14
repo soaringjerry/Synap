@@ -112,6 +112,13 @@
     "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved.",
     "admin_console": "Admin Console",
     "admin_console_sub": "Publish surveys · Manage items · Export data",
+    "ai": {
+      "steps": "Steps: 1) Configure provider, 2) Pick target languages, 3) Preview, 4) Apply.",
+      "targets": "Target languages (comma)",
+      "provider": "Provider Settings",
+      "review": "Review translations and click Apply to save into item stems.",
+      "not_ready": "Provider not configured or external AI disabled. Set API key and enable external AI in Provider Settings."
+    },
     "preview": "Preview",
     "collect_email": "Collect email",
     "collect_email_off": "Off",
