@@ -114,7 +114,7 @@
       "download_consent": "Download consent copy",
       "download_consent_pdf": "Download consent (PDF)",
       "download_data_pdf": "Download my data (PDF)",
-      "e2ee_on": "This survey uses end‑to‑end encryption. Your answers are encrypted in your browser.",
+      "e2ee_on": "This survey uses end‑to‑end encryption. Your answers are encrypted in your browser and only visible to the survey administrators who hold the decryption keys — even this platform cannot read them.",
       "download_help": "Popup blocked. An HTML copy was downloaded — open it and print to PDF.",
       "download_consent_html": "Download consent (HTML)"
     },
