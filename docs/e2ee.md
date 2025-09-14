@@ -43,6 +43,21 @@ Future (planned):
 - POST `/api/responses/e2ee` — submit encrypted payload
   - `{ scale_id, ciphertext, nonce, enc_dek:[], aad_hash, pmk_fingerprint? }`
 
+### Export & Evidence (MVP)
+
+- GET `/api/exports/e2ee?scale_id=...` — returns `{ manifest, signature, responses }`
+  - Requires auth and header `X-Step-Up: true` (MVP stub; plug your MFA gateway here).
+  - `manifest` includes: `version`, `type=e2ee-bundle`, `scale_id`, `count`, `created_at`.
+  - `signature`: Ed25519 signature over `JSON(manifest)`; seed from `SYNAP_SIGN_SEED` (base64 32B) or ephemeral per boot.
+  - `responses`: array of encrypted submissions (ciphertext/nonces/encDEK...)
+
+### Re-wrap (MVP, pure E2EE offline)
+
+- POST `/api/rewrap/jobs` `{ scale_id, from_fp, to_fp }`
+  - Returns job payload of `{ items:[{response_id, enc_dek:[]}] }` for client-side rewrap
+- POST `/api/rewrap/submit` `{ scale_id, to_fp, items:[{ response_id, enc_dek_new }] }`
+  - Appends the new encDEK to corresponding responses
+
 ## Admin UI (Project)
 
 - E2EE toggle (default ON) and Region (auto|gdpr|pipl|pdpa|ccpa)
@@ -74,4 +89,5 @@ Planned UX:
 - Re-wrap tooling: CLI and UI workflows, KMS connectors (AWS/GCP/Azure/Alibaba)
 - Export pipeline: streaming parquet writer, evidence chain (Merkle), public transparency log anchors
 - Blind index optional column (deterministic HMAC per project) for limited server-side query
-
+- Step-up MFA integration: WebAuthn/TOTP binding, short-lived JWT for export endpoints
+- KMS proxy rewrap: AWS/GCP/Azure/Alibaba KMS providers (feature flag)
