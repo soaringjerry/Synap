@@ -38,6 +38,10 @@ export function AdminScale() {
   const [newFp, setNewFp] = useState('')
   const [pkPass, setPkPass] = useState('')
   const [decMsg, setDecMsg] = useState('')
+  // Consent settings edit
+  const [consentVersion, setConsentVersion] = useState('')
+  const [signatureRequired, setSignatureRequired] = useState(true)
+  const [consentOptions, setConsentOptions] = useState<{ key:string; required:boolean; en?:string; zh?:string }[]>([])
   const fileInputRef = React.useRef<HTMLInputElement|null>(null)
 
   async function unlockLocalPriv(): Promise<Uint8Array> {
@@ -61,6 +65,12 @@ export function AdminScale() {
       const s = await adminGetScale(id)
       const its = await adminGetScaleItems(id)
       setScale(s)
+      // init consent config state
+      const cc = (s as any).consent_config || {}
+      setConsentVersion(cc.version||'v1')
+      setSignatureRequired(!!(cc.signature_required ?? true))
+      const opts = (cc.options||[]).map((o:any)=> ({ key:o.key, required: !!o.required, en: o.label_i18n?.en, zh: o.label_i18n?.zh }))
+      setConsentOptions(opts)
       setItems(its.items||[])
       try { const a = await adminAnalyticsSummary(id); setAnalytics(a) } catch {}
       try { const k = await adminListProjectKeys(id); setKeys(k.keys||[]) } catch {}
@@ -303,6 +313,39 @@ export function AdminScale() {
             </div>
           </div>
           <div className="divider" />
+          <div className="row">
+            <div className="card span-12">
+              <h4 style={{marginTop:0}}>{t('consent_settings')||'Consent Settings'}</h4>
+              <div className="row">
+                <div className="card span-4"><div className="label">Version</div><input className="input" value={consentVersion} onChange={e=> setConsentVersion(e.target.value)} /></div>
+                <div className="card span-4"><div className="label">Signature</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> Require signature</label></div>
+              </div>
+              <div className="label" style={{marginTop:8}}>{t('survey.consent_options')||'Interactive confirmations'}</div>
+              {consentOptions.map((o, idx)=> (
+                <div key={idx} className="row" style={{marginTop:8}}>
+                  <div className="card span-3"><div className="label">Key</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
+                  <div className="card span-3"><div className="label">Required</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> required</label></div>
+                  <div className="card span-3"><div className="label">EN</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder="Optional"/></div>
+                  <div className="card span-3"><div className="label">中文</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder="可选"/></div>
+                  <div className="cta-row" style={{marginTop:6}}>
+                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>Remove</button>
+                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.max(0,idx-1)]; a[Math.max(0,idx-1)]=t; return a })}>Up</button>
+                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.min(list.length-1,idx+1)]; a[Math.min(list.length-1,idx+1)]=t; return a })}>Down</button>
+                  </div>
+                </div>
+              ))}
+              <div className="cta-row" style={{marginTop:8}}>
+                <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>Add option</button>
+                <button className="btn btn-primary" onClick={async()=>{
+                  try {
+                    const options = consentOptions.map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
+                    await adminUpdateScale(id, { consent_config: { version: consentVersion, options, signature_required: !!signatureRequired } } as any)
+                    setMsg(t('saved') as string)
+                  } catch(e:any) { setMsg(e.message||String(e)) }
+                }}>{t('save')}</button>
+              </div>
+            </div>
+          </div>
           <div className="row">
             <div className="card span-12">
               <h4 style={{marginTop:0}}>{t('e2ee.export_title')||'Export & Evidence'}</h4>

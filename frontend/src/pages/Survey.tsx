@@ -10,7 +10,7 @@ export function Survey() {
   const { t } = useTranslation()
   const [lang] = useState<string>(()=> new URLSearchParams(location.search).get('lang') || 'en')
   const [consented, setConsented] = useState(false)
-  const [consentConfig, setConsentConfig] = useState<{ version?: string, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] }|null>(null)
+  const [consentConfig, setConsentConfig] = useState<{ version?: string, signature_required?: boolean, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] }|null>(null)
   const [consentChoices, setConsentChoices] = useState<Record<string, boolean>>({})
   const [sigChecked, setSigChecked] = useState(false)
   const [sigImage, setSigImage] = useState<string>('')
@@ -90,7 +90,7 @@ export function Survey() {
       version: consentConfig?.version || 'v1',
       sections: ['purpose','risk','withdrawal','data_use','anonymity','contact'],
       options: consentChoices,
-      signature: { kind: sigImage ? 'draw' : (sigChecked ? 'click' : 'none'), image: sigImage || undefined },
+      signature: { kind: sigImage ? 'draw' : (sigChecked ? 'click' : 'none'), image: sigImage || undefined, required: !!consentConfig?.signature_required },
       ts: new Date().toISOString(),
       ua: (typeof navigator!=='undefined'? navigator.userAgent : '')
     }
@@ -162,27 +162,30 @@ export function Survey() {
             </div>
           ))}
         </div>
-        {/* Signature */}
-        <div className="item">
-          <div className="label">{t('survey.signature_title')||'Signature'}</div>
-          <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
-          <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
-          <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.style.width='100%'; el.style.maxWidth='100%'; el.height=150; el.style.border='1px solid var(--border)';
-            const resize=()=>{ const rect = el.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; el.width = Math.floor(rect.width * dpr); }
-            resize(); new ResizeObserver(resize).observe(el.parentElement||el); drawSigInit(el)
-          } }} />
-          <div className="cta-row" style={{marginTop:8}}>
-            <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
-            <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
+        {/* Signature (optional if disabled) */}
+        {!!(consentConfig?.signature_required ?? true) && (
+          <div className="item">
+            <div className="label">{t('survey.signature_title')||'Signature'}</div>
+            <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
+            <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
+            <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.style.width='100%'; el.style.maxWidth='100%'; el.height=150; el.style.border='1px solid var(--border)';
+              const resize=()=>{ const rect = el.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; el.width = Math.floor(rect.width * dpr); }
+              resize(); new ResizeObserver(resize).observe(el.parentElement||el); drawSigInit(el)
+            } }} />
+            <div className="cta-row" style={{marginTop:8}}>
+              <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
+              <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
+            </div>
           </div>
-        </div>
+        )}
         <div className="muted" style={{marginTop:8}}>{t('survey.security_badges')||'Security: encrypted at rest, end‑to‑end encryption supported; designed for GDPR/PDPA compliance.'}</div>
         <div className="cta-row" style={{marginTop:12}}>
           <button className="btn btn-primary" disabled={(() => {
             // required options must be true, and at least one signature action
             const opts = consentConfig?.options||[{key:'withdrawal', required:true}, {key:'data_use', required:true}]
             for (const o of opts) if (o.required && !consentChoices[o.key]) return true
-            if (!sigChecked && !sigImage) return true
+            const sigReq = consentConfig?.signature_required ?? true
+            if (sigReq && !sigChecked && !sigImage) return true
             return false
           })()} onClick={handleConsentAgree}>{t('survey.consent_agree')}</button>
           <button className="btn btn-ghost" onClick={()=>nav('/')}>{t('survey.consent_decline')}</button>
