@@ -148,7 +148,8 @@
       "pub_will_fill": "生成后会自动填入",
       "pub_placeholder": "粘贴 base64（x25519 原始 32B）或 PEM SPKI（RSA）",
       "key_loss_warning": "重要提示：私钥不会离开你的设备。丢失私钥将导致数据永久无法解密。",
-      "csv_notice": "提示：服务器端 CSV 导出（长/宽/分数）仅在关闭 E2EE 时可用。开启 E2EE 时明文仅在本地，建议将 JSONL 用分析工具转换为 CSV。"
+      "csv_notice": "提示：服务器端 CSV 导出（长/宽/分数）仅在关闭 E2EE 时可用。开启 E2EE 时明文仅在本地，建议将 JSONL 用分析工具转换为 CSV。",
+      "analytics_notice": "开启 E2EE 后，服务器端的高级统计（如直方图、Cronbach’s α）不可用；仅显示基础数量等。请使用本地明文导出进行分析。"
     },
 
     "cookie": {

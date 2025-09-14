@@ -483,6 +483,11 @@ export function AdminScale() {
       <div className="row" style={{marginTop:16}}>
         <section className="card span-12">
           <h3 style={{marginTop:0}}>{t('analytics')||'Analytics'}</h3>
+          {scale.e2ee_enabled && (
+            <div className="tile" style={{padding:10, marginBottom:10, border:'1px solid #b36b00', background:'#fffaf0', color:'#b36b00'}}>
+              {t('e2ee.analytics_notice')||'When E2EE is ON, advanced analytics (e.g., histograms, alpha) are unavailable on the server; only basic counts may be shown. Use local plaintext export for analysis.'}
+            </div>
+          )}
           {!analytics && <div className="muted">{t('loading')}…</div>}
           {analytics && (
             <>
