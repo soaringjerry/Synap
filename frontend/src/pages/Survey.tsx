@@ -33,13 +33,27 @@ export function Survey() {
   async function loadMeta() {
     try {
       setMetaReady(false)
-      const meta = await getScaleMeta(scaleId)
+      // Force fresh meta to avoid stale cache after admin changes
+      let meta: any
+      try {
+        const res = await fetch(`/api/scale/${encodeURIComponent(scaleId)}?ts=${Date.now()}`, { cache: 'no-store' })
+        if (!res.ok) throw new Error(await res.text())
+        meta = await res.json()
+      } catch {
+        meta = await getScaleMeta(scaleId)
+      }
       const c = (meta.consent_i18n && (meta.consent_i18n[lang] || meta.consent_i18n['en'])) || ''
       setConsentCustom(c || '')
       setPoints(meta.points || 5)
       setCollectEmail((meta.collect_email as any) || 'optional')
       setE2ee(!!(meta as any).e2ee_enabled)
-      setConsentConfig(meta.consent_config || null)
+      const cc = meta.consent_config || null
+      if (cc) {
+        const sr = typeof cc.signature_required !== 'undefined' ? !!cc.signature_required : false
+        setConsentConfig({ ...cc, signature_required: sr })
+      } else {
+        setConsentConfig(null)
+      }
     } catch {}
     setMetaReady(true)
   }
