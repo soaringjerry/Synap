@@ -246,7 +246,8 @@
         "add_option": "Add option",
         "reset_rec": "Reset to Recommended",
         "save_first_error": "Please fix highlighted fields",
-        "no_order_needed": "Order is automatic; no manual up/down needed."
+        "no_order_needed": "Order is automatic; no manual up/down needed.",
+        "key_help_export": "Used in exports as CSV column consent.<key>. Keep simple, lowercase."
       }
     },
 
