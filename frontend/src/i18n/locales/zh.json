@@ -114,7 +114,9 @@
       "download_consent": "下载知情同意（JSON）",
       "download_consent_pdf": "下载知情同意（PDF）",
       "download_data_pdf": "下载我的数据（PDF）",
-      "e2ee_on": "本问卷已启用端到端加密；你的作答会在浏览器加密后再发送。"
+      "e2ee_on": "本问卷已启用端到端加密；你的作答会在浏览器加密后再发送。",
+      "download_help": "浏览器拦截了弹窗，已下载一个 HTML 文件——打开该文件并选择打印为 PDF。",
+      "download_consent_html": "下载知情同意（HTML）"
     },
     "learn_more": "了解更多",
     "consent_custom": "知情同意",

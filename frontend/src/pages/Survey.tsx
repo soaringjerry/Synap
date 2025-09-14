@@ -132,7 +132,7 @@ export function Survey() {
     return t(`survey.consent_opt.${opt.key}`) as string
   }
 
-  function openPrintWindow(title: string, bodyHtml: string) {
+  function openPrintWindow(title: string, bodyHtml: string): boolean {
     const html = `<!doctype html><html><head><meta charset="utf-8"/><title>${title}</title>
       <style>
         body{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif; color:#111; }
@@ -147,9 +147,14 @@ export function Survey() {
         .muted{ color:#666; font-size: 12px; }
       </style></head><body><div class="wrap">${bodyHtml}</div></body></html>`
     const w = window.open('', '_blank', 'noopener,noreferrer')
-    if (!w) return
-    w.document.open(); w.document.write(html); w.document.close()
-    w.focus(); setTimeout(()=> { try { w.print() } catch {} }, 200)
+    if (!w) return false
+    try {
+      w.document.open(); w.document.write(html); w.document.close()
+      w.focus(); setTimeout(()=> { try { w.print() } catch {} }, 200)
+      return true
+    } catch {
+      return false
+    }
   }
 
   async function downloadConsentPDF() {
@@ -167,7 +172,17 @@ export function Survey() {
       ${sigBlock}
       <div class="muted" style="margin-top:12px">${lang==='zh'?'本文件用于参与者留存，非技术格式。':'This receipt is for participant records (human‑readable).'} · ID: ${ev.scale_id}</div>
     `
-    openPrintWindow(title, body)
+    const ok = openPrintWindow(title, body)
+    if (!ok) {
+      try {
+        const blob = new Blob([`<meta charset='utf-8'>`+body], { type: 'text/html' })
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `consent_${scaleId}.html`
+        a.click(); URL.revokeObjectURL(a.href)
+        setMsg(t('survey.download_help')||'Popup blocked. An HTML copy was downloaded — open it and print to PDF.')
+      } catch {}
+    }
   }
 
   async function downloadDataPDF() {
