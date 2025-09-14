@@ -22,8 +22,6 @@ Frontend self‑management page
 Consent Markdown (inline markers)
 - `[[CONSENT]]` / `<consent-interactive/>` — insert all (options + signature if enabled)
 - `[[CONSENT1]]`, `[[CONSENT2]]` — insert options by group (set per item in Admin → Consent)
-- `[[CONSENT:options=withdrawal,data_use]]` / `<consent-options keys="..."/>` — insert only specified keys
-- `[[CONSENT:option=recording]]` / `<consent-option key="..."/>` — insert a single key
 - `[[CONSENT:signature]]` / `<consent-signature/>` — insert signature area only
 
 ## Admin (Bearer JWT)

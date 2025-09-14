@@ -37,7 +37,7 @@ Exports:
 
 Consent evidence:
 - The consent page supports interactive confirmations and optional signature. A hashed record is stored on the server. Participants can download a PDF receipt (printed via the browser; if a popup is blocked, an HTML fallback is downloaded).
-- Consent Markdown supports inline markers to place interactive blocks inside your text: [[CONSENT]] inserts all (options+signature), [[CONSENT1]]/[[CONSENT2]] insert grouped options, [[CONSENT:options=withdrawal,data_use]] inserts selected keys.
+- Consent Markdown supports inline markers to place interactive blocks inside your text: [[CONSENT]] inserts all (options+signature), [[CONSENT1]]/[[CONSENT2]] insert grouped options, [[CONSENT:signature]] inserts signature only.
 
 GDPR self‑service:
 - Submit returns a unified management link to /self?pid=...&token=... (non‑E2EE) or /self?response_id=...&token=... (E2EE). Participants can open the page anytime to export/delete their submission.

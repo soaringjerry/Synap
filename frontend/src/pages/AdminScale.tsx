@@ -846,9 +846,9 @@ export function AdminScale() {
                         return (
                           <>
                             <div className="scale">{Array.from({length: p}, (_,i)=> i+1).map((n,i)=> <button key={n} className={`bubble ${i===Math.floor(p/2)?'active':''}`}>{likertShowNumbers? n : (en[i]||n)}</button>)}</div>
-                            {(en.length===p) && (
+                            {(likertShowNumbers && en.length===p) && (
                               <div className="muted" style={{display:'flex',gap:8,justifyContent:'space-between',marginTop:6,flexWrap:'wrap'}}>
-                                {en.map((lb,i)=> <div key={i} style={{flex:`1 1 ${Math.floor(100/Math.min(p,5))}%`,minWidth:60,fontSize:12,color:'var(--muted)'}}>{likertShowNumbers? `${i+1} = ${lb}` : lb}</div>)}
+                                {en.map((lb,i)=> <div key={i} style={{flex:`1 1 ${Math.floor(100/Math.min(p,5))}%`,minWidth:60,fontSize:12,color:'var(--muted)'}}>{`${i+1} = ${lb}`}</div>)}
                               </div>
                             )}
                           </>
@@ -1008,9 +1008,9 @@ export function AdminScale() {
                         return (
                           <>
                             <div className="scale">{Array.from({length: p}, (_,i)=> i+1).map((n,i)=> <button key={n} className={`bubble ${i===Math.floor(p/2)?'active':''}`}>{showNums? n : (arrEn[i]||n)}</button>)}</div>
-                            {(arrEn.length===p) && (
+                            {(showNums && arrEn.length===p) && (
                               <div className="muted" style={{display:'flex',gap:8,justifyContent:'space-between',marginTop:6,flexWrap:'wrap'}}>
-                                {arrEn.map((lb,i)=> <div key={i} style={{flex:`1 1 ${Math.floor(100/Math.min(p,5))}%`,minWidth:60,fontSize:12,color:'var(--muted)'}}>{showNums? `${i+1} = ${lb}` : lb}</div>)}
+                                {arrEn.map((lb,i)=> <div key={i} style={{flex:`1 1 ${Math.floor(100/Math.min(p,5))}%`,minWidth:60,fontSize:12,color:'var(--muted)'}}>{`${i+1} = ${lb}`}</div>)}
                               </div>
                             )}
                           </>
@@ -1022,14 +1022,12 @@ export function AdminScale() {
               )}
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> Required</label></div>
               {/* Preview for existing item */}
-              <div className="item">
-                <div className="label">{t('preview')||'Preview'}</div>
-                <div className="tile" style={{padding:12}}>
-                  {(() => {
-                    const tpe = it.type || 'likert'
-                    if (tpe==='likert') return (
-                      <div className="scale">{Array.from({length: scale.points||5}, (_,i)=> i+1).map(n=> <button key={n} className={`bubble ${n===3?'active':''}`}>{n}</button>)}</div>
-                    )
+              {((it.type||'likert')!=='likert') && (
+                <div className="item">
+                  <div className="label">{t('preview')||'Preview'}</div>
+                  <div className="tile" style={{padding:12}}>
+                    {(() => {
+                      const tpe = it.type || 'likert'
                     if (tpe==='single') return (
                       <div>{(it.options_i18n?.en||['Option A','Option B']).slice(0,3).map((o:string,idx:number)=> (
                         <label key={o} style={{display:'inline-flex',gap:6,marginRight:12,alignItems:'center'}}>
@@ -1061,9 +1059,10 @@ export function AdminScale() {
                     if (tpe==='date') return <input className="input" type="date" readOnly />
                     if (tpe==='time') return <input className="input" type="time" readOnly />
                     return null
-                  })()}
+                    })()}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="cta-row">
                 <button className="btn" onClick={()=> saveItem(items.find(x=>x.id===it.id))}>{t('save')}</button>
                 <button className="btn btn-ghost" onClick={()=> removeItem(it.id)}>{t('delete')}</button>

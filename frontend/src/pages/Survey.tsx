@@ -37,9 +37,8 @@ export function Survey() {
   // Tokenize custom consent with inline markers
   type ConsentTok =
     | { t: 'text'; s: string }
-    | { t: 'interactive' }
-    | { t: 'options'; keys?: string[] }
-    | { t: 'option'; key: string }
+    | { t: 'interactive'; group?: number }
+    | { t: 'options'; group?: number }
     | { t: 'signature' }
 
   function parseAttrs(s: string): Record<string,string> {
@@ -63,28 +62,25 @@ export function Survey() {
         const digits = (m[2] || '').trim()
         const arg = (m[3] || '').trim().toLowerCase()
         const groupNum = digits ? parseInt(digits) : undefined
-        if (!arg) toks.push({ t: 'interactive', ...(groupNum? { group: groupNum } as any : {}) })
+        if (!arg) toks.push({ t: 'interactive', ...(groupNum? { group: groupNum } : {}) })
         else if (arg.startsWith('option=')) {
-          const key = arg.split('=')[1] || ''
-          if (key) toks.push({ t: 'option', key })
+          // key-based selector deprecated → treat as generic options
+          toks.push({ t: 'options', ...(groupNum? { group: groupNum } : {}) })
         } else if (arg.startsWith('options=')) {
-          const keys = (arg.split('=')[1] || '').split(',').map(s=>s.trim()).filter(Boolean)
-          toks.push({ t: 'options', keys })
-        } else if (arg === 'options') toks.push({ t: 'options' })
+          // key-based selector deprecated → treat as generic options
+          toks.push({ t: 'options', ...(groupNum? { group: groupNum } : {}) })
+        } else if (arg === 'options') toks.push({ t: 'options', ...(groupNum? { group: groupNum } : {}) })
         else if (arg === 'signature') toks.push({ t: 'signature' })
-        else toks.push({ t: 'interactive', ...(groupNum? { group: groupNum } as any : {}) })
+        else toks.push({ t: 'interactive', ...(groupNum? { group: groupNum } : {}) })
       } else if (m[3]) {
         // <consent-... attr/>
         const kind = (m[4] || '').toLowerCase()
         const attrs = parseAttrs(m[5] || '')
         if (kind === 'interactive') toks.push({ t: 'interactive' })
         else if (kind === 'signature') toks.push({ t: 'signature' })
-        else if (kind === 'options') {
-          const keys = (attrs.keys || '').split(',').map(s=>s.trim()).filter(Boolean)
-          toks.push({ t: 'options', keys: keys.length? keys : undefined })
-        } else if (kind === 'option') {
-          const key = (attrs.key || '').trim()
-          if (key) toks.push({ t: 'option', key })
+        else if (kind === 'options' || kind === 'option') {
+          // key-based attributes deprecated → render generic options
+          toks.push({ t: 'options' })
         }
       }
       last = re.lastIndex
@@ -337,7 +333,7 @@ export function Survey() {
           const toks = tokenizeConsentTemplate(consentCustom)
           const hasInlineOptions = toks.some(tok => tok.t === 'interactive' || tok.t === 'options' || tok.t === 'option')
           const hasInlineSig = toks.some(tok => tok.t === 'interactive' || tok.t === 'signature')
-          const renderOptions = (keys?: string[], group?: number) => {
+          const renderOptions = (_keys?: string[], group?: number) => {
             const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
               { key:'withdrawal', required:true },
               { key:'data_use', required:true },
@@ -346,7 +342,6 @@ export function Survey() {
             const seen = new Set<string>()
             let list = base.filter((o:any)=> { const k=String(o?.key||'').trim(); if (!k||!/^[a-z0-9_-]+$/.test(k)||seen.has(k)) return false; seen.add(k); return true })
             if (group && group>0) list = list.filter((o:any)=> (o.group||1) === group)
-            if (keys && keys.length) list = list.filter((o:any)=> keys.includes(o.key))
             return list.map((opt:any)=> (
               <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
                 <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
@@ -381,8 +376,7 @@ export function Survey() {
                 {toks.map((tok, i) => {
                   if (tok.t === 'text') return <div key={i} dangerouslySetInnerHTML={{ __html: mdToHtml(tok.s) }} />
                   if (tok.t === 'interactive') return <div key={i}>{renderOptions(undefined, (tok as any).group)}{renderSignature()}</div>
-                  if (tok.t === 'options') return <div key={i}>{renderOptions(tok.keys)}</div>
-                  if (tok.t === 'option') return <div key={i}>{renderOptions([tok.key])}</div>
+                  if (tok.t === 'options') return <div key={i}>{renderOptions(undefined, (tok as any).group)}</div>
                   if (tok.t === 'signature') return <div key={i}>{renderSignature()}</div>
                   return null
                 })}

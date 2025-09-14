@@ -67,7 +67,7 @@ Open [http://localhost:3000](http://localhost:3000)
 Admin quick path:
 - Create Scale → Basics + End‑to‑end Encryption (generate or upload a public key; locked after creation) + Consent (version, interactive confirmations, optional signature). Likert anchors are configured per item (add/edit) with presets (Agree 5/7, Frequency 5, Bipolar 7, Monopolar 5) or custom labels, and a “show numbers with labels” toggle.
 - Manage Scale → Share the participant link. With E2EE ON, server exposes only encrypted bundles; plaintext export happens locally in the browser (JSONL/CSV long|wide) with readable EN/ZH texts. With E2EE OFF, server CSV exports are available; use `consent_header=label_en|label_zh` to use labels as column names.
-- Consent Markdown supports inline markers: [[CONSENT]] inserts all (options + signature), [[CONSENT1]]/[[CONSENT2]] insert grouped options, [[CONSENT:options=withdrawal,data_use]] inserts selected keys. If no marker is present, the interactive block is shown after the text.
+- Consent Markdown supports inline markers: [[CONSENT]] inserts all (options + signature), [[CONSENT1]]/[[CONSENT2]] insert grouped options, [[CONSENT:signature]] inserts signature only. If no marker is present, the interactive block is shown after the text.
 
 Participant self‑management:
 - After submit, a unified management link `/self?...` is shown (non‑E2EE uses `pid+token`; E2EE uses `response_id+token`). Participants can revisit the link to export/delete the submission.
