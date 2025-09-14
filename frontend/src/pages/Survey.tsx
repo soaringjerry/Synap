@@ -30,6 +30,8 @@ export function Survey() {
   const [collectEmail, setCollectEmail] = useState<'off'|'optional'|'required'>('optional')
   const [e2ee, setE2ee] = useState(false)
   const [metaReady, setMetaReady] = useState(false)
+  const [likertLabels, setLikertLabels] = useState<string[]>([])
+  const [likertShowNumbers, setLikertShowNumbers] = useState<boolean>(true)
   const toast = useToast()
 
   async function loadMeta() {
@@ -56,6 +58,10 @@ export function Survey() {
       } else {
         setConsentConfig(null)
       }
+      const labs = (meta as any).likert_labels_i18n || {}
+      const arr = (labs[lang] || labs['en'] || []) as string[]
+      setLikertLabels(Array.isArray(arr) ? arr : [])
+      setLikertShowNumbers(!!(meta as any).likert_show_numbers)
     } catch {}
     setMetaReady(true)
   }
@@ -365,10 +371,19 @@ export function Survey() {
             <div className="label">{it.stem}{it.required?' *':''}</div>
             {/* Likert-like */}
             {t==='likert' && (
-              <div className="scale">
-                {Array.from({length: points}, (_,i)=> i+1).map(x=> (
-                  <button key={x} className={`bubble ${v===x?'active':''}`} onClick={()=>set(x)}>{x}</button>
-                ))}
+              <div>
+                <div className="scale">
+                  {Array.from({length: points}, (_,i)=> i+1).map((x, idx)=> (
+                    <button key={x} className={`bubble ${v===x?'active':''}`} onClick={()=>set(x)}>{likertShowNumbers? x : (likertLabels[idx] || x)}</button>
+                  ))}
+                </div>
+                {likertLabels.length === points && (
+                  <div style={{display:'flex', gap:8, marginTop:6, flexWrap:'wrap'}}>
+                    {likertLabels.map((lb, i)=> (
+                      <div key={i} style={{flex: `1 1 ${Math.floor(100/Math.min(points,5))}%`, minWidth: 60, fontSize:12, color:'var(--muted)'}}>{likertShowNumbers? `${i+1} = ${lb}` : lb}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {/* Single choice */}

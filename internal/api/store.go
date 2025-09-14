@@ -17,19 +17,23 @@ import (
 )
 
 type Scale struct {
-	ID          string            `json:"id"`
-	TenantID    string            `json:"tenant_id,omitempty"`
-	Points      int               `json:"points"`
-	Randomize   bool              `json:"randomize"`
-	NameI18n    map[string]string `json:"name_i18n,omitempty"`
-	ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
-	// CollectEmail controls whether participant email is collected: off|optional|required
-	CollectEmail string `json:"collect_email,omitempty"`
-	// E2EE and Region mode (project-level controls)
-	E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
-	Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
-	// Consent configuration (version + options)
-	ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
+    ID          string            `json:"id"`
+    TenantID    string            `json:"tenant_id,omitempty"`
+    Points      int               `json:"points"`
+    Randomize   bool              `json:"randomize"`
+    NameI18n    map[string]string `json:"name_i18n,omitempty"`
+    ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
+    // CollectEmail controls whether participant email is collected: off|optional|required
+    CollectEmail string `json:"collect_email,omitempty"`
+    // E2EE and Region mode (project-level controls)
+    E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
+    Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
+    // Consent configuration (version + options)
+    ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
+    // Likert anchors (labels) and display options
+    LikertLabelsI18n map[string][]string `json:"likert_labels_i18n,omitempty"`
+    LikertShowNumbers bool               `json:"likert_show_numbers,omitempty"`
+    LikertPreset      string             `json:"likert_preset,omitempty"`
 }
 
 type Item struct {

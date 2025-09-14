@@ -32,6 +32,11 @@ export function AdminScale() {
   const [aiReady, setAiReady] = useState(false)
   const [aiWorking, setAiWorking] = useState(false)
   const [aiInclude, setAiInclude] = useState<Record<string, boolean>>({})
+  // Likert anchors
+  const [likertLabelsEn, setLikertLabelsEn] = useState<string>('')
+  const [likertLabelsZh, setLikertLabelsZh] = useState<string>('')
+  const [likertShowNumbers, setLikertShowNumbers] = useState<boolean>(true)
+  const [likertPreset, setLikertPreset] = useState<string>('numeric')
   const [keys, setKeys] = useState<any[]>([])
   const [newPub, setNewPub] = useState('')
   const [newAlg, setNewAlg] = useState<'x25519+xchacha20'|'rsa+aesgcm'>('x25519+xchacha20')
@@ -143,6 +148,11 @@ export function AdminScale() {
       const s = await adminGetScale(id)
       const its = await adminGetScaleItems(id)
       setScale(s)
+      const labs = (s as any).likert_labels_i18n || {}
+      setLikertLabelsEn((labs.en||[]).join(', '))
+      setLikertLabelsZh((labs.zh||[]).join('，'))
+      setLikertShowNumbers(!!(s as any).likert_show_numbers)
+      setLikertPreset((s as any).likert_preset || 'numeric')
       // init consent config state
       const cc = (s as any).consent_config || {}
       setConsentVersion(cc.version||'v1')
@@ -163,7 +173,12 @@ export function AdminScale() {
   async function saveScale() {
     try {
       setSaving(true)
-      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto' })
+      const labsEn = likertLabelsEn.split(/[,，]/).map(s=>s.trim()).filter(Boolean)
+      const labsZh = likertLabelsZh.split(/[,，]/).map(s=>s.trim()).filter(Boolean)
+      const likert_labels_i18n: any = {}
+      if (labsEn.length) likert_labels_i18n.en = labsEn
+      if (labsZh.length) likert_labels_i18n.zh = labsZh
+      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto', likert_labels_i18n, likert_show_numbers: likertShowNumbers, likert_preset: likertPreset } as any)
       setMsg(t('saved'))
       toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
@@ -628,6 +643,39 @@ export function AdminScale() {
               </div>
               <div className="item"><div className="label">{t('points')}</div>
                 <input className="input" type="number" min={2} max={9} value={scale.points||5} onChange={e=> setScale((s:any)=> ({...s, points: parseInt(e.target.value||'5')}))} />
+              </div>
+              <div className="item"><div className="label">Likert Anchors</div>
+                <div className="cta-row" style={{marginTop:6, flexWrap:'wrap'}}>
+                  <select className="select" value={likertPreset} onChange={e=> setLikertPreset(e.target.value)}>
+                    <option value="numeric">Numeric only</option>
+                    <option value="agree5">Agree (5‑point)</option>
+                    <option value="freq5">Frequency (5‑point)</option>
+                    <option value="agree7">Agree (7‑point)</option>
+                    <option value="bipolar7">Bipolar (7‑point)</option>
+                    <option value="mono5">Monopolar (5‑point)</option>
+                  </select>
+                  <button className="btn" onClick={()=>{
+                    const presets: Record<string,{en:string[], zh:string[]}> = {
+                      numeric: { en: [], zh: [] },
+                      agree5: { en: ['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'], zh: ['非常不同意','不同意','一般','同意','非常同意'] },
+                      freq5: { en: ['Never','Rarely','Sometimes','Often','Always'], zh: ['从不','很少','有时','经常','总是'] },
+                      agree7: { en: ['Strongly disagree','Disagree','Somewhat disagree','Neutral','Somewhat agree','Agree','Strongly agree'], zh: ['非常不同意','不同意','略不同意','中立','略同意','同意','非常同意'] },
+                      bipolar7: { en: ['Very negative','Negative','Somewhat negative','Neutral','Somewhat positive','Positive','Very positive'], zh: ['非常负面','负面','略负面','中立','略正面','正面','非常正面'] },
+                      mono5: { en: ['Not at all','A little','Moderate','Quite a bit','Extremely'], zh: ['完全没有','有一点','中等','相当','非常强烈'] },
+                    }
+                    const p = presets[likertPreset] || presets.numeric
+                    const newPoints = p.en.length || scale.points
+                    setScale((s:any)=> ({...s, points: newPoints }))
+                    setLikertLabelsEn(p.en.join(', '))
+                    setLikertLabelsZh(p.zh.join('，'))
+                  }}>Apply</button>
+                </div>
+                <div className="muted" style={{marginTop:6}}>Custom labels (comma separated; length should equal Points)</div>
+                <div className="row">
+                  <div className="card span-6"><div className="label">EN</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder="Strongly disagree, Disagree, …" /></div>
+                  <div className="card span-6"><div className="label">中文</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder="非常不同意，…" /></div>
+                </div>
+                <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> Show numbers with labels</label>
               </div>
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!scale.randomize} onChange={e=> setScale((s:any)=> ({...s, randomize: e.target.checked}))} /> {t('randomize_items')||'Randomize items'}</label></div>
               <div className="item"><div className="label">{t('collect_email')||'Collect email'}</div>

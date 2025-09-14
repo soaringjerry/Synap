@@ -267,17 +267,20 @@ func (rt *Router) handleScaleMeta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"id":             sc.ID,
-		"name_i18n":      sc.NameI18n,
-		"points":         sc.Points,
-		"randomize":      sc.Randomize,
-		"consent_i18n":   sc.ConsentI18n,
-		"collect_email":  sc.CollectEmail,
-		"e2ee_enabled":   sc.E2EEEnabled,
-		"region":         sc.Region,
-		"consent_config": sc.ConsentConfig,
-	})
+    _ = json.NewEncoder(w).Encode(map[string]any{
+        "id":                   sc.ID,
+        "name_i18n":            sc.NameI18n,
+        "points":               sc.Points,
+        "randomize":            sc.Randomize,
+        "consent_i18n":         sc.ConsentI18n,
+        "collect_email":        sc.CollectEmail,
+        "e2ee_enabled":         sc.E2EEEnabled,
+        "region":               sc.Region,
+        "consent_config":       sc.ConsentConfig,
+        "likert_labels_i18n":   sc.LikertLabelsI18n,
+        "likert_show_numbers":  sc.LikertShowNumbers,
+        "likert_preset":        sc.LikertPreset,
+    })
 }
 
 // POST /api/consent/sign { scale_id, version, locale, choices:map, signed_at, signature_kind, evidence }
@@ -1452,6 +1455,7 @@ func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id strin
             in.ConsentConfig = cc
         }
     }
+    
 
     old := rt.store.getScale(id)
     if ok := rt.store.updateScale(&in); !ok {
@@ -1655,5 +1659,5 @@ func (rt *Router) handleSelfDeleteE2EE(w http.ResponseWriter, r *http.Request) {
 	rt.store.save()
 	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_delete_e2ee", Target: rid})
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+    _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
