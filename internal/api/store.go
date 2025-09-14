@@ -28,6 +28,8 @@ type Scale struct {
 	// E2EE and Region mode (project-level controls)
 	E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
 	Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
+	// Consent configuration (version + options)
+	ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
 }
 
 type Item struct {
@@ -75,6 +77,17 @@ type TenantAIConfig struct {
 	StoreLogs     bool   `json:"store_logs"`
 }
 
+// Consent configuration (per scale)
+type ConsentOptionConf struct {
+	Key       string            `json:"key"`
+	LabelI18n map[string]string `json:"label_i18n,omitempty"`
+	Required  bool              `json:"required"`
+}
+type ConsentConfig struct {
+	Version string              `json:"version"`
+	Options []ConsentOptionConf `json:"options,omitempty"`
+}
+
 // E2EEResponse stores end-to-end encrypted submission payloads (content-level encrypted on client).
 type E2EEResponse struct {
 	ScaleID        string    `json:"scale_id"`
@@ -120,6 +133,8 @@ type memoryStore struct {
 	// ephemeral export jobs and throttling (in-memory only)
 	exportJobs map[string]*ExportJob
 	lastExport map[string]time.Time // per-tenant last export time
+
+	consents []*ConsentRecord
 }
 
 func newMemoryStore(path string) *memoryStore {
@@ -138,6 +153,7 @@ func newMemoryStore(path string) *memoryStore {
 		projectKeys:  map[string][]*ProjectKey{},
 		exportJobs:   map[string]*ExportJob{},
 		lastExport:   map[string]time.Time{},
+		consents:     []*ConsentRecord{},
 	}
 }
 
@@ -191,6 +207,9 @@ func (s *memoryStore) updateScale(sc *Scale) bool {
 	// Region update (E2EEEnabled toggled in router to avoid unintended zeroing)
 	if sc.Region != "" {
 		old.Region = sc.Region
+	}
+	if sc.ConsentConfig != nil {
+		old.ConsentConfig = sc.ConsentConfig
 	}
 	s.saveLocked()
 	return true
@@ -550,6 +569,7 @@ type snapshot struct {
 	Users         []*User                  `json:"users"`
 	AIConfigs     []*TenantAIConfig        `json:"ai_configs"`
 	Audit         []AuditEntry             `json:"audit"`
+	Consents      []*ConsentRecord         `json:"consents"`
 }
 
 func (s *memoryStore) load() error {
@@ -614,6 +634,7 @@ func (s *memoryStore) load() error {
 		s.aiConfigs[a.TenantID] = a
 	}
 	s.audit = append([]AuditEntry(nil), snap.Audit...)
+	s.consents = append([]*ConsentRecord(nil), snap.Consents...)
 	// If file was plaintext and we have encKey, save back encrypted
 	if len(s.encKey) == 32 && !(len(b) > 8 && string(b[:8]) == "SYNAPENC") {
 		s.saveUnlocked()
@@ -670,6 +691,7 @@ func (s *memoryStore) saveUnlocked() {
 	for _, a := range s.aiConfigs {
 		snap.AIConfigs = append(snap.AIConfigs, a)
 	}
+	snap.Consents = append(snap.Consents, s.consents...)
 	_ = os.MkdirAll(filepath.Dir(s.snapshotPath), 0o755)
 	tmp := s.snapshotPath + ".tmp"
 	b, _ := json.MarshalIndent(&snap, "", "  ")
@@ -692,6 +714,24 @@ type ExportJob struct {
 	RequestIP string
 	CreatedAt time.Time
 	ExpiresAt time.Time
+}
+
+// Consent records (evidence without storing signature image)
+type ConsentRecord struct {
+	ID       string          `json:"id"`
+	ScaleID  string          `json:"scale_id"`
+	Version  string          `json:"version"`
+	Choices  map[string]bool `json:"choices"`
+	Locale   string          `json:"locale"`
+	SignedAt time.Time       `json:"signed_at"`
+	Hash     string          `json:"hash"` // sha256 base64 of client evidence JSON
+}
+
+func (s *memoryStore) addConsentRecord(cr *ConsentRecord) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.consents = append(s.consents, cr)
+	s.saveLocked()
 }
 
 func (s *memoryStore) createExportJob(tid, scaleID, ip string, ttl time.Duration) *ExportJob {

@@ -91,6 +91,8 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/self/participant/delete", rt.handleSelfDeleteParticipant) // POST
 	mux.HandleFunc("/api/self/e2ee/export", rt.handleSelfExportE2EE)               // GET (single response)
 	mux.HandleFunc("/api/self/e2ee/delete", rt.handleSelfDeleteE2EE)               // POST
+	// Consent signature evidence
+	mux.HandleFunc("/api/consent/sign", rt.handleConsentSign) // POST
 }
 
 // POST /api/seed — create a sample scale+items
@@ -270,13 +272,58 @@ func (rt *Router) handleScaleMeta(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"id":            sc.ID,
-		"name_i18n":     sc.NameI18n,
-		"points":        sc.Points,
-		"randomize":     sc.Randomize,
-		"consent_i18n":  sc.ConsentI18n,
-		"collect_email": sc.CollectEmail,
+		"id":             sc.ID,
+		"name_i18n":      sc.NameI18n,
+		"points":         sc.Points,
+		"randomize":      sc.Randomize,
+		"consent_i18n":   sc.ConsentI18n,
+		"collect_email":  sc.CollectEmail,
+		"e2ee_enabled":   sc.E2EEEnabled,
+		"region":         sc.Region,
+		"consent_config": sc.ConsentConfig,
 	})
+}
+
+// POST /api/consent/sign { scale_id, version, locale, choices:map, signed_at, signature_kind, evidence }
+func (rt *Router) handleConsentSign(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var in struct {
+		ScaleID       string          `json:"scale_id"`
+		Version       string          `json:"version"`
+		Locale        string          `json:"locale"`
+		Choices       map[string]bool `json:"choices"`
+		SignedAt      string          `json:"signed_at"`
+		SignatureKind string          `json:"signature_kind"`
+		Evidence      string          `json:"evidence"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	sc := rt.store.getScale(in.ScaleID)
+	if sc == nil {
+		http.Error(w, "scale not found", http.StatusNotFound)
+		return
+	}
+	// compute sha256 of evidence
+	sum := sha256.Sum256([]byte(in.Evidence))
+	hash := base64.StdEncoding.EncodeToString(sum[:])
+	// parse time if provided
+	ts := time.Now().UTC()
+	if in.SignedAt != "" {
+		if t2, err := time.Parse(time.RFC3339, in.SignedAt); err == nil {
+			ts = t2
+		}
+	}
+	id := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
+	rt.store.addConsentRecord(&ConsentRecord{ID: id, ScaleID: in.ScaleID, Version: in.Version, Choices: in.Choices, Locale: in.Locale, SignedAt: ts, Hash: hash})
+	// audit
+	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "consent_sign", Target: in.ScaleID, Note: id})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "id": id, "hash": hash})
 }
 
 // POST /api/responses/bulk

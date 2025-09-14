@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut, listProjectKeysPublic, submitE2EE } from '../api/client'
+import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign } from '../api/client'
 import { e2eeInit, encryptForProject } from '../crypto/e2ee'
 import { useTranslation } from 'react-i18next'
 
@@ -10,6 +10,11 @@ export function Survey() {
   const { t } = useTranslation()
   const [lang] = useState<string>(()=> new URLSearchParams(location.search).get('lang') || 'en')
   const [consented, setConsented] = useState(false)
+  const [consentConfig, setConsentConfig] = useState<{ version?: string, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] }|null>(null)
+  const [consentChoices, setConsentChoices] = useState<Record<string, boolean>>({})
+  const [sigChecked, setSigChecked] = useState(false)
+  const [sigImage, setSigImage] = useState<string>('')
+  const sigCanvasRef = useRef<HTMLCanvasElement|null>(null)
   const [items, setItems] = useState<ItemOut[]>([])
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [email, setEmail] = useState('')
@@ -33,6 +38,7 @@ export function Survey() {
         setPoints(meta.points || 5)
         setCollectEmail((meta.collect_email as any) || 'optional')
         setE2ee(!!(meta as any).e2ee_enabled)
+        setConsentConfig(meta.consent_config || null)
       } catch {}
       const d = await listItems(scaleId, lang)
       if (d.items.length === 0 && scaleId.toUpperCase() === 'SAMPLE') {
@@ -64,22 +70,118 @@ export function Survey() {
     return total ? Math.round((done/total)*100) : 0
   }, [items, answers])
 
+  function drawSigInit(canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d')!
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.lineCap = 'round'
+    let drawing = false
+    function pos(e: any){ const rect = canvas.getBoundingClientRect(); const x = (e.touches? e.touches[0].clientX : e.clientX) - rect.left; const y = (e.touches? e.touches[0].clientY : e.clientY) - rect.top; return {x,y} }
+    function down(e:any){ drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault() }
+    function move(e:any){ if(!drawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault() }
+    function up(e:any){ drawing=false; e.preventDefault() }
+    canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); window.addEventListener('mouseup',up)
+    canvas.addEventListener('touchstart',down,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up)
+  }
+
+  async function handleConsentAgree() {
+    // Build evidence JSON
+    const evidence = {
+      scale_id: scaleId,
+      locale: lang,
+      version: consentConfig?.version || 'v1',
+      sections: ['purpose','risk','withdrawal','data_use','anonymity','contact'],
+      options: consentChoices,
+      signature: { kind: sigImage ? 'draw' : (sigChecked ? 'click' : 'none'), image: sigImage || undefined },
+      ts: new Date().toISOString(),
+      ua: (typeof navigator!=='undefined'? navigator.userAgent : '')
+    }
+    try {
+      await postConsentSign({ scale_id: scaleId, version: consentConfig?.version || 'v1', locale: lang, choices: consentChoices, signed_at: evidence.ts, signature_kind: evidence.signature.kind, evidence: JSON.stringify(evidence) })
+    } catch {}
+    setConsented(true)
+    // Offer download of JSON copy automatically
+    const blob = new Blob([JSON.stringify(evidence,null,2)], { type: 'application/json' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `consent_${scaleId}_${Date.now()}.json`; a.click(); URL.revokeObjectURL(a.href)
+  }
+
+  function consentOptionLabel(opt: {key:string; label_i18n?:Record<string,string>}) {
+    if (opt.label_i18n) return opt.label_i18n[lang] || opt.label_i18n['en']
+    // fallback to i18n defaults
+    return t(`survey.consent_opt.${opt.key}`) as string
+  }
+
   if (!consented) {
     return (
       <div className="card span-12">
         <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
-        {consentCustom ? (
-          <div style={{whiteSpace:'pre-wrap'}} className="muted consent-content">{consentCustom}</div>
-        ) : (
-          <ul>
-            <li>{t('survey.consent_collect')}</li>
-            <li>{t('survey.consent_use')}</li>
-            <li>{t('survey.consent_retention')}</li>
-            <li>{t('survey.consent_rights')}</li>
-          </ul>
+        {/* Segmented sections */}
+        <div className="item">
+          <div className="label">{t('survey.sec_purpose_title')}</div>
+          <div className="muted">{t('survey.sec_purpose_body')}</div>
+        </div>
+        <div className="item">
+          <div className="label">{t('survey.sec_risk_title')}</div>
+          <div className="muted">{t('survey.sec_risk_body')}</div>
+        </div>
+        <div className="item">
+          <div className="label">{t('survey.sec_withdrawal_title')}</div>
+          <div className="muted">{t('survey.sec_withdrawal_body')}</div>
+        </div>
+        <div className="item">
+          <div className="label">{t('survey.sec_datause_title')}</div>
+          <div className="muted">{t('survey.sec_datause_body')}</div>
+        </div>
+        <div className="item">
+          <div className="label">{t('survey.sec_anonymity_title')}</div>
+          <div className="muted">{t('survey.sec_anonymity_body')}</div>
+        </div>
+        <div className="item">
+          <div className="label">{t('survey.sec_contact_title')}</div>
+          <div className="muted">{t('survey.sec_contact_body')}</div>
+        </div>
+        {/* Custom consent text block if provided */}
+        {consentCustom && (
+          <div className="item">
+            <div className="label">{t('consent_custom')}</div>
+            <div className="muted" style={{whiteSpace:'pre-wrap'}}>{consentCustom}</div>
+          </div>
         )}
+        {/* Interactive options */}
+        <div className="item">
+          <div className="label">{t('survey.consent_options')}</div>
+          {(consentConfig?.options||[
+            { key:'recording', required:false },
+            { key:'withdrawal', required:true },
+            { key:'data_use', required:true },
+          ]).map((opt:any)=> (
+            <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
+              <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
+                <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
+                <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: true}))} /> {t('survey.yes')||'Yes'}</label>
+                <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: false}))} /> {t('survey.no')||'No'}</label>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Signature */}
+        <div className="item">
+          <div className="label">{t('survey.signature_title')||'Signature'}</div>
+          <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
+          <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
+          <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.width=600; el.height=150; el.style.border='1px solid var(--border)'; drawSigInit(el) } }} />
+          <div className="cta-row" style={{marginTop:8}}>
+            <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
+            <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
+          </div>
+        </div>
+        <div className="muted" style={{marginTop:8}}>{t('survey.security_badges')||'Security: encrypted at rest, end‑to‑end encryption supported; designed for GDPR/PDPA compliance.'}</div>
         <div className="cta-row" style={{marginTop:12}}>
-          <button className="btn btn-primary" onClick={()=>setConsented(true)}>{t('survey.consent_agree')}</button>
+          <button className="btn btn-primary" disabled={(() => {
+            // required options must be true, and at least one signature action
+            const opts = consentConfig?.options||[{key:'withdrawal', required:true}, {key:'data_use', required:true}]
+            for (const o of opts) if (o.required && !consentChoices[o.key]) return true
+            if (!sigChecked && !sigImage) return true
+            return false
+          })()} onClick={handleConsentAgree}>{t('survey.consent_agree')}</button>
           <button className="btn btn-ghost" onClick={()=>nav('/')}>{t('survey.consent_decline')}</button>
         </div>
       </div>

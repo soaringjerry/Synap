@@ -88,7 +88,7 @@ export async function adminDeleteItem(id: string) {
 
 export async function getScaleMeta(id: string) {
   const res = await fetch(`${base}/api/scale/${encodeURIComponent(id)}`)
-  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string>; collect_email?: Scale['collect_email'] }>(res)
+  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string>; collect_email?: Scale['collect_email']; e2ee_enabled?: boolean; region?: Scale['region']; consent_config?: { version?: string, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] } }>(res)
 }
 
 export type AnalyticsSummary = {
@@ -163,4 +163,10 @@ export async function adminUpdateAIConfig(input: Partial<AIConfig>) {
 export async function adminAITranslatePreview(scale_id: string, target_langs: string[], model?: string) {
   const res = await fetch(`/api/admin/ai/translate/preview`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ scale_id, target_langs, model }) })
   return j<{ items: Record<string, Record<string,string>>; name_i18n?: Record<string,string>; consent_i18n?: Record<string,string> }>(res)
+}
+
+// Consent signature evidence
+export async function postConsentSign(input: { scale_id: string; version?: string; locale?: string; choices: Record<string, boolean>; signed_at?: string; signature_kind?: string; evidence: string }) {
+  const res = await fetch(`/api/consent/sign`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(input) })
+  return j<{ ok: boolean; id: string; hash: string }>(res)
 }
