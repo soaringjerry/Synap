@@ -1,4 +1,4 @@
-export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string>; collect_email?: 'off'|'optional'|'required'; e2ee_enabled?: boolean; region?: 'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa'; turnstile_enabled?: boolean; turnstile_sitekey?: string; likert_labels_i18n?: Record<string,string[]>; likert_show_numbers?: boolean; likert_preset?: string }
+export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string>; collect_email?: 'off'|'optional'|'required'; e2ee_enabled?: boolean; region?: 'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa'; turnstile_enabled?: boolean; turnstile_sitekey?: string; items_per_page?: number; likert_labels_i18n?: Record<string,string[]>; likert_show_numbers?: boolean; likert_preset?: string }
 export type ItemOut = {
   id: string
   stem: string
@@ -94,7 +94,7 @@ export async function adminDeleteItem(id: string) {
 
 export async function getScaleMeta(id: string) {
   const res = await fetch(`${base}/api/scale/${encodeURIComponent(id)}`)
-  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string>; collect_email?: Scale['collect_email']; e2ee_enabled?: boolean; region?: Scale['region']; turnstile_enabled?: boolean; turnstile_sitekey?: string; consent_config?: { version?: string, signature_required?: boolean, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] }, likert_labels_i18n?: Record<string,string[]>; likert_show_numbers?: boolean; likert_preset?: string }>(res)
+  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string>; collect_email?: Scale['collect_email']; e2ee_enabled?: boolean; region?: Scale['region']; turnstile_enabled?: boolean; turnstile_sitekey?: string; items_per_page?: number; consent_config?: { version?: string, signature_required?: boolean, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] }, likert_labels_i18n?: Record<string,string[]>; likert_show_numbers?: boolean; likert_preset?: string }>(res)
 }
 
 export type AnalyticsSummary = {

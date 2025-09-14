@@ -13,6 +13,7 @@ export function Admin() {
   const [nameEn, setNameEn] = useState('')
   const [nameZh, setNameZh] = useState('')
   const [points, setPoints] = useState(5)
+  const [itemsPerPage, setItemsPerPage] = useState<string>('0')
   const [e2ee, setE2ee] = useState(true)
   const [region, setRegion] = useState<'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa'>('auto')
   const [turnstile, setTurnstile] = useState(false)
@@ -104,6 +105,7 @@ export function Admin() {
       }
       const options = consentOptions.map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
       const body: any = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region, turnstile_enabled: !!turnstile }
+      const ipp = parseInt(itemsPerPage||'0'); if (!Number.isNaN(ipp)) body.items_per_page = ipp
       if (consentTextEn || consentTextZh) body.consent_i18n = { en: consentTextEn || undefined, zh: consentTextZh || undefined }
       body.consent_config = { version: consentVersion, options, signature_required: !!signatureRequired }
       const created = await adminCreateScale(body as any)
@@ -160,6 +162,7 @@ export function Admin() {
               <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={nameEn} onChange={e=>setNameEn(e.target.value)} /></div>
               <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={nameZh} onChange={e=>setNameZh(e.target.value)} /></div>
               <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} /></div>
+              <div className="item"><div className="label">Items per page</div><input className="input" type="number" min={0} max={50} value={itemsPerPage} onChange={e=> setItemsPerPage(e.target.value)} placeholder="0 = all on one page" /></div>
               <div className="item"><div className="label">{t('e2ee.region')||'Region'}</div>
                 <select className="select" value={region} onChange={e=> setRegion(e.target.value as any)}>
                   <option value="auto">auto</option>

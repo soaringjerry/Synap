@@ -32,6 +32,8 @@ export function Survey() {
   const [metaReady, setMetaReady] = useState(false)
   const [likertLabels, setLikertLabels] = useState<string[]>([])
   const [likertShowNumbers, setLikertShowNumbers] = useState<boolean>(true)
+  const [itemsPerPage, setItemsPerPage] = useState<number>(0)
+  const [page, setPage] = useState<number>(1)
   // Turnstile (Cloudflare) state
   const [turnstileEnabled, setTurnstileEnabled] = useState<boolean>(false)
   const [turnstileSitekey, setTurnstileSitekey] = useState<string>('')
@@ -139,6 +141,8 @@ export function Survey() {
       const arr = (labs[lang] || labs['en'] || []) as string[]
       setLikertLabels(Array.isArray(arr) ? arr : [])
       setLikertShowNumbers(!!(meta as any).likert_show_numbers)
+      setItemsPerPage(Number((meta as any).items_per_page||0) || 0)
+      setPage(1)
     } catch {}
     setMetaReady(true)
   }
@@ -539,6 +543,15 @@ export function Survey() {
     )
   }
 
+  const totalItems = items.length
+  const pages = itemsPerPage && itemsPerPage > 0 ? Math.ceil(totalItems / itemsPerPage) : 1
+  const startIdx = itemsPerPage && itemsPerPage > 0 ? (page-1) * itemsPerPage : 0
+  const endIdx = itemsPerPage && itemsPerPage > 0 ? Math.min(totalItems, startIdx + itemsPerPage) : totalItems
+  const visible = items.slice(startIdx, endIdx)
+  const pageHasUnansweredRequired = React.useMemo(()=>{
+    return visible.some(it => it.required && (answers[it.id]===undefined || answers[it.id]===null || String(answers[it.id]).length===0))
+  }, [visible, answers])
+
   return (
     <div className="card span-12">
       <h3 style={{marginTop:0}}>{t('survey.title')}</h3>
@@ -570,7 +583,7 @@ export function Survey() {
         </div>
       )}
       {loading && <div className="muted">{t('survey.loading')}</div>}
-      {!loading && items.map(it=> {
+      {!loading && visible.map(it=> {
         const t = it.type || 'likert'
         const v = answers[it.id]
         const set = (val:any)=> setAnswers(a=> ({...a,[it.id]: val}))
@@ -668,7 +681,14 @@ export function Survey() {
         )
       })}
       <div className="sticky-actions cta-row" style={{marginTop:12}}>
-        <button className="btn btn-primary" disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim()) || (turnstileEnabled && !!turnstileSitekey && !turnstileToken)} onClick={async()=>{
+        {pages>1 && (
+          <>
+            <button className="btn btn-ghost" onClick={()=> setPage(p=> Math.max(1, p-1))} disabled={page<=1}>{t('survey.prev')||'Previous'}</button>
+            <span className="muted">{t('survey.page_status', { n: page, m: pages }) || `Page ${page} / ${pages}`}</span>
+            <button className="btn" onClick={()=> setPage(p=> Math.min(pages, p+1))} disabled={page>=pages || pageHasUnansweredRequired}>{t('survey.next')||'Next'}</button>
+          </>
+        )}
+        <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim()) || (turnstileEnabled && !!turnstileSitekey && !turnstileToken) || (pages>1 && page<pages)} onClick={async()=>{
           try {
             if (e2ee) {
               const { keys } = await listProjectKeysPublic(scaleId)

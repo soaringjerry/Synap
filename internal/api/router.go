@@ -300,6 +300,7 @@ func (rt *Router) handleScaleMeta(w http.ResponseWriter, r *http.Request) {
 		"turnstile_enabled": sc.TurnstileEnabled,
 		// Expose sitekey when enabled; this is public information
 		"turnstile_sitekey":   os.Getenv("SYNAP_TURNSTILE_SITEKEY"),
+		"items_per_page":      sc.ItemsPerPage,
 		"consent_config":      sc.ConsentConfig,
 		"likert_labels_i18n":  sc.LikertLabelsI18n,
 		"likert_show_numbers": sc.LikertShowNumbers,
@@ -1683,6 +1684,9 @@ func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id strin
 	}
 	if v, ok := raw["region"].(string); ok {
 		in.Region = v
+	}
+	if v, ok := raw["items_per_page"].(float64); ok {
+		in.ItemsPerPage = int(v)
 	}
 	if v, ok := raw["turnstile_enabled"].(bool); ok {
 		in.TurnstileEnabled = v

@@ -17,22 +17,24 @@ import (
 )
 
 type Scale struct {
-	ID          string            `json:"id"`
-	TenantID    string            `json:"tenant_id,omitempty"`
-	Points      int               `json:"points"`
-	Randomize   bool              `json:"randomize"`
-	NameI18n    map[string]string `json:"name_i18n,omitempty"`
-	ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
-	// CollectEmail controls whether participant email is collected: off|optional|required
-	CollectEmail string `json:"collect_email,omitempty"`
-	// E2EE and Region mode (project-level controls)
-	E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
-	Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
-	// Turnstile protection (Cloudflare). When enabled and server has secret configured,
-	// submissions must include a valid Turnstile token.
-	TurnstileEnabled bool `json:"turnstile_enabled,omitempty"`
-	// Consent configuration (version + options)
-	ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
+    ID          string            `json:"id"`
+    TenantID    string            `json:"tenant_id,omitempty"`
+    Points      int               `json:"points"`
+    Randomize   bool              `json:"randomize"`
+    NameI18n    map[string]string `json:"name_i18n,omitempty"`
+    ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
+    // CollectEmail controls whether participant email is collected: off|optional|required
+    CollectEmail string `json:"collect_email,omitempty"`
+    // E2EE and Region mode (project-level controls)
+    E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
+    Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
+    // Turnstile protection (Cloudflare). When enabled and server has secret configured,
+    // submissions must include a valid Turnstile token.
+    TurnstileEnabled bool `json:"turnstile_enabled,omitempty"`
+    // ItemsPerPage controls pagination in the survey UI. 0 or empty means no pagination (all on one page).
+    ItemsPerPage int `json:"items_per_page,omitempty"`
+    // Consent configuration (version + options)
+    ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
 	// Likert anchors (labels) and display options
 	LikertLabelsI18n  map[string][]string `json:"likert_labels_i18n,omitempty"`
 	LikertShowNumbers bool                `json:"likert_show_numbers,omitempty"`
@@ -226,11 +228,13 @@ func (s *memoryStore) updateScale(sc *Scale) bool {
 	if sc.TurnstileEnabled != old.TurnstileEnabled {
 		old.TurnstileEnabled = sc.TurnstileEnabled
 	}
-	if sc.ConsentConfig != nil {
-		old.ConsentConfig = sc.ConsentConfig
-	}
-	s.saveLocked()
-	return true
+    if sc.ConsentConfig != nil {
+        old.ConsentConfig = sc.ConsentConfig
+    }
+    // ItemsPerPage: allow explicit zero to disable pagination
+    old.ItemsPerPage = sc.ItemsPerPage
+    s.saveLocked()
+    return true
 }
 
 // deleteScale removes the scale, its items, and responses associated with those items

@@ -38,6 +38,7 @@ export function AdminScale() {
   const [likertShowNumbers, setLikertShowNumbers] = useState<boolean>(true)
   const [likertPreset, setLikertPreset] = useState<string>('numeric')
   const [turnstile, setTurnstile] = useState<boolean>(true)
+  const [itemsPerPage, setItemsPerPageState] = useState<string>('0')
   const [keys, setKeys] = useState<any[]>([])
   const [newPub, setNewPub] = useState('')
   const [newAlg, setNewAlg] = useState<'x25519+xchacha20'|'rsa+aesgcm'>('x25519+xchacha20')
@@ -184,6 +185,7 @@ export function AdminScale() {
       setLikertLabelsZh((labs.zh||[]).join('，'))
       setLikertShowNumbers(!!(s as any).likert_show_numbers)
       setLikertPreset((s as any).likert_preset || 'numeric')
+      setItemsPerPageState(String((s as any).items_per_page || 0))
       // init consent config state
       const cc = (s as any).consent_config || {}
       setConsentVersion(cc.version||'v1')
@@ -209,7 +211,8 @@ export function AdminScale() {
       const likert_labels_i18n: any = {}
       if (labsEn.length) likert_labels_i18n.en = labsEn
       if (labsZh.length) likert_labels_i18n.zh = labsZh
-      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto', turnstile_enabled: !!turnstile, likert_labels_i18n, likert_show_numbers: likertShowNumbers, likert_preset: likertPreset } as any)
+      const ipp = parseInt(itemsPerPage||'0')
+      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto', items_per_page: isNaN(ipp)? 0 : ipp, turnstile_enabled: !!turnstile, likert_labels_i18n, likert_show_numbers: likertShowNumbers, likert_preset: likertPreset } as any)
       setMsg(t('saved'))
       toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
@@ -768,6 +771,9 @@ export function AdminScale() {
               </div>
               <div className="item"><div className="label">{t('points')}</div>
                 <input className="input" type="number" min={2} max={9} value={scale.points||5} onChange={e=> setScale((s:any)=> ({...s, points: parseInt(e.target.value||'5')}))} />
+              </div>
+              <div className="item"><div className="label">Items per page</div>
+                <input className="input" type="number" min={0} max={50} value={itemsPerPage} onChange={e=> setItemsPerPageState(e.target.value)} placeholder="0 = all on one page" />
               </div>
               {/* Likert Anchors moved to per-item editor */}
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!scale.randomize} onChange={e=> setScale((s:any)=> ({...s, randomize: e.target.checked}))} /> {t('randomize_items')||'Randomize items'}</label></div>
