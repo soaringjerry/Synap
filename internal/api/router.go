@@ -1352,8 +1352,8 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		// Build partial Scale for updateScale-compatible fields
-		in := Scale{ID: id}
+        // Build partial Scale for updateScale-compatible fields
+        in := Scale{ID: id}
 		if v, ok := raw["name_i18n"]; ok {
 			if m, ok2 := v.(map[string]any); ok2 {
 				in.NameI18n = map[string]string{}
@@ -1389,26 +1389,16 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-		// Explicit E2EE toggle handling and audit
-		if old != nil {
-			if v, ok := raw["e2ee_enabled"].(bool); ok {
-				// toggle and audit
-				if v != old.E2EEEnabled {
-					// apply change
-					old.E2EEEnabled = v
-					action := "e2ee_enable"
-					note := "on"
-					if !v {
-						action = "e2ee_disable"
-						note = "off"
-					}
-					rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: action, Target: id, Note: note})
-				}
-			}
-			if in.Region != "" && in.Region != old.Region {
-				rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
-			}
-		}
+        // E2EE status is immutable after creation — reject attempts to change
+        if old != nil {
+            if v, ok := raw["e2ee_enabled"].(bool); ok && v != old.E2EEEnabled {
+                http.Error(w, "e2ee_enabled cannot be modified after creation", http.StatusBadRequest)
+                return
+            }
+            if in.Region != "" && in.Region != old.Region {
+                rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
+            }
+        }
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		return

@@ -246,31 +246,15 @@ export function AdminScale() {
       </div>
       <div className="row">
         <section className="card span-12">
-          <h3 style={{marginTop:0}}>E2EE Settings</h3>
+          <h3 style={{marginTop:0}}>E2EE</h3>
           <div className="row">
             <div className="card span-6">
               <div className="item"><div className="label">End‑to‑end Encryption</div>
-                <label><input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> {
-                  const next = e.target.checked
-                  if (!next) {
-                    // strong double confirmation
-                    const first = confirm(t('e2ee.disable_confirm_title') as string)
-                    if (!first) return
-                    const second = confirm(t('e2ee.disable_confirm_second') as string)
-                    if (!second) return
-                  }
-                  setScale((s:any)=> ({...s, e2ee_enabled: next }))
-                }} /> <b>{t('e2ee.enable_label')||'Enable (default on)'}</b></label>
+                <div><b>{scale.e2ee_enabled ? 'ON' : 'OFF'}</b> · <span className="muted">{t('e2ee.locked_after_creation')||'Locked after creation'}</span></div>
                 <div className="muted">{t('e2ee.desc')||'Encrypt answers in the browser. Server stores only ciphertext.'}</div>
               </div>
               <div className="item"><div className="label">Region</div>
-                <select className="select" value={scale.region||'auto'} onChange={e=> setScale((s:any)=> ({...s, region: e.target.value }))}>
-                  <option value="auto">auto</option>
-                  <option value="gdpr">gdpr</option>
-                  <option value="pipl">pipl</option>
-                  <option value="pdpa">pdpa</option>
-                  <option value="ccpa">ccpa</option>
-                </select>
+                <div>{scale.region||'auto'} · <span className="muted">{t('e2ee.locked_after_creation')||'Locked after creation'}</span></div>
               </div>
               {(() => {
                 const r = scale.region||'auto'
@@ -279,32 +263,13 @@ export function AdminScale() {
                 if (scale.e2ee_enabled) return <div className="muted">{t('e2ee.enabled_hint')||'E2EE is ON. Only recipients with project keys can decrypt.'}</div>
                 return null
               })()}
-              <div className="cta-row" style={{marginTop:12}}>
-                <button className="btn" onClick={saveScale} disabled={saving}>{t('save')}</button>
-              </div>
+              {/* No save here; E2EE/Region locked */}
             </div>
             <div className="card span-6">
-              <h4 style={{marginTop:0}}>Project Keys</h4>
-              <div className="muted">Register recipients' public keys（PI/DM/IRB）— platform stores public keys only.</div>
-              <div className="item"><div className="label">Algorithm</div>
-                <select className="select" value={newAlg} onChange={e=> setNewAlg(e.target.value as any)}>
-                  <option value="x25519+xchacha20">X25519 + XChaCha20-Poly1305</option>
-                  <option value="rsa+aesgcm">RSA-OAEP + AES-GCM</option>
-                </select>
-              </div>
-              <div className="item"><div className="label">Public Key</div>
-                <textarea className="input" rows={4} placeholder="Paste base64 (x25519 raw) or PEM SPKI (RSA)" value={newPub} onChange={e=> setNewPub(e.target.value)} />
-              </div>
-              <div className="item"><div className="label">Fingerprint</div>
-                <input className="input" placeholder="client-computed fingerprint" value={newFp} onChange={e=> setNewFp(e.target.value)} />
-              </div>
-              <div className="cta-row">
-                <button className="btn" onClick={async()=>{
-                  try { await adminAddProjectKey(id, { alg: newAlg, kdf: newKdf, public_key: newPub, fingerprint: newFp }); setNewPub(''); setNewFp(''); const k = await adminListProjectKeys(id); setKeys(k.keys||[]); setMsg(t('saved') as string) } catch(e:any){ setMsg(e.message||String(e)) }
-                }}>Add Key</button>
-              </div>
+              <h4 style={{marginTop:0}}>{t('e2ee.project_keys')||'Project Keys'}</h4>
+              <div className="muted">{t('e2ee.project_keys_readonly')||'Registered recipients (read‑only). Keys are set at creation.'}</div>
               <div className="divider" />
-              <div className="item"><div className="label">Registered Keys</div>
+              <div className="item"><div className="label">{t('e2ee.keys_registered')||'Registered Keys'}</div>
                 {keys.length===0 && <div className="muted">No keys</div>}
                 {keys.map((k:any)=> (
                   <div key={k.fingerprint} className="tile" style={{padding:10, marginTop:8}}>

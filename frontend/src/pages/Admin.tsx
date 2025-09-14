@@ -39,9 +39,8 @@ export function Admin() {
   async function createScale() {
     setMsg('')
     try {
-      const body = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region }
-      const created = await adminCreateScale(body as any)
-      // key setup if E2EE enabled
+      // Pre-validate and prepare key material when E2EE is ON
+      let prepared: null | { algorithm: 'x25519+xchacha20'|'rsa+aesgcm'; public_key: string; fingerprint: string; download?: Blob } = null
       if (e2ee) {
         let algorithm: 'x25519+xchacha20'|'rsa+aesgcm' = 'x25519+xchacha20'
         let public_key = pub.trim()
@@ -56,23 +55,32 @@ export function Admin() {
           const enc = await crypto.subtle.encrypt({ name:'AES-GCM', iv: toAB(iv) }, key, kp.privateKey.buffer)
           const pubB64 = b64(kp.publicKey)
           fingerprint = await sha256b64(kp.publicKey)
-          // store locally and prompt download
           const blob = { v:1, alg:'x25519', enc_priv: b64(enc), iv: b64(iv), salt: b64(salt), pub: pubB64, fp: fingerprint }
           localStorage.setItem('synap_pmk', JSON.stringify(blob))
           public_key = pubB64
-          setPub(pubB64)
-          setWarn('Private key encrypted and stored locally. Download and keep it safe — losing it means permanent data loss.')
-          // Offer file download
-          const file = new Blob([JSON.stringify(blob, null, 2)], { type: 'application/json' })
-          const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = `synap_pmk_${created.id}.json`; a.click(); URL.revokeObjectURL(a.href)
+          prepared = { algorithm, public_key, fingerprint, download: new Blob([JSON.stringify(blob, null, 2)], { type: 'application/json' }) }
         } else {
-          // upload mode: determine alg by content
           if (!public_key) throw new Error('Paste a public key')
           if (public_key.includes('BEGIN PUBLIC KEY')) algorithm = 'rsa+aesgcm'
           if (algorithm === 'x25519+xchacha20') fingerprint = await sha256b64(fromB64(public_key))
           else fingerprint = await sha256b64(new TextEncoder().encode(public_key))
+          prepared = { algorithm, public_key, fingerprint }
         }
-        await adminAddProjectKey(created.id, { alg: algorithm, kdf: 'hkdf-sha256', public_key, fingerprint })
+      }
+      const body = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region }
+      const created = await adminCreateScale(body as any)
+      if (e2ee && prepared) {
+        try {
+          await adminAddProjectKey(created.id, { alg: prepared.algorithm, kdf: 'hkdf-sha256', public_key: prepared.public_key, fingerprint: prepared.fingerprint })
+          if (prepared.download) {
+            const a = document.createElement('a'); a.href = URL.createObjectURL(prepared.download); a.download = `synap_pmk_${created.id}.json`; a.click(); URL.revokeObjectURL(a.href)
+            setWarn('Private key encrypted and stored locally. Download and keep it safe — losing it means permanent data loss.')
+          }
+        } catch (e:any) {
+          // rollback to avoid half-configured E2EE project with no keys
+          try { await adminDeleteScale(created.id) } catch {}
+          throw e
+        }
       }
       setNameEn(''); setNameZh(''); setPoints(5); setPub(''); setPass(''); setKeyMethod('generate'); setWarn(''); loadScales()
     } catch (e:any) { setMsg(e.message||String(e)) }
