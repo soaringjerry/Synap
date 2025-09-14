@@ -73,6 +73,10 @@
       "consent_agree": "Agree and continue",
       "consent_decline": "Decline"
     },
+    "self_manage": "Manage your data",
+    "self_manage_hint": "Export or delete your submission at any time using the links below. Keep them safe.",
+    "self_export": "Export my data",
+    "self_delete": "Delete my data",
     "consent_custom": "Consent",
     "consent_en": "Consent (EN)",
     "consent_zh": "Consent (ZH)",

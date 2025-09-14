@@ -35,7 +35,7 @@ export async function submitBulk(scaleId: string, email: string, answers: { item
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ participant: { email }, scale_id: scaleId, answers })
   })
-  return j<{ ok: boolean; participant_id: string; count: number }>(res)
+  return j<{ ok: boolean; participant_id: string; count: number; self_token?: string; self_export?: string; self_delete?: string }>(res)
 }
 
 export async function getAlpha(scaleId: string) {
@@ -123,7 +123,25 @@ export async function listProjectKeysPublic(projectId: string) {
 
 export async function submitE2EE(input: { scale_id: string; response_id?: string; ciphertext: string; nonce: string; enc_dek: string[]; aad_hash: string; pmk_fingerprint?: string }) {
   const res = await fetch(`/api/responses/e2ee`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(input) })
-  return j<{ ok: boolean; response_id: string }>(res)
+  return j<{ ok: boolean; response_id: string; self_token?: string; self_export?: string; self_delete?: string }>(res)
+}
+
+// Participant self-service (GDPR)
+export async function participantSelfExport(pid: string, token: string) {
+  const res = await fetch(`/api/self/participant/export?pid=${encodeURIComponent(pid)}&token=${encodeURIComponent(token)}`)
+  return j<{ participant: any; responses: any[] }>(res)
+}
+export async function participantSelfDelete(pid: string, token: string, hard?: boolean) {
+  const res = await fetch(`/api/self/participant/delete?pid=${encodeURIComponent(pid)}&token=${encodeURIComponent(token)}${hard?'&hard=true':''}`, { method: 'POST' })
+  return j<{ ok: boolean }>(res)
+}
+export async function e2eeSelfExport(response_id: string, token: string) {
+  const res = await fetch(`/api/self/e2ee/export?response_id=${encodeURIComponent(response_id)}&token=${encodeURIComponent(token)}`)
+  return j<any>(res)
+}
+export async function e2eeSelfDelete(response_id: string, token: string) {
+  const res = await fetch(`/api/self/e2ee/delete?response_id=${encodeURIComponent(response_id)}&token=${encodeURIComponent(token)}`, { method: 'POST' })
+  return j<{ ok: boolean }>(res)
 }
 
 // E2EE export (step-up + short URL)

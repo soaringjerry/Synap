@@ -86,6 +86,11 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	// Rewrap (auth)
 	mux.Handle("/api/rewrap/jobs", middleware.WithAuth(http.HandlerFunc(rt.handleRewrapJobs)))
 	mux.Handle("/api/rewrap/submit", middleware.WithAuth(http.HandlerFunc(rt.handleRewrapSubmit)))
+	// GDPR self-service for participants
+	mux.HandleFunc("/api/self/participant/export", rt.handleSelfExportParticipant) // GET
+	mux.HandleFunc("/api/self/participant/delete", rt.handleSelfDeleteParticipant) // POST
+	mux.HandleFunc("/api/self/e2ee/export", rt.handleSelfExportE2EE)               // GET (single response)
+	mux.HandleFunc("/api/self/e2ee/delete", rt.handleSelfDeleteE2EE)               // POST
 }
 
 // POST /api/seed — create a sample scale+items
@@ -302,7 +307,8 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pid := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
-	rt.store.addParticipant(&Participant{ID: pid, Email: req.Participant.Email})
+	p := &Participant{ID: pid, Email: req.Participant.Email}
+	rt.store.addParticipant(p)
 	now := time.Now().UTC()
 	rs := make([]*Response, 0, len(req.Answers))
 	for _, a := range req.Answers {
@@ -367,7 +373,16 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 	}
 	rt.store.addResponses(rs)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "participant_id": pid, "count": len(rs)})
+	// Provide self-service capability for GDPR export/delete
+	selfBase := "/api/self/participant"
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"ok":             true,
+		"participant_id": pid,
+		"count":          len(rs),
+		"self_token":     p.SelfToken,
+		"self_export":    selfBase + "/export?pid=" + pid + "&token=" + p.SelfToken,
+		"self_delete":    selfBase + "/delete?pid=" + pid + "&token=" + p.SelfToken,
+	})
 }
 
 // GET /api/export?scale_id=...&format=long|wide|score
@@ -577,12 +592,23 @@ func (rt *Router) handleE2EEResponse(w http.ResponseWriter, r *http.Request) {
 	if rid == "" {
 		rid = strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
 	}
+	// generate self token
+	rb := make([]byte, 24)
+	_, _ = rand.Read(rb)
+	tok := base64.RawURLEncoding.EncodeToString(rb)
 	rt.store.addE2EEResponse(&E2EEResponse{
 		ScaleID: in.ScaleID, ResponseID: rid, Ciphertext: in.Ciphertext, Nonce: in.Nonce,
 		AADHash: in.AADHash, EncDEK: in.EncDEK, PMKFingerprint: in.PMKFingerprint, CreatedAt: time.Now().UTC(),
+		SelfToken: tok,
 	})
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "response_id": rid})
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"ok":          true,
+		"response_id": rid,
+		"self_token":  tok,
+		"self_export": "/api/self/e2ee/export?response_id=" + rid + "&token=" + tok,
+		"self_delete": "/api/self/e2ee/delete?response_id=" + rid + "&token=" + tok,
+	})
 }
 
 // --- Export encrypted bundle (JSONL.enc-like JSON for MVP) ---
@@ -1383,4 +1409,135 @@ func (rt *Router) handleAdminItemOps(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+}
+
+// --- GDPR self-service: participant non-E2EE export ---
+// GET /api/self/participant/export?pid=...&token=...
+func (rt *Router) handleSelfExportParticipant(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	pid := strings.TrimSpace(r.URL.Query().Get("pid"))
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if pid == "" || token == "" {
+		http.Error(w, "pid/token required", http.StatusBadRequest)
+		return
+	}
+	p := rt.store.participants[pid]
+	if p == nil || p.SelfToken == "" || token != p.SelfToken {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	// collect responses for participant (non-E2EE)
+	rs := []*Response{}
+	for _, r2 := range rt.store.responses {
+		if r2.ParticipantID == pid {
+			rs = append(rs, r2)
+		}
+	}
+	// audit
+	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_export", Target: pid})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"participant": map[string]any{"id": p.ID, "email": p.Email}, "responses": rs})
+}
+
+// --- GDPR self-service: participant non-E2EE delete ---
+// POST /api/self/participant/delete?pid=...&token=...&hard=true
+func (rt *Router) handleSelfDeleteParticipant(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	pid := strings.TrimSpace(r.URL.Query().Get("pid"))
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	hard := r.URL.Query().Get("hard") == "true"
+	if pid == "" || token == "" {
+		http.Error(w, "pid/token required", http.StatusBadRequest)
+		return
+	}
+	p := rt.store.participants[pid]
+	if p == nil || p.SelfToken == "" || token != p.SelfToken {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if ok := rt.store.deleteParticipantByID(pid, hard); !ok {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: map[bool]string{true: "self_delete_hard", false: "self_delete_soft"}[hard], Target: pid})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
+}
+
+// --- GDPR self-service: E2EE single-response export ---
+// GET /api/self/e2ee/export?response_id=...&token=...
+func (rt *Router) handleSelfExportE2EE(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	rid := strings.TrimSpace(r.URL.Query().Get("response_id"))
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if rid == "" || token == "" {
+		http.Error(w, "response_id/token required", http.StatusBadRequest)
+		return
+	}
+	var found *E2EEResponse
+	for _, e := range rt.store.listE2EEResponses("") { // we'll scan all; listE2EEResponses with empty returns none; use internal slice
+		if e.ResponseID == rid {
+			found = e
+			break
+		}
+	}
+	if found == nil {
+		// fallback: direct scan of internal slice
+		for _, e := range rt.store.e2ee {
+			if e.ResponseID == rid {
+				found = e
+				break
+			}
+		}
+	}
+	if found == nil || found.SelfToken == "" || token != found.SelfToken {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_export_e2ee", Target: rid})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(found)
+}
+
+// --- GDPR self-service: E2EE single-response delete ---
+// POST /api/self/e2ee/delete?response_id=...&token=...
+func (rt *Router) handleSelfDeleteE2EE(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	rid := strings.TrimSpace(r.URL.Query().Get("response_id"))
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if rid == "" || token == "" {
+		http.Error(w, "response_id/token required", http.StatusBadRequest)
+		return
+	}
+	rt.store.mu.Lock()
+	idx := -1
+	for i, e := range rt.store.e2ee {
+		if e.ResponseID == rid {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 || rt.store.e2ee[idx].SelfToken == "" || token != rt.store.e2ee[idx].SelfToken {
+		rt.store.mu.Unlock()
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	rt.store.e2ee = append(rt.store.e2ee[:idx], rt.store.e2ee[idx+1:]...)
+	rt.store.mu.Unlock()
+	rt.store.save()
+	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_delete_e2ee", Target: rid})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }

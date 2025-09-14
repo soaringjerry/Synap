@@ -14,6 +14,7 @@ export function Survey() {
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [email, setEmail] = useState('')
   const [msg, setMsg] = useState('')
+  const [selfManage, setSelfManage] = useState<{exportUrl?: string; deleteUrl?: string; pid?: string; token?: string; rid?: string} | null>(null)
   const [loading, setLoading] = useState(false)
   const [consentCustom, setConsentCustom] = useState('')
   const [points, setPoints] = useState<number>(5)
@@ -193,11 +194,13 @@ export function Survey() {
               if (collectEmail !== 'off') payload.email = email.trim()
               const enc = await encryptForProject(payload, scaleId, keys as any)
               const res = await submitE2EE({ scale_id: scaleId, ciphertext: enc.ciphertext, nonce: enc.nonce, enc_dek: enc.encDEK, aad_hash: enc.aad_hash, pmk_fingerprint: enc.pmk_fingerprint })
-              setMsg(`Submitted (E2EE) id=${res.response_id}.`)
+              setMsg(`Submitted (E2EE).`)
+              setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete, rid: res.response_id, token: res.self_token })
             } else {
               const arr = Object.entries(answers).map(([item_id, raw])=>({item_id, raw}))
               const res = await submitBulk(scaleId, email.trim(), arr as any)
               setMsg(`Submitted ${res.count} answers.`)
+              setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete })
             }
             setAnswers({})
           } catch(e:any) { setMsg(e.message||String(e)) }
@@ -208,6 +211,16 @@ export function Survey() {
         <button className="btn btn-ghost" onClick={()=>{ setAnswers({}); setMsg('') }}>{t('survey.reset')}</button>
       </div>
       {msg && <div className="muted" style={{marginTop:8}}>{msg}</div>}
+      {selfManage && (
+        <div className="tile" style={{marginTop:8, padding:12}}>
+          <div style={{fontWeight:600}}>{t('survey.self_manage')||'Manage your data'}</div>
+          <div className="muted" style={{marginTop:4}}>{t('survey.self_manage_hint')||'You can export or delete your submission using the links below. Keep them safe.'}</div>
+          <div className="cta-row" style={{marginTop:8, display:'flex', gap:8, flexWrap:'wrap'}}>
+            {selfManage.exportUrl && <a className="btn" href={selfManage.exportUrl} target="_blank" rel="noreferrer">{t('survey.self_export')||'Export my data'}</a>}
+            {selfManage.deleteUrl && <a className="btn btn-ghost" href={selfManage.deleteUrl} target="_blank" rel="noreferrer">{t('survey.self_delete')||'Delete my data'}</a>}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

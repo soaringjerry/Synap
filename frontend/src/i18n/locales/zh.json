@@ -73,6 +73,10 @@
       "consent_agree": "同意并继续",
       "consent_decline": "不同意"
     },
+    "self_manage": "管理我的数据",
+    "self_manage_hint": "你可以随时通过以下链接导出或删除本次提交。请妥善保管这些链接。",
+    "self_export": "导出我的数据",
+    "self_delete": "删除我的数据",
     "consent_custom": "知情同意",
     "consent_en": "知情同意（英文）",
     "consent_zh": "知情同意（中文）",

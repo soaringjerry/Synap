@@ -52,6 +52,8 @@ type Item struct {
 type Participant struct {
 	ID    string `json:"id"`
 	Email string `json:"email,omitempty"`
+	// SelfToken is a capability to export/delete own data (GDPR self-service)
+	SelfToken string `json:"self_token,omitempty"`
 }
 
 type Response struct {
@@ -83,6 +85,8 @@ type E2EEResponse struct {
 	EncDEK         []string  `json:"enc_dek"` // array of envelope-wrapped DEKs
 	PMKFingerprint string    `json:"pmk_fingerprint"`
 	CreatedAt      time.Time `json:"created_at"`
+	// SelfToken allows the submitter to export/delete their own encrypted response
+	SelfToken string `json:"self_token,omitempty"`
 }
 
 // ProjectKey stores registered public keys for E2EE per scale/project.
@@ -313,6 +317,12 @@ func (s *memoryStore) getScale(id string) *Scale {
 func (s *memoryStore) addParticipant(p *Participant) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if p.SelfToken == "" {
+		// generate secure token
+		rb := make([]byte, 24)
+		_, _ = rand.Read(rb)
+		p.SelfToken = base64.RawURLEncoding.EncodeToString(rb)
+	}
 	s.participants[p.ID] = p
 	s.saveLocked()
 }
@@ -456,6 +466,33 @@ func (s *memoryStore) deleteParticipantByEmail(email string, hard bool) bool {
 	s.responses = nr
 	if hard {
 		delete(s.participants, pid)
+	}
+	s.saveLocked()
+	return true
+}
+
+// deleteParticipantByID deletes responses for a participant and optionally anonymizes/removes the participant record
+func (s *memoryStore) deleteParticipantByID(pid string, hard bool) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.participants[pid]; !ok {
+		return false
+	}
+	// remove responses for this participant
+	nr := make([]*Response, 0, len(s.responses))
+	for _, r := range s.responses {
+		if r.ParticipantID != pid {
+			nr = append(nr, r)
+		}
+	}
+	s.responses = nr
+	if hard {
+		delete(s.participants, pid)
+	} else {
+		// anonymize email
+		if p := s.participants[pid]; p != nil {
+			p.Email = ""
+		}
 	}
 	s.saveLocked()
 	return true
