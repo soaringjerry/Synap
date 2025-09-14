@@ -559,7 +559,8 @@ export function AdminScale() {
                           ].join(','))
                         }
                       })
-                      const blob = new Blob([lines.join('\r\n')+'\r\n'], { type: 'text/csv' })
+                      const csvText = '\uFEFF' + lines.join('\r\n')+'\r\n'
+                      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8' })
                       const a = document.createElement('a')
                       a.href = URL.createObjectURL(blob)
                       a.download = `e2ee_${id}_long.csv`
@@ -582,7 +583,8 @@ export function AdminScale() {
                         for (const id of order) row.push(csvEsc((a as any)[id]))
                         lines.push(row.join(','))
                       })
-                      const blob = new Blob([lines.join('\r\n')+'\r\n'], { type: 'text/csv' })
+                      const csvText = '\uFEFF' + lines.join('\r\n')+'\r\n'
+                      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8' })
                       const a = document.createElement('a')
                       a.href = URL.createObjectURL(blob)
                       a.download = `e2ee_${id}_wide_en.csv`
