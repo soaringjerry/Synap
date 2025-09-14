@@ -125,6 +125,7 @@
     "consent_zh": "知情同意（中文）",
     "consent_hint": "可选，留空则使用默认知情同意文案。换行会保留。",
     "consent_md_hint": "支持 Markdown：标题、列表、链接、加粗/斜体、代码。",
+    "consent_inline_hint": "提示：在自定义内容中插入 [[CONSENT]]（或 <interactive-consent/> / <context/>）可把“交互式确认（选项+签名）”插入到该位置；未插入时会显示在正文之后。",
     "consent_override_hint": "填写后，问卷中的默认分段说明将隐藏，仅显示此自定义内容。",
     "ai": {
       "title": "AI 翻译"

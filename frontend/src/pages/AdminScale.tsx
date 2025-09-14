@@ -922,6 +922,7 @@ export function AdminScale() {
               <div className="muted">{t('consent_hint')||'Optional, leave blank to use default consent text. Newlines preserved.'}</div>
               <div className="muted">{t('consent_md_hint')||'Markdown supported: headings, lists, links, bold/italic, code.'}</div>
               <div className="muted">{t('consent_override_hint')||'If provided, the default sections are hidden in the survey.'}</div>
+              <div className="muted">{t('consent_inline_hint')||'Tip: Insert [[CONSENT]] (or <interactive-consent/> / <context/>) to place the interactive confirmations (options + signature) inline. If not present, it appears after the text.'}</div>
               <div className="cta-row" style={{marginTop:8}}>
                 <button className="btn" onClick={async()=>{
                   try {
