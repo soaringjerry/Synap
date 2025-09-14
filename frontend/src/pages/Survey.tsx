@@ -15,6 +15,7 @@ export function Survey() {
   const [consentChoices, setConsentChoices] = useState<Record<string, boolean>>({})
   const [sigChecked, setSigChecked] = useState(false)
   const [sigImage, setSigImage] = useState<string>('')
+  const [consentId, setConsentId] = useState<string>('')
   const sigCanvasRef = useRef<HTMLCanvasElement|null>(null)
   const [items, setItems] = useState<ItemOut[]>([])
   const [answers, setAnswers] = useState<Record<string, any>>({})
@@ -117,7 +118,8 @@ export function Survey() {
       ua: (typeof navigator!=='undefined'? navigator.userAgent : '')
     }
     try {
-      await postConsentSign({ scale_id: scaleId, version: consentConfig?.version || 'v1', locale: lang, choices: consentChoices, signed_at: evidence.ts, signature_kind: evidence.signature.kind, evidence: JSON.stringify(evidence) })
+      const res = await postConsentSign({ scale_id: scaleId, version: consentConfig?.version || 'v1', locale: lang, choices: consentChoices, signed_at: evidence.ts, signature_kind: evidence.signature.kind, evidence: JSON.stringify(evidence) })
+      if ((res as any)?.id) setConsentId((res as any).id)
     } catch {}
     // Store locally and continue; download will be optional after submit
     setConsentEvidence(evidence)
@@ -432,7 +434,7 @@ export function Survey() {
               setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete, rid: res.response_id, token: res.self_token })
             } else {
               const arr = Object.entries(answers).map(([item_id, raw])=>({item_id, raw}))
-              const res = await submitBulk(scaleId, email.trim(), arr as any)
+              const res = await submitBulk(scaleId, email.trim(), arr as any, { consent_id: consentId || undefined })
               setMsg(`Submitted ${res.count} answers.`)
               toast.success(t('submit_success')||'Submitted successfully')
               setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete })

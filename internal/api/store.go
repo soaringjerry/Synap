@@ -52,10 +52,12 @@ type Item struct {
 }
 
 type Participant struct {
-	ID    string `json:"id"`
-	Email string `json:"email,omitempty"`
-	// SelfToken is a capability to export/delete own data (GDPR self-service)
-	SelfToken string `json:"self_token,omitempty"`
+    ID    string `json:"id"`
+    Email string `json:"email,omitempty"`
+    // SelfToken is a capability to export/delete own data (GDPR self-service)
+    SelfToken string `json:"self_token,omitempty"`
+    // ConsentID links to a ConsentRecord.ID if provided at submission time
+    ConsentID string `json:"consent_id,omitempty"`
 }
 
 type Response struct {
@@ -749,13 +751,24 @@ type ExportJob struct {
 
 // Consent records (evidence without storing signature image)
 type ConsentRecord struct {
-	ID       string          `json:"id"`
-	ScaleID  string          `json:"scale_id"`
-	Version  string          `json:"version"`
-	Choices  map[string]bool `json:"choices"`
-	Locale   string          `json:"locale"`
-	SignedAt time.Time       `json:"signed_at"`
-	Hash     string          `json:"hash"` // sha256 base64 of client evidence JSON
+    ID       string          `json:"id"`
+    ScaleID  string          `json:"scale_id"`
+    Version  string          `json:"version"`
+    Choices  map[string]bool `json:"choices"`
+    Locale   string          `json:"locale"`
+    SignedAt time.Time       `json:"signed_at"`
+    Hash     string          `json:"hash"` // sha256 base64 of client evidence JSON
+}
+
+func (s *memoryStore) getConsentByID(id string) *ConsentRecord {
+    s.mu.RLock()
+    defer s.mu.RUnlock()
+    for _, c := range s.consents {
+        if c.ID == id {
+            return c
+        }
+    }
+    return nil
 }
 
 func (s *memoryStore) addConsentRecord(cr *ConsentRecord) {

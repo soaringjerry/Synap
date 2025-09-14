@@ -29,11 +29,11 @@ export async function listItems(scaleId: string, lang: string) {
   return j<{ scale_id: string; items: ItemOut[] }>(res)
 }
 
-export async function submitBulk(scaleId: string, email: string, answers: { item_id: string; raw: any }[]) {
+export async function submitBulk(scaleId: string, email: string, answers: { item_id: string; raw: any }[], opts?: { consent_id?: string }) {
   const res = await fetch(`${base}/api/responses/bulk`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ participant: { email }, scale_id: scaleId, answers })
+    body: JSON.stringify({ participant: { email }, scale_id: scaleId, answers, consent_id: opts?.consent_id })
   })
   return j<{ ok: boolean; participant_id: string; count: number; self_token?: string; self_export?: string; self_delete?: string }>(res)
 }

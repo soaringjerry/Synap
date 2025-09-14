@@ -329,17 +329,18 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var req struct {
-		Participant struct {
-			Email string `json:"email"`
-		} `json:"participant"`
-		ScaleID string `json:"scale_id"`
-		Answers []struct {
-			ItemID string          `json:"item_id"`
-			Raw    json.RawMessage `json:"raw"`
-			RawInt *int            `json:"raw_value,omitempty"`
-		} `json:"answers"`
-	}
+    var req struct {
+        Participant struct {
+            Email string `json:"email"`
+        } `json:"participant"`
+        ScaleID string `json:"scale_id"`
+        Answers []struct {
+            ItemID string          `json:"item_id"`
+            Raw    json.RawMessage `json:"raw"`
+            RawInt *int            `json:"raw_value,omitempty"`
+        } `json:"answers"`
+        ConsentID string `json:"consent_id,omitempty"`
+    }
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -350,8 +351,13 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pid := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
-	p := &Participant{ID: pid, Email: req.Participant.Email}
-	rt.store.addParticipant(p)
+    p := &Participant{ID: pid, Email: req.Participant.Email}
+    if req.ConsentID != "" {
+        if c := rt.store.getConsentByID(req.ConsentID); c != nil && c.ScaleID == req.ScaleID {
+            p.ConsentID = req.ConsentID
+        }
+    }
+    rt.store.addParticipant(p)
 	now := time.Now().UTC()
 	rs := make([]*Response, 0, len(req.Answers))
 	for _, a := range req.Answers {
@@ -439,16 +445,31 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	if format == "" {
 		format = "long"
 	}
-	items := rt.store.listItems(scaleID)
-	rs := rt.store.listResponsesByScale(scaleID)
+    items := rt.store.listItems(scaleID)
+    rs := rt.store.listResponsesByScale(scaleID)
 
-	switch format {
-	case "long":
-		rows := make([]services.LongRow, 0, len(rs))
-		for _, r := range rs {
-			rows = append(rows, services.LongRow{ParticipantID: r.ParticipantID, ItemID: r.ItemID, RawValue: r.RawValue, ScoreValue: r.ScoreValue, SubmittedAt: r.SubmittedAt.Format(time.RFC3339)})
-		}
-		b, err := services.ExportLongCSV(rows)
+    switch format {
+    case "long":
+        rows := make([]services.LongRow, 0, len(rs))
+        for _, r := range rs {
+            rows = append(rows, services.LongRow{ParticipantID: r.ParticipantID, ItemID: r.ItemID, RawValue: r.RawValue, ScoreValue: r.ScoreValue, SubmittedAt: r.SubmittedAt.Format(time.RFC3339)})
+        }
+        // Append consent choices as pseudo-items: consent.<key>
+        // Build a set of participant IDs present
+        pidSet := map[string]struct{}{}
+        for _, r := range rs { pidSet[r.ParticipantID] = struct{}{} }
+        for pid := range pidSet {
+            p := rt.store.participants[pid]
+            if p == nil || p.ConsentID == "" { continue }
+            c := rt.store.getConsentByID(p.ConsentID)
+            if c == nil || c.ScaleID != scaleID { continue }
+            for k, v := range c.Choices {
+                val := 0
+                if v { val = 1 }
+                rows = append(rows, services.LongRow{ParticipantID: pid, ItemID: "consent."+k, RawValue: val, ScoreValue: val, SubmittedAt: c.SignedAt.Format(time.RFC3339)})
+            }
+        }
+        b, err := services.ExportLongCSV(rows)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -457,16 +478,29 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", "attachment; filename=long.csv")
 		_, _ = w.Write(b)
 		return
-	case "wide":
-		// map[pid]map[itemID]score
-		mp := map[string]map[string]int{}
-		for _, r := range rs {
-			if mp[r.ParticipantID] == nil {
-				mp[r.ParticipantID] = map[string]int{}
-			}
-			mp[r.ParticipantID][r.ItemID] = r.ScoreValue
-		}
-		b, err := services.ExportWideCSV(mp)
+    case "wide":
+        // map[pid]map[itemID]score
+        mp := map[string]map[string]int{}
+        for _, r := range rs {
+            if mp[r.ParticipantID] == nil {
+                mp[r.ParticipantID] = map[string]int{}
+            }
+            mp[r.ParticipantID][r.ItemID] = r.ScoreValue
+        }
+        // Add consent choices as columns consent.<key>
+        pidSet := map[string]struct{}{}
+        for _, r := range rs { pidSet[r.ParticipantID] = struct{}{} }
+        for pid := range pidSet {
+            p := rt.store.participants[pid]
+            if p == nil || p.ConsentID == "" { continue }
+            c := rt.store.getConsentByID(p.ConsentID)
+            if c == nil || c.ScaleID != scaleID { continue }
+            if mp[pid] == nil { mp[pid] = map[string]int{} }
+            for k, v := range c.Choices {
+                if v { mp[pid]["consent."+k] = 1 } else { mp[pid]["consent."+k] = 0 }
+            }
+        }
+        b, err := services.ExportWideCSV(mp)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
