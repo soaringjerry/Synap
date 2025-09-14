@@ -354,7 +354,7 @@ export function AdminScale() {
       </div>
       <div className="row">
         <section className="card span-12">
-          <h3 style={{marginTop:0}}>E2EE</h3>
+          <h3 style={{marginTop:0}}>{t('e2ee.title')||'End‑to‑end Encryption'}</h3>
           <div className="row">
             <div className="card span-6">
               <div className="item"><div className="label">End‑to‑end Encryption</div>

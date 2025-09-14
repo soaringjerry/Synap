@@ -391,13 +391,13 @@ export function Survey() {
           try {
             if (e2ee) {
               const { keys } = await listProjectKeysPublic(scaleId)
-              if (!keys || !keys.length) throw new Error('No E2EE keys registered for this project')
+              if (!keys || !keys.length) throw new Error(t('e2ee.no_keys')||'End‑to‑end encryption keys are not configured for this project')
               await e2eeInit()
               const payload: any = { scale_id: scaleId, answers }
               if (collectEmail !== 'off') payload.email = email.trim()
               const enc = await encryptForProject(payload, scaleId, keys as any)
               const res = await submitE2EE({ scale_id: scaleId, ciphertext: enc.ciphertext, nonce: enc.nonce, enc_dek: enc.encDEK, aad_hash: enc.aad_hash, pmk_fingerprint: enc.pmk_fingerprint })
-              setMsg(`Submitted (E2EE).`)
+              setMsg(t('submit_success')||'Submitted successfully')
               toast.success(t('submit_success')||'Submitted successfully')
               setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete, rid: res.response_id, token: res.self_token })
             } else {

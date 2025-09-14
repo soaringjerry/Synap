@@ -271,7 +271,7 @@ export function Admin() {
                     <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_score_csv')}</a>
                   </>
                 ) : (
-                  <div className="muted" title="CSV exports are disabled for E2EE projects">CSV disabled (E2EE)</div>
+                  <div className="muted" title={t('e2ee.csv_disabled_title')||'CSV exports are disabled when end‑to‑end encryption is ON'}>{t('e2ee.csv_disabled')||'CSV disabled (end‑to‑end encryption)'}</div>
                 )}
                 <button className="btn" onClick={()=>copyLink(s.id)}>{t('share')}</button>
                 <a className="btn btn-ghost" href={shareLink(s.id)} target="_blank" rel="noreferrer">{t('open')}</a>
