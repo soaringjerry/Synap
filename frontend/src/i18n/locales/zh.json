@@ -91,6 +91,22 @@
     "participant_link": "参与者链接",
     "share_desc": "将此链接发送给参与者即可直接填写问卷。",
 
+    "e2ee": {
+      "title": "端到端加密",
+      "desc": "在浏览器内对作答加密，服务器仅保存密文，无法读取内容。",
+      "enable_label": "开启 E2EE（默认开启）",
+      "disable_confirm_title": "确认关闭 E2EE？关闭后服务器可处理明文（不推荐）。",
+      "disable_confirm_second": "再次确认：你确定要关闭吗？该操作会被审计记录。",
+      "region": "区域",
+      "region_strong": "警告：在 GDPR/PIPL 场景下，强烈建议开启 E2EE。",
+      "region_soft": "提示：建议开启 E2EE 以提升隐私保护。",
+      "enabled_hint": "E2EE 已开启。只有已登记公钥的接收方才能解密。",
+      "export_title": "导出加密包",
+      "export_desc": "创建一个短效的下载链接，包含密文与签名的清单（Ed25519）。",
+      "export_button": "创建导出",
+      "export_ready": "导出链接已生成（新标签页打开）。"
+    },
+
     "cookie": {
       "title": "Cookies",
       "desc": "我们使用必要 Cookie 保证网站运行。你可以选择是否开启分析或第三方 Cookie。本服务使用 Cloudflare CDN 提升性能与安全。",

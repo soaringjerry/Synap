@@ -126,6 +126,12 @@ export async function submitE2EE(input: { scale_id: string; response_id?: string
   return j<{ ok: boolean; response_id: string }>(res)
 }
 
+// E2EE export (step-up + short URL)
+export async function adminCreateE2EEExport(scale_id: string) {
+  const res = await fetch(`/api/exports/e2ee`, { method:'POST', headers: { 'Content-Type':'application/json', 'X-Step-Up':'true', ...authHeaders() }, body: JSON.stringify({ scale_id }) })
+  return j<{ url: string; expires_at: string }>(res)
+}
+
 // --- Admin AI config & translation ---
 export type AIConfig = { tenant_id: string; openai_key?: string; openai_base?: string; allow_external: boolean; store_logs: boolean }
 export async function adminGetAIConfig() {

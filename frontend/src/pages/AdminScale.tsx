@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey } from '../api/client'
+import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport } from '../api/client'
 
 export function AdminScale() {
   const { id = '' } = useParams()
@@ -49,7 +49,7 @@ export function AdminScale() {
   async function saveScale() {
     try {
       setSaving(true)
-      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email })
+      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto' })
       setMsg(t('saved'))
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
   }
@@ -232,7 +232,18 @@ export function AdminScale() {
           <div className="row">
             <div className="card span-6">
               <div className="item"><div className="label">End‑to‑end Encryption</div>
-                <label><input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> setScale((s:any)=> ({...s, e2ee_enabled: e.target.checked }))} /> Enable (default on)</label>
+                <label><input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> {
+                  const next = e.target.checked
+                  if (!next) {
+                    // strong double confirmation
+                    const first = confirm(t('e2ee.disable_confirm_title') as string)
+                    if (!first) return
+                    const second = confirm(t('e2ee.disable_confirm_second') as string)
+                    if (!second) return
+                  }
+                  setScale((s:any)=> ({...s, e2ee_enabled: next }))
+                }} /> <b>{t('e2ee.enable_label')||'Enable (default on)'}</b></label>
+                <div className="muted">{t('e2ee.desc')||'Encrypt answers in the browser. Server stores only ciphertext.'}</div>
               </div>
               <div className="item"><div className="label">Region</div>
                 <select className="select" value={scale.region||'auto'} onChange={e=> setScale((s:any)=> ({...s, region: e.target.value }))}>
@@ -243,6 +254,13 @@ export function AdminScale() {
                   <option value="ccpa">ccpa</option>
                 </select>
               </div>
+              {(() => {
+                const r = scale.region||'auto'
+                if (!scale.e2ee_enabled && (r==='gdpr'||r==='pipl')) return <div className="tile" style={{border:'1px solid #e00', color:'#e00', background:'#fff6f6', padding:8}}>{t('e2ee.region_strong')||'Warning: In GDPR/PIPL regions, E2EE is strongly recommended.'}</div>
+                if (!scale.e2ee_enabled && (r==='pdpa'||r==='ccpa')) return <div className="tile" style={{border:'1px solid #b36b00', color:'#b36b00', background:'#fffaf0', padding:8}}>{t('e2ee.region_soft')||'Note: Consider enabling E2EE for better privacy.'}</div>
+                if (scale.e2ee_enabled) return <div className="muted">{t('e2ee.enabled_hint')||'E2EE is ON. Only recipients with project keys can decrypt.'}</div>
+                return null
+              })()}
               <div className="cta-row" style={{marginTop:12}}>
                 <button className="btn" onClick={saveScale} disabled={saving}>{t('save')}</button>
               </div>
@@ -276,6 +294,22 @@ export function AdminScale() {
                     <div className="muted">{k.created_at ? new Date(k.created_at).toLocaleString() : ''}</div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+          <div className="divider" />
+          <div className="row">
+            <div className="card span-12">
+              <h4 style={{marginTop:0}}>{t('e2ee.export_title')||'Export Encrypted Bundle'}</h4>
+              <div className="muted">{t('e2ee.export_desc')||'Create a short‑lived download link for encrypted responses with signed manifest.'}</div>
+              <div className="cta-row" style={{marginTop:8}}>
+                <button className="btn btn-primary" onClick={async()=>{
+                  try {
+                    const { url } = await adminCreateE2EEExport(id)
+                    window.open(url, '_blank')
+                    setMsg(t('e2ee.export_ready')||'Export link opened.')
+                  } catch(e:any) { setMsg(e.message||String(e)) }
+                }}>{t('e2ee.export_button')||'Create Export'}</button>
               </div>
             </div>
           </div>

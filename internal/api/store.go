@@ -112,6 +112,10 @@ type memoryStore struct {
 	projectKeys  map[string][]*ProjectKey
 	snapshotPath string
 	encKey       []byte
+
+	// ephemeral export jobs and throttling (in-memory only)
+	exportJobs map[string]*ExportJob
+	lastExport map[string]time.Time // per-tenant last export time
 }
 
 func newMemoryStore(path string) *memoryStore {
@@ -128,6 +132,8 @@ func newMemoryStore(path string) *memoryStore {
 		audit:        []AuditEntry{},
 		snapshotPath: path,
 		projectKeys:  map[string][]*ProjectKey{},
+		exportJobs:   map[string]*ExportJob{},
+		lastExport:   map[string]time.Time{},
 	}
 }
 
@@ -177,6 +183,10 @@ func (s *memoryStore) updateScale(sc *Scale) bool {
 	}
 	if sc.CollectEmail != "" {
 		old.CollectEmail = sc.CollectEmail
+	}
+	// Region update (E2EEEnabled toggled in router to avoid unintended zeroing)
+	if sc.Region != "" {
+		old.Region = sc.Region
 	}
 	s.saveLocked()
 	return true
@@ -634,6 +644,66 @@ func (s *memoryStore) saveUnlocked() {
 	}
 	_ = os.WriteFile(tmp, b, 0o600)
 	_ = os.Rename(tmp, s.snapshotPath)
+}
+
+// --- Export jobs (ephemeral) ---
+type ExportJob struct {
+	ID        string
+	TenantID  string
+	ScaleID   string
+	Token     string
+	RequestIP string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+func (s *memoryStore) createExportJob(tid, scaleID, ip string, ttl time.Duration) *ExportJob {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// prune expired
+	now := time.Now()
+	for id, j := range s.exportJobs {
+		if now.After(j.ExpiresAt) {
+			delete(s.exportJobs, id)
+		}
+	}
+	// generate id + token
+	rb := make([]byte, 12)
+	_, _ = rand.Read(rb)
+	id := base64.RawURLEncoding.EncodeToString(rb)
+	tb := make([]byte, 24)
+	_, _ = rand.Read(tb)
+	tok := base64.RawURLEncoding.EncodeToString(tb)
+	job := &ExportJob{ID: id, TenantID: tid, ScaleID: scaleID, Token: tok, RequestIP: ip, CreatedAt: now, ExpiresAt: now.Add(ttl)}
+	s.exportJobs[id] = job
+	return job
+}
+
+func (s *memoryStore) getExportJob(id, token string) *ExportJob {
+	s.mu.RLock()
+	job := s.exportJobs[id]
+	s.mu.RUnlock()
+	if job == nil {
+		return nil
+	}
+	if time.Now().After(job.ExpiresAt) {
+		return nil
+	}
+	if token == "" || token != job.Token {
+		return nil
+	}
+	return job
+}
+
+func (s *memoryStore) allowExport(tid string, minInterval time.Duration) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	last := s.lastExport[tid]
+	if !last.IsZero() && time.Since(last) < minInterval {
+		return false
+	}
+	s.lastExport[tid] = time.Now()
+	return true
 }
 
 // --- Encryption helpers (AES-256-GCM with random nonce) ---

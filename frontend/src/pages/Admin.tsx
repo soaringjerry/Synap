@@ -9,6 +9,8 @@ export function Admin() {
   const [nameEn, setNameEn] = useState('')
   const [nameZh, setNameZh] = useState('')
   const [points, setPoints] = useState(5)
+  const [e2ee, setE2ee] = useState(true)
+  const [region, setRegion] = useState<'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa'>('auto')
   const [msg, setMsg] = useState('')
 
   async function loadScales() {
@@ -22,7 +24,7 @@ export function Admin() {
   async function createScale() {
     setMsg('')
     try {
-      const body = { name_i18n: { en: nameEn, zh: nameZh }, points }
+      const body = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region }
       await adminCreateScale(body as any)
       setNameEn(''); setNameZh(''); setPoints(5); loadScales()
     } catch (e:any) { setMsg(e.message||String(e)) }
@@ -56,6 +58,16 @@ export function Admin() {
           <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={nameEn} onChange={e=>setNameEn(e.target.value)} /></div>
           <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={nameZh} onChange={e=>setNameZh(e.target.value)} /></div>
           <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} /></div>
+          <div className="item"><label><input className="checkbox" type="checkbox" checked={e2ee} onChange={e=> setE2ee(e.target.checked)} /> {t('e2ee.enable_label')||'Enable E2EE (default)'}</label></div>
+          <div className="item"><div className="label">{t('e2ee.region')||'Region'}</div>
+            <select className="select" value={region} onChange={e=> setRegion(e.target.value as any)}>
+              <option value="auto">auto</option>
+              <option value="gdpr">gdpr</option>
+              <option value="pipl">pipl</option>
+              <option value="pdpa">pdpa</option>
+              <option value="ccpa">ccpa</option>
+            </select>
+          </div>
           <button className="btn btn-primary" onClick={createScale}>{t('create')}</button>
         </section>
         {/* Per-item add/edit is available in per-scale management */}

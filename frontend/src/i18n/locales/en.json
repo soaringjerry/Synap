@@ -91,6 +91,22 @@
     "participant_link": "Participant Link",
     "share_desc": "Share this URL with participants to answer the survey directly.",
 
+    "e2ee": {
+      "title": "End‑to‑end Encryption",
+      "desc": "Encrypt answers in the browser. The server only stores ciphertext and cannot read your content.",
+      "enable_label": "Enable E2EE (default on)",
+      "disable_confirm_title": "Turn OFF E2EE? This exposes responses to server‑side processing.",
+      "disable_confirm_second": "Are you absolutely sure? This action will be audited.",
+      "region": "Region",
+      "region_strong": "Warning: For GDPR/PIPL projects, E2EE is strongly recommended.",
+      "region_soft": "Note: Consider enabling E2EE for better privacy.",
+      "enabled_hint": "E2EE is ON. Only registered recipients with project keys can decrypt.",
+      "export_title": "Export Encrypted Bundle",
+      "export_desc": "Create a short‑lived link containing ciphertext + signed manifest (Ed25519).",
+      "export_button": "Create Export",
+      "export_ready": "Export link prepared (opened in new tab)."
+    },
+
     "cookie": {
       "title": "Cookies",
       "desc": "We use necessary cookies to run the site. You can opt in to analytics or third‑party cookies. This service uses Cloudflare CDN for performance and security.",

@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -133,6 +135,10 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 	}
 	if sc.Points == 0 {
 		sc.Points = 5
+	}
+	if !sc.E2EEEnabled {
+		// default E2EE to on unless explicitly set false
+		sc.E2EEEnabled = true
 	}
 	sc.TenantID = tid
 	rt.store.addScale(&sc)
@@ -583,44 +589,114 @@ func (rt *Router) handleE2EEResponse(w http.ResponseWriter, r *http.Request) {
 // GET /api/exports/e2ee?scale_id=...
 // Requires X-Step-Up: true header for step-up confirmation (MVP stub)
 func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if r.Header.Get("X-Step-Up") != "true" {
-		http.Error(w, "step-up required", http.StatusForbidden)
-		return
-	}
 	tid, ok := middleware.TenantIDFromContext(r.Context())
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	scaleID := r.URL.Query().Get("scale_id")
-	if scaleID == "" {
-		http.Error(w, "scale_id required", http.StatusBadRequest)
+
+	switch r.Method {
+	case http.MethodPost:
+		if r.Header.Get("X-Step-Up") != "true" {
+			http.Error(w, "step-up required", http.StatusForbidden)
+			return
+		}
+		var in struct {
+			ScaleID string `json:"scale_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil || strings.TrimSpace(in.ScaleID) == "" {
+			http.Error(w, "scale_id required", http.StatusBadRequest)
+			return
+		}
+		sc := rt.store.getScale(in.ScaleID)
+		if sc == nil || sc.TenantID != tid {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		if !rt.store.allowExport(tid, 5*time.Second) {
+			http.Error(w, "too many requests", http.StatusTooManyRequests)
+			return
+		}
+		ip := r.Header.Get("X-Forwarded-For")
+		if ip == "" {
+			ip = r.RemoteAddr
+		}
+		job := rt.store.createExportJob(tid, in.ScaleID, ip, 5*time.Minute)
+		rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_request", Target: in.ScaleID, Note: job.ID})
+		url := fmt.Sprintf("/api/exports/e2ee?job=%s&token=%s", job.ID, job.Token)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"url": url, "expires_at": job.ExpiresAt.UTC().Format(time.RFC3339)})
+		return
+	case http.MethodGet:
+		// If a job token is provided, use tokenized download; else allow legacy scale_id path with step-up
+		if jobID := r.URL.Query().Get("job"); jobID != "" {
+			token := r.URL.Query().Get("token")
+			job := rt.store.getExportJob(jobID, token)
+			if job == nil || job.TenantID != tid {
+				http.Error(w, "invalid or expired job", http.StatusForbidden)
+				return
+			}
+			sc := rt.store.getScale(job.ScaleID)
+			if sc == nil || sc.TenantID != tid {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			rs := rt.store.listE2EEResponses(job.ScaleID)
+			manifest := map[string]any{
+				"version":    1,
+				"type":       "e2ee-bundle",
+				"scale_id":   job.ScaleID,
+				"count":      len(rs),
+				"created_at": time.Now().UTC().Format(time.RFC3339),
+			}
+			mb, _ := json.Marshal(manifest)
+			sig := ""
+			if rt.signPriv != nil {
+				sig = base64.StdEncoding.EncodeToString(ed25519.Sign(rt.signPriv, mb))
+			}
+			// audit with manifest hash
+			h := sha256.Sum256(mb)
+			rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_download", Target: job.ScaleID, Note: base64.StdEncoding.EncodeToString(h[:])})
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Disposition", "attachment; filename=e2ee_bundle.json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"manifest": manifest, "signature": sig, "responses": rs})
+			return
+		}
+		// Legacy path: requires step-up header and query scale_id
+		if r.Header.Get("X-Step-Up") != "true" {
+			http.Error(w, "step-up required", http.StatusForbidden)
+			return
+		}
+		scaleID := r.URL.Query().Get("scale_id")
+		if scaleID == "" {
+			http.Error(w, "scale_id required", http.StatusBadRequest)
+			return
+		}
+		sc := rt.store.getScale(scaleID)
+		if sc == nil || sc.TenantID != tid {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		rs := rt.store.listE2EEResponses(scaleID)
+		manifest := map[string]any{
+			"version":    1,
+			"type":       "e2ee-bundle",
+			"scale_id":   scaleID,
+			"count":      len(rs),
+			"created_at": time.Now().UTC().Format(time.RFC3339),
+		}
+		mb, _ := json.Marshal(manifest)
+		sig := ""
+		if rt.signPriv != nil {
+			sig = base64.StdEncoding.EncodeToString(ed25519.Sign(rt.signPriv, mb))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"manifest": manifest, "signature": sig, "responses": rs})
+		return
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	sc := rt.store.getScale(scaleID)
-	if sc == nil || sc.TenantID != tid {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	rs := rt.store.listE2EEResponses(scaleID)
-	manifest := map[string]any{
-		"version":    1,
-		"type":       "e2ee-bundle",
-		"scale_id":   scaleID,
-		"count":      len(rs),
-		"created_at": time.Now().UTC().Format(time.RFC3339),
-	}
-	mb, _ := json.Marshal(manifest)
-	sig := ""
-	if rt.signPriv != nil {
-		sig = base64.StdEncoding.EncodeToString(ed25519.Sign(rt.signPriv, mb))
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"manifest": manifest, "signature": sig, "responses": rs})
 }
 
 // --- Rewrap jobs (offline pure E2EE) ---
@@ -1173,21 +1249,64 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(sc)
 		return
 	case http.MethodPut:
-		var in Scale
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		// decode into map to detect presence of fields like e2ee_enabled (bool)
+		var raw map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		in.ID = id
-		// audit if e2ee or region changes
+		// Build partial Scale for updateScale-compatible fields
+		in := Scale{ID: id}
+		if v, ok := raw["name_i18n"]; ok {
+			if m, ok2 := v.(map[string]any); ok2 {
+				in.NameI18n = map[string]string{}
+				for k, vv := range m {
+					in.NameI18n[k] = toString(vv)
+				}
+			}
+		}
+		if v, ok := raw["points"].(float64); ok {
+			in.Points = int(v)
+		}
+		if v, ok := raw["randomize"].(bool); ok {
+			in.Randomize = v
+		}
+		if v, ok := raw["consent_i18n"]; ok {
+			if m, ok2 := v.(map[string]any); ok2 {
+				in.ConsentI18n = map[string]string{}
+				for k, vv := range m {
+					in.ConsentI18n[k] = toString(vv)
+				}
+			}
+		}
+		if v, ok := raw["collect_email"].(string); ok {
+			in.CollectEmail = v
+		}
+		if v, ok := raw["region"].(string); ok {
+			in.Region = v
+		}
+
+		// keep a copy of old for auditing before mutations
 		old := rt.store.getScale(id)
 		if ok := rt.store.updateScale(&in); !ok {
 			http.NotFound(w, r)
 			return
 		}
+		// Explicit E2EE toggle handling and audit
 		if old != nil {
-			if in.E2EEEnabled != old.E2EEEnabled {
-				rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "e2ee_toggle", Target: id, Note: map[bool]string{true: "on", false: "off"}[in.E2EEEnabled]})
+			if v, ok := raw["e2ee_enabled"].(bool); ok {
+				// toggle and audit
+				if v != old.E2EEEnabled {
+					// apply change
+					old.E2EEEnabled = v
+					action := "e2ee_enable"
+					note := "on"
+					if !v {
+						action = "e2ee_disable"
+						note = "off"
+					}
+					rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: action, Target: id, Note: note})
+				}
 			}
 			if in.Region != "" && in.Region != old.Region {
 				rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
@@ -1215,6 +1334,18 @@ func actorEmail(r *http.Request) string {
 		return c.Email
 	}
 	return "admin"
+}
+
+func toString(v any) string {
+	switch t := v.(type) {
+	case string:
+		return t
+	case fmt.Stringer:
+		return t.String()
+	default:
+		b, _ := json.Marshal(v)
+		return strings.Trim(string(b), "\"")
+	}
 }
 
 // PUT /api/admin/items/{id}  -> update item (stem_i18n, reverse_scored)

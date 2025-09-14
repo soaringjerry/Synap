@@ -45,11 +45,15 @@ Future (planned):
 
 ### Export & Evidence (MVP)
 
-- GET `/api/exports/e2ee?scale_id=...` — returns `{ manifest, signature, responses }`
-  - Requires auth and header `X-Step-Up: true` (MVP stub; plug your MFA gateway here).
+- POST `/api/exports/e2ee` — create export job (auth + `X-Step-Up: true`)
+  - Body: `{ scale_id }`
+  - Returns `{ url, expires_at }` — short‑lived link to download
+- GET `/api/exports/e2ee?job=...&token=...` — download `{ manifest, signature, responses }`
   - `manifest` includes: `version`, `type=e2ee-bundle`, `scale_id`, `count`, `created_at`.
   - `signature`: Ed25519 signature over `JSON(manifest)`; seed from `SYNAP_SIGN_SEED` (base64 32B) or ephemeral per boot.
-  - `responses`: array of encrypted submissions (ciphertext/nonces/encDEK...)
+  - Audit: `export_e2ee_request` and `export_e2ee_download` recorded with actor and manifest hash.
+  - Basic per‑tenant rate limit enforced.
+  - Legacy: `GET /api/exports/e2ee?scale_id=...` with `X-Step-Up: true` still works.
 
 ### Re-wrap (MVP, pure E2EE offline)
 
@@ -62,6 +66,7 @@ Future (planned):
 
 - E2EE toggle (default ON) and Region (auto|gdpr|pipl|pdpa|ccpa)
 - Project Keys section: add and list public keys
+ - Disabling E2EE triggers a red double confirmation and an audit record (`e2ee_disable`).
 
 Planned UX:
 - Strong red warning + audit when turning E2EE OFF (especially gdpr/pipl projects)
