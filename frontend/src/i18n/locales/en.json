@@ -110,7 +110,9 @@
       "self_manage_hint": "You can export or delete your submission using the links below. Keep them safe.",
       "self_export": "Export my data",
       "self_delete": "Delete my data",
-      "download_consent": "Download consent copy"
+      "download_consent": "Download consent copy",
+      "download_consent_pdf": "Download consent (PDF)",
+      "download_data_pdf": "Download my data (PDF)"
     },
     "learn_more": "Learn more",
     "consent_custom": "Consent",

@@ -110,7 +110,9 @@
       "self_manage_hint": "你可以随时通过以下链接导出或删除本次提交。请妥善保管这些链接。",
       "self_export": "导出我的数据",
       "self_delete": "删除我的数据",
-      "download_consent": "下载知情同意副本"
+      "download_consent": "下载知情同意（JSON）",
+      "download_consent_pdf": "下载知情同意（PDF）",
+      "download_data_pdf": "下载我的数据（PDF）"
     },
     "learn_more": "了解更多",
     "consent_custom": "知情同意",

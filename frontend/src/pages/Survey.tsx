@@ -113,6 +113,71 @@ export function Survey() {
     return t(`survey.consent_opt.${opt.key}`) as string
   }
 
+  function openPrintWindow(title: string, bodyHtml: string) {
+    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>${title}</title>
+      <style>
+        body{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif; color:#111; }
+        .wrap{ max-width: 820px; margin: 24px auto; padding: 0 16px; }
+        h1{ font-size: 20px; margin: 0 0 8px; }
+        h2{ font-size: 16px; margin: 18px 0 8px; }
+        .meta{ color:#555; font-size: 12px; margin-bottom: 8px; }
+        table{ width:100%; border-collapse: collapse; }
+        th, td{ border:1px solid #ddd; padding:8px; font-size: 13px; vertical-align: top; }
+        th{ background:#f7f7f7; text-align:left; }
+        .sig{ border:1px dashed #ccc; width: 100%; height: 120px; display: grid; place-items:center; margin-top:6px }
+        .muted{ color:#666; font-size: 12px; }
+      </style></head><body><div class="wrap">${bodyHtml}</div></body></html>`
+    const w = window.open('', '_blank', 'noopener,noreferrer')
+    if (!w) return
+    w.document.open(); w.document.write(html); w.document.close()
+    w.focus(); setTimeout(()=> { try { w.print() } catch {} }, 200)
+  }
+
+  async function downloadConsentPDF() {
+    if (!consentEvidence) return
+    const ev = consentEvidence
+    const title = (lang==='zh' ? '知情同意凭证' : 'Consent Receipt') + ` · ${ev.scale_id}`
+    const opts = Object.entries(ev.options||{}).map(([k, v])=> `<tr><td>${k}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`).join('')
+    const sigBlock = ev.signature?.image ? `<img alt="signature" src="${ev.signature.image}" style="max-width:100%; max-height:120px; border:1px solid #ddd;"/>` : `<div class="sig">${lang==='zh'?'（无手写签名）':'(No drawn signature)'} · ${ev.signature?.kind||'none'}</div>`
+    const body = `
+      <h1>${title}</h1>
+      <div class="meta">${lang==='zh'?'版本':'Version'} ${ev.version} · ${lang==='zh'?'语言':'Locale'} ${ev.locale} · ${new Date(ev.ts).toLocaleString()}</div>
+      <h2>${lang==='zh'?'确认选项':'Confirmations'}</h2>
+      <table><thead><tr><th>${lang==='zh'?'键名':'Key'}</th><th>${lang==='zh'?'选择':'Choice'}</th></tr></thead><tbody>${opts}</tbody></table>
+      <h2>${lang==='zh'?'签名':'Signature'}</h2>
+      ${sigBlock}
+      <div class="muted" style="margin-top:12px">${lang==='zh'?'本文件用于参与者留存，非技术格式。':'This receipt is for participant records (human‑readable).'} · ID: ${ev.scale_id}</div>
+    `
+    openPrintWindow(title, body)
+  }
+
+  async function downloadDataPDF() {
+    if (!selfManage?.exportUrl) return
+    try {
+      const res = await fetch(selfManage.exportUrl)
+      if (!res.ok) throw new Error(await res.text())
+      const json = await res.json()
+      // Try to map item_id -> stem in current language
+      const stemMap: Record<string,string> = {}
+      for (const it of items) stemMap[it.id] = it.stem || it.id
+      const rows = (json.responses||json.answers||[]).map((r:any)=> {
+        const id = r.item_id || r.id
+        const stem = stemMap[id] || id
+        const val = r.raw ?? r.value ?? ''
+        return `<tr><td>${stem}</td><td>${Array.isArray(val)? val.join(', ') : String(val)}</td></tr>`
+      }).join('')
+      const title = (lang==='zh'?'我的作答导出':'My Submission Export')
+      const body = `
+        <h1>${title}</h1>
+        <div class="meta">${new Date().toLocaleString()} · ${lang==='zh'?'仅供个人留存':'For personal records'}</div>
+        <table><thead><tr><th>${lang==='zh'?'题目':'Question'}</th><th>${lang==='zh'?'作答':'Answer'}</th></tr></thead><tbody>${rows}</tbody></table>
+      `
+      openPrintWindow(title, body)
+    } catch(e:any) {
+      setMsg(e.message||String(e))
+    }
+  }
+
   if (!consented) {
     return (
       <div className="card span-12">
@@ -331,18 +396,26 @@ export function Survey() {
           <div className="muted" style={{marginTop:4}}>{t('survey.self_manage_hint')||'You can export or delete your submission using the links below. Keep them safe.'}</div>
           <div className="cta-row" style={{marginTop:8, display:'flex', gap:8, flexWrap:'wrap'}}>
             {!!consentEvidence && (
-              <button className="btn btn-ghost" onClick={()=>{
-                try {
-                  const blob = new Blob([JSON.stringify(consentEvidence, null, 2)], { type: 'application/json' })
-                  const a = document.createElement('a')
-                  a.href = URL.createObjectURL(blob)
-                  a.download = `consent_${scaleId}_${Date.now()}.json`
-                  a.click()
-                  URL.revokeObjectURL(a.href)
-                } catch {}
-              }}>{t('survey.download_consent')||'Download consent copy'}</button>
+              <>
+                <button className="btn" onClick={downloadConsentPDF}>{t('survey.download_consent_pdf')||'Download consent (PDF)'}</button>
+                <button className="btn btn-ghost" onClick={()=>{
+                  try {
+                    const blob = new Blob([JSON.stringify(consentEvidence, null, 2)], { type: 'application/json' })
+                    const a = document.createElement('a')
+                    a.href = URL.createObjectURL(blob)
+                    a.download = `consent_${scaleId}_${Date.now()}.json`
+                    a.click()
+                    URL.revokeObjectURL(a.href)
+                  } catch {}
+                }}>{t('survey.download_consent')||'Download consent (JSON)'}</button>
+              </>
             )}
-            {selfManage.exportUrl && <a className="btn" href={selfManage.exportUrl} target="_blank" rel="noreferrer">{t('survey.self_export')||'Export my data'}</a>}
+            {selfManage.exportUrl && !e2ee && (
+              <>
+                <button className="btn" onClick={downloadDataPDF}>{t('survey.download_data_pdf')||'Download my data (PDF)'}</button>
+                <a className="btn btn-ghost" href={selfManage.exportUrl} target="_blank" rel="noreferrer">{t('survey.self_export')||'Export my data'}</a>
+              </>
+            )}
             {selfManage.deleteUrl && <a className="btn btn-ghost" href={selfManage.deleteUrl} target="_blank" rel="noreferrer">{t('survey.self_delete')||'Delete my data'}</a>}
           </div>
         </div>
