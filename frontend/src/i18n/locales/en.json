@@ -13,6 +13,7 @@
     "submit_success": "Submitted successfully",
     "delete_success": "Deleted successfully",
     "create_success": "Created successfully",
+    "confirm_reset": "Reset to recommended?",
     "confirm_delete_scale": "Delete this scale and all its items/responses?",
     "confirm_delete_item": "Delete this item and its responses?",
     "confirm_delete_responses": "Delete ALL responses for this scale? This cannot be undone.",
@@ -125,7 +126,22 @@
       "show_advanced": "Show Advanced",
       "hide_advanced": "Hide Advanced",
       "require_signature": "Require signature",
-      "simple_hint": "These are the common confirmations. Click “Advanced” to add your own items."
+      "simple_hint": "These are the common confirmations. Click “Advanced” to add your own items.",
+      "advanced": {
+        "version_hint": "Increase version when content changes; helps manage re‑consent later.",
+        "signature_hint": "When ON, participants must click or draw a signature.",
+        "add_templates": "Quick add (templates):",
+        "key": "Key",
+        "key_hint": "Use lowercase letters/numbers/_/-. Example: recording",
+        "duplicate_key": "Duplicate key",
+        "empty_key": "Key required",
+        "required": "Required",
+        "label_en": "Label (EN)",
+        "label_zh": "Label (ZH)",
+        "add_option": "Add option",
+        "reset_rec": "Reset to Recommended",
+        "save_first_error": "Please fix highlighted fields"
+      }
     },
     "consent_settings": "Consent Settings",
     "admin_console": "Admin Console",

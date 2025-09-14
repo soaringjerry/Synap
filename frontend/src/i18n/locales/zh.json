@@ -13,6 +13,7 @@
     "submit_success": "提交成功",
     "delete_success": "删除成功",
     "create_success": "创建成功",
+    "confirm_reset": "确认重置为推荐？",
     "confirm_delete_scale": "删除该量表及其所有题目与作答？",
     "confirm_delete_item": "删除该题目及其作答？",
     "confirm_delete_responses": "删除该量表的所有作答？此操作不可撤销。",
@@ -125,7 +126,22 @@
       "show_advanced": "展开高级设置",
       "hide_advanced": "收起高级设置",
       "require_signature": "需要签名",
-      "simple_hint": "以上为常见确认项；如需自定义条目，请点“高级设置”。"
+      "simple_hint": "以上为常见确认项；如需自定义条目，请点“高级设置”。",
+      "advanced": {
+        "version_hint": "内容改动时提升版本号，方便后续管理重新同意。",
+        "signature_hint": "开启后，参与者需要点击或手写签名。",
+        "add_templates": "快速添加（模板）：",
+        "key": "键名",
+        "key_hint": "仅限小写字母/数字/_/-，例如：recording",
+        "duplicate_key": "键名重复",
+        "empty_key": "请填写键名",
+        "required": "是否必选",
+        "label_en": "显示文案（英文）",
+        "label_zh": "显示文案（中文）",
+        "add_option": "添加条目",
+        "reset_rec": "重置为推荐",
+        "save_first_error": "请先修正高亮项"
+      }
     },
     "consent_settings": "知情同意设置",
     "admin_console": "管理控制台",
