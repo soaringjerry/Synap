@@ -82,6 +82,14 @@ export function AdminScale() {
       const a=[...list]; a[idx] = { ...a[idx], required: v }; return a
     })
   }
+  async function saveConsentWith(nextOpts?: typeof consentOptions, nextSig?: boolean) {
+    try {
+      const options = (nextOpts || consentOptions).map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
+      await adminUpdateScale(id, { consent_config: { version: consentVersion||'v1', options, signature_required: typeof nextSig==='boolean'? nextSig : !!signatureRequired } } as any)
+      setMsg(t('saved') as string)
+      toast.success(t('save_success')||t('saved')||'Saved')
+    } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
+  }
   function sanitizeKey(input: string) {
     return input.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '').slice(0, 32)
   }
@@ -404,16 +412,16 @@ export function AdminScale() {
               <div className="tile" style={{padding:10}}>
                 <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')||'Ask participants to confirm:'}</div>
                 <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('withdrawal')?.required} onChange={e=> setOptRequired('withdrawal', e.target.checked)} /> {t('survey.consent_opt.withdrawal')||'I understand I can withdraw at any time.'}
+                  <input className="checkbox" type="checkbox" checked={!!getOpt('withdrawal')?.required} onChange={e=> { const next = consentOptions.some(o=>o.key==='withdrawal')? consentOptions.map(o=> o.key==='withdrawal'? {...o, required:e.target.checked}:o) : [...consentOptions, {key:'withdrawal', required:e.target.checked}]; setConsentOptions(next as any); saveConsentWith(next) }} /> {t('survey.consent_opt.withdrawal')||'I understand I can withdraw at any time.'}
                 </label>
                 <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('data_use')?.required} onChange={e=> setOptRequired('data_use', e.target.checked)} /> {t('survey.consent_opt.data_use')||'I understand my data is for academic/aggregate use only.'}
+                  <input className="checkbox" type="checkbox" checked={!!getOpt('data_use')?.required} onChange={e=> { const next = consentOptions.some(o=>o.key==='data_use')? consentOptions.map(o=> o.key==='data_use'? {...o, required:e.target.checked}:o) : [...consentOptions, {key:'data_use', required:e.target.checked}]; setConsentOptions(next as any); saveConsentWith(next) }} /> {t('survey.consent_opt.data_use')||'I understand my data is for academic/aggregate use only.'}
                 </label>
                 <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('recording')?.required} onChange={e=> setOptRequired('recording', e.target.checked)} /> {t('survey.consent_opt.recording')||'I consent to audio/video recording where applicable.'}
+                  <input className="checkbox" type="checkbox" checked={!!getOpt('recording')?.required} onChange={e=> { const next = consentOptions.some(o=>o.key==='recording')? consentOptions.map(o=> o.key==='recording'? {...o, required:e.target.checked}:o) : [...consentOptions, {key:'recording', required:e.target.checked}]; setConsentOptions(next as any); saveConsentWith(next) }} /> {t('survey.consent_opt.recording')||'I consent to audio/video recording where applicable.'}
                 </label>
                 <label className="item" style={{display:'flex',alignItems:'center',gap:8, marginTop:6}}>
-                  <input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> {t('consent.require_signature')||'Require signature'}
+                  <input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> { setSignatureRequired(e.target.checked); saveConsentWith(undefined, e.target.checked) }} /> {t('consent.require_signature')||'Require signature'}
                 </label>
                 <div className="cta-row" style={{marginTop:8}}>
                   <button className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
@@ -705,6 +713,15 @@ export function AdminScale() {
                 <textarea className="input" rows={6} value={scale.consent_i18n?.zh||''} onChange={e=> setScale((s:any)=> ({...s, consent_i18n: {...(s.consent_i18n||{}), zh: e.target.value }}))} />
               </div>
               <div className="muted">{t('consent_hint')||'Optional, leave blank to use default consent text. Newlines preserved.'}</div>
+              <div className="muted">{t('consent_md_hint')||'Markdown supported: headings, lists, links, bold/italic, code.'}</div>
+              <div className="cta-row" style={{marginTop:8}}>
+                <button className="btn" onClick={async()=>{
+                  try {
+                    await adminUpdateScale(id, { consent_i18n: scale.consent_i18n } as any)
+                    setMsg(t('saved') as string); toast.success(t('save_success')||t('saved')||'Saved')
+                  } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
+                }}>{t('save')||'Save'}</button>
+              </div>
             </div>
           </div>
         </section>

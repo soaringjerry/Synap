@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign, participantSelfDelete, e2eeSelfDelete } from '../api/client'
 import { e2eeInit, encryptForProject } from '../crypto/e2ee'
+import { mdToHtml } from '../utils/markdown'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../components/Toast'
 
@@ -279,7 +280,7 @@ export function Survey() {
         {consentCustom && (
           <div className="item">
             <div className="label">{t('consent_custom')}</div>
-            <div className="muted" style={{whiteSpace:'pre-wrap'}}>{consentCustom}</div>
+            <div className="tile" style={{padding:12}} dangerouslySetInnerHTML={{ __html: mdToHtml(consentCustom) }} />
           </div>
         )}
         {/* Interactive options */}
