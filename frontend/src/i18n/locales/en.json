@@ -113,7 +113,8 @@
       "self_delete": "Delete my data",
       "download_consent": "Download consent copy",
       "download_consent_pdf": "Download consent (PDF)",
-      "download_data_pdf": "Download my data (PDF)"
+      "download_data_pdf": "Download my data (PDF)",
+      "e2ee_on": "This survey uses end‑to‑end encryption. Your answers are encrypted in your browser."
     },
     "learn_more": "Learn more",
     "consent_custom": "Consent",

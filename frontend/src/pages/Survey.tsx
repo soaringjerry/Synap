@@ -301,6 +301,11 @@ export function Survey() {
           <span>{progress}%</span>
         </div>
       </div>
+      {e2ee && (
+        <div className="tile" style={{padding:8, marginTop:8}}>
+          <div className="muted">{t('survey.e2ee_on') || 'This survey uses end‑to‑end encryption. Your answers are encrypted in your browser.'}</div>
+        </div>
+      )}
       {collectEmail!=='off' && (
         <div className="item">
           <div className="label">{t('survey.email_optional')}{collectEmail==='required'?' *':''}</div>
