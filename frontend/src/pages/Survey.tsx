@@ -27,10 +27,12 @@ export function Survey() {
   const [points, setPoints] = useState<number>(5)
   const [collectEmail, setCollectEmail] = useState<'off'|'optional'|'required'>('optional')
   const [e2ee, setE2ee] = useState(false)
+  const [metaReady, setMetaReady] = useState(false)
   const toast = useToast()
 
   async function loadMeta() {
     try {
+      setMetaReady(false)
       const meta = await getScaleMeta(scaleId)
       const c = (meta.consent_i18n && (meta.consent_i18n[lang] || meta.consent_i18n['en'])) || ''
       setConsentCustom(c || '')
@@ -39,6 +41,7 @@ export function Survey() {
       setE2ee(!!(meta as any).e2ee_enabled)
       setConsentConfig(meta.consent_config || null)
     } catch {}
+    setMetaReady(true)
   }
   async function loadOrSeed() {
     setLoading(true)
@@ -205,6 +208,14 @@ export function Survey() {
   }
 
   if (!consented) {
+    if (!metaReady) {
+      return (
+        <div className="card span-12">
+          <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
+          <div className="muted">{t('survey.loading')||'Loading items…'}</div>
+        </div>
+      )
+    }
     return (
       <div className="card span-12">
         <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
