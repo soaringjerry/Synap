@@ -10,25 +10,44 @@ import (
 	"strings"
 	"time"
 
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/base64"
 	"github.com/google/uuid"
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
 	"golang.org/x/crypto/bcrypt"
 	"log"
+	"os"
 )
 
 type Router struct {
-	store *memoryStore
+	store    *memoryStore
+	signPriv ed25519.PrivateKey
 }
 
 func NewRouter() *Router {
 	// Optionally load snapshot from disk via SYNAP_DB_PATH (MVP persistence)
 	// If empty or unavailable, fall back to pure in-memory.
 	if s := newMemoryStoreFromEnv(); s != nil {
-		return &Router{store: s}
+		return &Router{store: s, signPriv: deriveSignKey()}
 	}
 	log.Printf("persistence disabled: set SYNAP_DB_PATH and SYNAP_ENC_KEY to enable encrypted storage")
-	return &Router{store: newMemoryStore("")}
+	return &Router{store: newMemoryStore(""), signPriv: deriveSignKey()}
+}
+
+func deriveSignKey() ed25519.PrivateKey {
+	seedB64 := strings.TrimSpace(os.Getenv("SYNAP_SIGN_SEED"))
+	if seedB64 != "" {
+		if seed, err := base64.StdEncoding.DecodeString(seedB64); err == nil && len(seed) == ed25519.SeedSize {
+			return ed25519.NewKeyFromSeed(seed)
+		}
+	}
+	seed := make([]byte, ed25519.SeedSize)
+	if _, err := rand.Read(seed); err == nil {
+		return ed25519.NewKeyFromSeed(seed)
+	}
+	return nil
 }
 
 func (rt *Router) Register(mux *http.ServeMux) {
@@ -60,6 +79,11 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/projects/", rt.handleProjectKeys)
 	// E2EE encrypted responses (public submission)
 	mux.HandleFunc("/api/responses/e2ee", rt.handleE2EEResponse)
+	// Export encrypted bundle (auth + step-up header)
+	mux.Handle("/api/exports/e2ee", middleware.WithAuth(http.HandlerFunc(rt.handleExportE2EE)))
+	// Rewrap (auth)
+	mux.Handle("/api/rewrap/jobs", middleware.WithAuth(http.HandlerFunc(rt.handleRewrapJobs)))
+	mux.Handle("/api/rewrap/submit", middleware.WithAuth(http.HandlerFunc(rt.handleRewrapSubmit)))
 }
 
 // POST /api/seed — create a sample scale+items
@@ -555,6 +579,125 @@ func (rt *Router) handleE2EEResponse(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "response_id": rid})
 }
 
+// --- Export encrypted bundle (JSONL.enc-like JSON for MVP) ---
+// GET /api/exports/e2ee?scale_id=...
+// Requires X-Step-Up: true header for step-up confirmation (MVP stub)
+func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.Header.Get("X-Step-Up") != "true" {
+		http.Error(w, "step-up required", http.StatusForbidden)
+		return
+	}
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	scaleID := r.URL.Query().Get("scale_id")
+	if scaleID == "" {
+		http.Error(w, "scale_id required", http.StatusBadRequest)
+		return
+	}
+	sc := rt.store.getScale(scaleID)
+	if sc == nil || sc.TenantID != tid {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	rs := rt.store.listE2EEResponses(scaleID)
+	manifest := map[string]any{
+		"version":    1,
+		"type":       "e2ee-bundle",
+		"scale_id":   scaleID,
+		"count":      len(rs),
+		"created_at": time.Now().UTC().Format(time.RFC3339),
+	}
+	mb, _ := json.Marshal(manifest)
+	sig := ""
+	if rt.signPriv != nil {
+		sig = base64.StdEncoding.EncodeToString(ed25519.Sign(rt.signPriv, mb))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"manifest": manifest, "signature": sig, "responses": rs})
+}
+
+// --- Rewrap jobs (offline pure E2EE) ---
+// POST /api/rewrap/jobs  { scale_id, from_fp, to_fp }
+// Returns a minimal job containing response_id and existing encDEK[]
+func (rt *Router) handleRewrapJobs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var in struct{ ScaleID, FromFP, ToFP string }
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	sc := rt.store.getScale(in.ScaleID)
+	if sc == nil || sc.TenantID != tid {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	rs := rt.store.listE2EEResponses(in.ScaleID)
+	type item struct {
+		ResponseID string   `json:"response_id"`
+		EncDEK     []string `json:"enc_dek"`
+	}
+	out := make([]item, 0, len(rs))
+	for _, r2 := range rs {
+		out = append(out, item{ResponseID: r2.ResponseID, EncDEK: r2.EncDEK})
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": in.ScaleID, "from_fp": in.FromFP, "to_fp": in.ToFP, "items": out})
+}
+
+// POST /api/rewrap/submit  { scale_id, to_fp, items:[{response_id, enc_dek_new}] }
+func (rt *Router) handleRewrapSubmit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var in struct {
+		ScaleID, ToFP string
+		Items         []struct {
+			ResponseID string `json:"response_id"`
+			EncDEKNew  string `json:"enc_dek_new"`
+		}
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	sc := rt.store.getScale(in.ScaleID)
+	if sc == nil || sc.TenantID != tid {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	// append new encDEK
+	// naive O(n^2) since MVP and data size small
+	for _, it := range in.Items {
+		list := rt.store.listE2EEResponses(in.ScaleID)
+		for _, r2 := range list {
+			if r2.ResponseID == it.ResponseID {
+				r2.EncDEK = append(r2.EncDEK, it.EncDEKNew)
+			}
+		}
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "to_fp": in.ToFP, "count": len(in.Items)})
+}
+
 // --- Admin AI config ---
 // GET -> fetch current tenant AI config
 // PUT -> update AI config { openai_key?, openai_base?, allow_external, store_logs }
@@ -1036,9 +1179,19 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		in.ID = id
+		// audit if e2ee or region changes
+		old := rt.store.getScale(id)
 		if ok := rt.store.updateScale(&in); !ok {
 			http.NotFound(w, r)
 			return
+		}
+		if old != nil {
+			if in.E2EEEnabled != old.E2EEEnabled {
+				rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "e2ee_toggle", Target: id, Note: map[bool]string{true: "on", false: "off"}[in.E2EEEnabled]})
+			}
+			if in.Region != "" && in.Region != old.Region {
+				rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
+			}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
@@ -1055,6 +1208,13 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+}
+
+func actorEmail(r *http.Request) string {
+	if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
+		return c.Email
+	}
+	return "admin"
 }
 
 // PUT /api/admin/items/{id}  -> update item (stem_i18n, reverse_scored)
