@@ -366,6 +366,11 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "scale not found", http.StatusNotFound)
 		return
 	}
+	// E2EE projects must not accept plaintext submissions
+	if sc.E2EEEnabled {
+		http.Error(w, "plaintext submissions are disabled for E2EE projects", http.StatusBadRequest)
+		return
+	}
 	pid := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
 	p := &Participant{ID: pid, Email: req.Participant.Email}
 	if req.ConsentID != "" {
@@ -454,6 +459,7 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	scaleID := r.URL.Query().Get("scale_id")
 	format := r.URL.Query().Get("format")
+	sc := rt.store.getScale(scaleID)
 	// consent header naming: key (default) | label_en | label_zh
 	consentHeader := r.URL.Query().Get("consent_header")
 	if consentHeader == "" {
@@ -465,6 +471,11 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 	if format == "" {
 		format = "long"
+	}
+	// Disallow plaintext CSV exports for E2EE projects
+	if sc != nil && sc.E2EEEnabled {
+		http.Error(w, "CSV exports are disabled for E2EE projects", http.StatusBadRequest)
+		return
 	}
 	items := rt.store.listItems(scaleID)
 	rs := rt.store.listResponsesByScale(scaleID)

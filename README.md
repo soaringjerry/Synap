@@ -74,7 +74,7 @@ Participant self‑management:
 
 Participant UX:
 - An E2EE notice is shown when end‑to‑end encryption is enabled (answers are encrypted in the browser and only visible to admins holding the keys — even the platform cannot read them).
-- Consent receipt supports printing to PDF (a stable print view opens via a blob URL; if blocked, an HTML fallback is downloaded).
+- Consent receipt supports printing to PDF (a stable print view opens via a blob URL and is generated locally in the browser).
 
 ### Docker (GHCR)
 

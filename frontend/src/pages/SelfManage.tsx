@@ -18,6 +18,75 @@ export function SelfManage() {
 
   const url = React.useMemo(() => window.location.href, [])
 
+  // Try to load context (consent evidence, stems) stored by Survey on redirect
+  const ctx = React.useMemo(() => {
+    try {
+      const k = `synap_self_ctx_${rid || pid}_${token}`
+      const s = sessionStorage.getItem(k)
+      return s ? JSON.parse(s) : null
+    } catch { return null }
+  }, [pid, rid, token])
+
+  function openPrintWindow(title: string, bodyHtml: string): boolean {
+    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>${title}</title>
+      <style>
+        @page { margin: 16mm; }
+        body{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif; color:#111; }
+        .wrap{ max-width: 820px; margin: 24px auto; padding: 0 16px; }
+        h1{ font-size: 20px; margin: 0 0 8px; }
+        h2{ font-size: 16px; margin: 18px 0 8px; }
+        .meta{ color:#555; font-size: 12px; margin-bottom: 8px; }
+        table{ width:100%; border-collapse: collapse; }
+        th, td{ border:1px solid #ddd; padding:8px; font-size: 13px; vertical-align: top; page-break-inside: avoid; }
+        th{ background:#f7f7f7; text-align:left; }
+      </style>
+      <script>window.onload = function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 200); };</script>
+      </head><body><div class="wrap">${bodyHtml}</div></body></html>`
+    try {
+      const blob = new Blob([html], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const w = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!w) { URL.revokeObjectURL(url); return false }
+      setTimeout(()=> URL.revokeObjectURL(url), 60_000)
+      return true
+    } catch { return false }
+  }
+
+  async function downloadConsentPDF() {
+    if (!ctx?.consentEvidence) return
+    const lang = (ctx.lang || 'en').toLowerCase().startsWith('zh')? 'zh' : 'en'
+    const ev = ctx.consentEvidence
+    const idText = rid || pid
+    const title = (lang==='zh' ? '知情同意凭证' : 'Consent Receipt') + (idText? ` · ${idText}` : '')
+    const labelOf = (k: string) => {
+      const fb = (lang==='zh'? '我理解/同意' : 'Confirm')
+      return (k==='withdrawal')? (lang==='zh'?'我理解我可以随时撤回':'I understand I can withdraw at any time')
+        : (k==='data_use')? (lang==='zh'?'我理解我的数据仅用于学术/汇总用途':'I understand my data is for academic/aggregate use only')
+        : (k==='recording')? (lang==='zh'?'我同意在适用时进行录音/录像':'I consent to audio/video recording where applicable')
+        : `${fb}: ${k}`
+    }
+    const rows = Object.entries(ev.options||{}).map(([k,v])=> `<tr><td>${labelOf(k)}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`).join('')
+    const body = `<h1>${title}</h1><div class="meta">${idText? `ID: ${idText}`:''}</div><table><thead><tr><th>${lang==='zh'?'条目':'Item'}</th><th>${lang==='zh'?'选择':'Choice'}</th></tr></thead><tbody>${rows}</tbody></table>`
+    openPrintWindow(title, body)
+  }
+
+  async function downloadDataPDF() {
+    try {
+      const lang = (ctx?.lang || 'en').toLowerCase().startsWith('zh')? 'zh' : 'en'
+      const data = await participantSelfExport(pid, token)
+      const stems: Record<string,string> = (ctx?.stems || {})
+      const rows = (data.responses||[]).map((r:any)=> {
+        const id = r.item_id || r.id
+        const stem = stems[id] || id
+        const val = r.raw_json || r.raw_value || r.score_value || ''
+        return `<tr><td>${stem}</td><td>${typeof val==='string'? val : JSON.stringify(val)}</td></tr>`
+      }).join('')
+      const title = (lang==='zh'?'我的作答导出':'My Submission Export')
+      const body = `<h1>${title}</h1><table><thead><tr><th>${lang==='zh'?'题目':'Question'}</th><th>${lang==='zh'?'作答':'Answer'}</th></tr></thead><tbody>${rows}</tbody></table>`
+      openPrintWindow(title, body)
+    } catch (e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
+  }
+
   async function doExport() {
     setMsg('')
     setDownloading(true)
@@ -73,6 +142,8 @@ export function SelfManage() {
         </div>
         <div className="cta-row" style={{marginTop:8}}>
           <button className="btn" disabled={downloading} onClick={doExport}>{t('self.export')||'Download (JSON)'}</button>
+          {!e2ee && <button className="btn" onClick={downloadDataPDF}>{t('survey.download_data_pdf')||'Download my data (PDF)'}</button>}
+          {ctx?.consentEvidence && <button className="btn" onClick={downloadConsentPDF}>{t('survey.download_consent_pdf')||'Download consent (PDF)'}</button>}
           <button className="btn btn-ghost" disabled={deleting} onClick={doDelete}>{t('self.delete')||'Delete my data'}</button>
         </div>
       </div>

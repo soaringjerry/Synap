@@ -181,7 +181,10 @@ export function Survey() {
     }
     try {
       const res = await postConsentSign({ scale_id: scaleId, version: consentConfig?.version || 'v1', locale: lang, choices: consentChoices, signed_at: evidence.ts, signature_kind: evidence.signature.kind, evidence: JSON.stringify(evidence) })
-      if ((res as any)?.id) setConsentId((res as any).id)
+      if ((res as any)?.id) {
+        setConsentId((res as any).id)
+        ;(evidence as any).consent_record_id = (res as any).id
+      }
     } catch {}
     // Store locally and continue; download will be optional after submit
     setConsentEvidence(evidence)
@@ -227,7 +230,8 @@ export function Survey() {
   async function downloadConsentPDF() {
     if (!consentEvidence) return
     const ev = consentEvidence
-    const title = (lang==='zh' ? '知情同意凭证' : 'Consent Receipt') + ` · ${ev.scale_id}`
+    const idText = (selfManage?.rid || selfManage?.pid || (ev as any)?.consent_record_id || '')
+    const title = (lang==='zh' ? '知情同意凭证' : 'Consent Receipt') + (idText? ` · ${idText}` : '')
     // Map key -> human label based on current consentConfig
     const labelOf = (key: string) => {
       const list = (consentConfig?.options||[]) as any[]
@@ -249,19 +253,9 @@ export function Survey() {
       <table><thead><tr><th>${lang==='zh'?'键名':'Key'}</th><th>${lang==='zh'?'选择':'Choice'}</th></tr></thead><tbody>${opts}</tbody></table>
       <h2>${lang==='zh'?'签名':'Signature'}</h2>
       ${sigBlock}
-      <div class="muted" style="margin-top:12px">${lang==='zh'?'本文件用于参与者留存，非技术格式。':'This receipt is for participant records (human‑readable).'} · ID: ${ev.scale_id}</div>
+      <div class="muted" style="margin-top:12px">${lang==='zh'?'本文件用于参与者留存，非技术格式。':'This receipt is for participant records (human‑readable).'}${idText? ` · ID: ${idText}`:''}</div>
     `
-    const ok = openPrintWindow(title, body)
-    if (!ok) {
-      try {
-        const blob = new Blob([`<meta charset='utf-8'>`+body], { type: 'text/html' })
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(blob)
-        a.download = `consent_${scaleId}.html`
-        a.click(); URL.revokeObjectURL(a.href)
-        setMsg(t('survey.download_help')||'Popup blocked. An HTML copy was downloaded — open it and print to PDF.')
-      } catch {}
-    }
+    openPrintWindow(title, body)
   }
 
   async function downloadDataPDF() {
@@ -317,6 +311,18 @@ export function Survey() {
     }
   }
 
+  function storeSelfContextAndRedirect(link: string, ctx: any) {
+    try {
+      const u = new URL(link, window.location.origin)
+      const pid = u.searchParams.get('pid') || ''
+      const rid = u.searchParams.get('response_id') || ''
+      const token = u.searchParams.get('token') || ''
+      const k = `synap_self_ctx_${rid || pid}_${token}`
+      sessionStorage.setItem(k, JSON.stringify(ctx))
+    } catch {}
+    window.location.assign(link)
+  }
+
   if (!consented) {
     if (!metaReady) {
       return (
@@ -331,7 +337,7 @@ export function Survey() {
         <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
         {consentCustom ? (() => {
           const toks = tokenizeConsentTemplate(consentCustom)
-          const hasInlineOptions = toks.some(tok => tok.t === 'interactive' || tok.t === 'options' || tok.t === 'option')
+          const hasInlineOptions = toks.some(tok => tok.t === 'interactive' || tok.t === 'options')
           const hasInlineSig = toks.some(tok => tok.t === 'interactive' || tok.t === 'signature')
           const renderOptions = (_keys?: string[], group?: number) => {
             const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
@@ -616,13 +622,17 @@ export function Survey() {
               const res = await submitE2EE({ scale_id: scaleId, ciphertext: enc.ciphertext, nonce: enc.nonce, enc_dek: enc.encDEK, aad_hash: enc.aad_hash, pmk_fingerprint: enc.pmk_fingerprint })
               setMsg(t('submit_success')||'Submitted successfully')
               toast.success(t('submit_success')||'Submitted successfully')
-              setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete, rid: res.response_id, token: res.self_token })
+              const manage = `${window.location.origin}/self?response_id=${encodeURIComponent(res.response_id)}&token=${encodeURIComponent(res.self_token||'')}`
+              const ctx = { consentEvidence, stems: items.reduce((m:any,it:any)=> (m[it.id]=it.stem, m), {} as Record<string,string>), lang }
+              storeSelfContextAndRedirect(manage, ctx)
+              return
             } else {
               const arr = Object.entries(answers).map(([item_id, raw])=>({item_id, raw}))
               const res = await submitBulk(scaleId, email.trim(), arr as any, { consent_id: consentId || undefined })
-              setMsg(`Submitted ${res.count} answers.`)
-              toast.success(t('submit_success')||'Submitted successfully')
-              setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete, pid: (res as any).participant_id, token: (res as any).self_token })
+              const manage = `${window.location.origin}/self?pid=${encodeURIComponent((res as any).participant_id)}&token=${encodeURIComponent((res as any).self_token||'')}`
+              const ctx = { consentEvidence, stems: items.reduce((m:any,it:any)=> (m[it.id]=it.stem, m), {} as Record<string,string>), lang }
+              storeSelfContextAndRedirect(manage, ctx)
+              return
             }
             setAnswers({})
           } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
