@@ -67,6 +67,7 @@
       "logout": "退出登录",
       "github": "GitHub"
     },
+    
     "survey": {
       "title": "问卷",
       "scale": "量表：",
@@ -148,7 +149,8 @@
         "label_zh": "显示文案（中文）",
         "add_option": "添加条目",
         "reset_rec": "重置为推荐",
-        "save_first_error": "请先修正高亮项"
+        "save_first_error": "请先修正高亮项",
+        "no_order_needed": "顺序自动处理，无需手动上/下移动。"
       }
     },
     "consent_settings": "知情同意设置",

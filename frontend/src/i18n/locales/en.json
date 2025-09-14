@@ -220,6 +220,34 @@
       "import_button": "Import key file",
       "import_ok": "Key imported and stored locally. Not uploaded."
     },
+    "consent": {
+      "presets_title": "Pick a preset (you can still tweak below):",
+      "preset_min": "Minimal",
+      "preset_rec": "Recommended",
+      "preset_strict": "Strict",
+      "simple_title": "Ask participants to confirm:",
+      "simple_modes": "Each item can be Off / Optional / Required",
+      "show_advanced": "Show Advanced",
+      "hide_advanced": "Hide Advanced",
+      "require_signature": "Require signature",
+      "simple_hint": "These are the common confirmations. Click “Advanced” to add your own items.",
+      "advanced": {
+        "version_hint": "Increase version when content changes; helps manage re‑consent later.",
+        "signature_hint": "When ON, participants must click or draw a signature.",
+        "add_templates": "Quick add (templates):",
+        "key": "Key",
+        "key_hint": "Use lowercase letters/numbers/_/-. Example: recording",
+        "duplicate_key": "Duplicate key",
+        "empty_key": "Key required",
+        "required": "Required",
+        "label_en": "Label (EN)",
+        "label_zh": "Label (ZH)",
+        "add_option": "Add option",
+        "reset_rec": "Reset to Recommended",
+        "save_first_error": "Please fix highlighted fields",
+        "no_order_needed": "Order is automatic; no manual up/down needed."
+      }
+    },
 
     "cookie": {
       "title": "Cookies",
