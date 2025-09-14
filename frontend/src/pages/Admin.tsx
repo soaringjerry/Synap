@@ -125,8 +125,9 @@ export function Admin() {
               </div>
               {keyMethod==='generate' && (
                 <div className="row" style={{marginTop:8}}>
-                  <div className="card span-6"><div className="label">{t('e2ee.passphrase')||'Passphrase (local private key)'}</div>
-                    <input className="input" type="password" value={pass} onChange={e=> setPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter a strong passphrase'} />
+                  <div className="card span-6"><div className="label">{t('e2ee.passphrase')||'Local private‑key passphrase'}</div>
+                    <input className="input" type="password" value={pass} onChange={e=> setPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter passphrase (local only; never uploaded)'} />
+                    <div className="muted" style={{marginTop:6}}>{t('e2ee.passphrase_help')||'Used to encrypt/unlock your private key in the browser. Never sent to the server.'}</div>
                   </div>
                   <div className="card span-6"><div className="label">{t('e2ee.public_key')||'Public Key (will be uploaded)'}</div>
                     <input className="input" readOnly value={pub} placeholder={t('e2ee.pub_will_fill')||'Will be filled after generation'} />

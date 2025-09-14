@@ -335,8 +335,9 @@ export function AdminScale() {
                 <div className="muted">{t('e2ee.local_export_desc')||'Local plaintext export decrypts in your browser (private key never leaves your device). Default format: JSONL.'}</div>
               </div>
               <div className="row" style={{marginTop:8, alignItems:'flex-end'}}>
-                <div className="item span-4"><div className="label">{t('e2ee.passphrase')||'Passphrase (local private key)'}</div>
-                  <input className="input" type="password" value={pkPass} onChange={e=> setPkPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter passphrase to unlock local key'} />
+                <div className="item span-4"><div className="label">{t('e2ee.passphrase')||'Local private‑key passphrase'}</div>
+                  <input className="input" type="password" value={pkPass} onChange={e=> setPkPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter passphrase (local only; never uploaded)'} />
+                  <div className="muted" style={{marginTop:6}}>{t('e2ee.passphrase_help')||'Used to encrypt/unlock your private key in the browser. Never sent to the server.'}</div>
                 </div>
                 <div className="item span-4">
                   <button className="btn" onClick={async()=>{
