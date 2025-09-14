@@ -1294,118 +1294,108 @@ func (rt *Router) handleAdminAnalyticsSummary(w http.ResponseWriter, r *http.Req
 // PUT /api/admin/scales/{id}    -> update name_i18n/points/randomize
 // DELETE /api/admin/scales/{id} -> delete scale with items/responses
 func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
-	rest := strings.TrimPrefix(r.URL.Path, "/api/admin/scales/")
-	if rest == "" {
-		http.NotFound(w, r)
-		return
-	}
-	parts := strings.Split(rest, "/")
-	id := parts[0]
-	switch r.Method {
-	case http.MethodGet:
-		if len(parts) == 2 && parts[1] == "items" {
-			items := rt.store.listItems(id)
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
-			return
-		}
-		sc := rt.store.getScale(id)
-		if sc == nil {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(sc)
-		return
-	case http.MethodDelete:
-		// DELETE /api/admin/scales/{id}/responses -> purge responses only
-		if len(parts) == 2 && parts[1] == "responses" {
-			tid, ok := middleware.TenantIDFromContext(r.Context())
-			if !ok {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-			sc := rt.store.getScale(id)
-			if sc == nil || sc.TenantID != tid {
-				http.Error(w, "forbidden", http.StatusForbidden)
-				return
-			}
-			n := rt.store.deleteResponsesByScale(id)
-			rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "purge_responses", Target: id, Note: strconv.Itoa(n)})
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "removed": n})
-			return
-		}
-		// DELETE /api/admin/scales/{id} -> delete scale (and its items/responses)
-		if ok := rt.store.deleteScale(id); !ok {
-			http.NotFound(w, r)
-			return
-		}
-		rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "delete_scale", Target: id})
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-		return
-	case http.MethodPut:
-		// decode into map to detect presence of fields like e2ee_enabled (bool)
-		var raw map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		// Build partial Scale for updateScale-compatible fields
-		in := Scale{ID: id}
-		if v, ok := raw["name_i18n"]; ok {
-			if m, ok2 := v.(map[string]any); ok2 {
-				in.NameI18n = map[string]string{}
-				for k, vv := range m {
-					in.NameI18n[k] = toString(vv)
-				}
-			}
-		}
-		if v, ok := raw["points"].(float64); ok {
-			in.Points = int(v)
-		}
-		if v, ok := raw["randomize"].(bool); ok {
-			in.Randomize = v
-		}
-		if v, ok := raw["consent_i18n"]; ok {
-			if m, ok2 := v.(map[string]any); ok2 {
-				in.ConsentI18n = map[string]string{}
-				for k, vv := range m {
-					in.ConsentI18n[k] = toString(vv)
-				}
-			}
-		}
-		if v, ok := raw["collect_email"].(string); ok {
-			in.CollectEmail = v
-		}
-		if v, ok := raw["region"].(string); ok {
-			in.Region = v
-		}
+    rest := strings.TrimPrefix(r.URL.Path, "/api/admin/scales/")
+    if rest == "" {
+        http.NotFound(w, r)
+        return
+    }
+    parts := strings.Split(rest, "/")
+    id := parts[0]
+    switch r.Method {
+    case http.MethodGet:
+        rt.adminScaleGet(w, id, parts)
+    case http.MethodDelete:
+        rt.adminScaleDelete(w, r, id, parts)
+    case http.MethodPut:
+        rt.adminScalePut(w, r, id)
+    default:
+        http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+    }
+}
 
-		// keep a copy of old for auditing before mutations
-		old := rt.store.getScale(id)
-		if ok := rt.store.updateScale(&in); !ok {
-			http.NotFound(w, r)
-			return
-		}
-		// E2EE status is immutable after creation — reject attempts to change
-		if old != nil {
-			if v, ok := raw["e2ee_enabled"].(bool); ok && v != old.E2EEEnabled {
-				http.Error(w, "e2ee_enabled cannot be modified after creation", http.StatusBadRequest)
-				return
-			}
-			if in.Region != "" && in.Region != old.Region {
-				rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
-			}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-		return
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func (rt *Router) adminScaleGet(w http.ResponseWriter, id string, parts []string) {
+    if len(parts) == 2 && parts[1] == "items" {
+        items := rt.store.listItems(id)
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+        return
+    }
+    sc := rt.store.getScale(id)
+    if sc == nil {
+        http.NotFound(w, &http.Request{})
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(sc)
+}
+
+func (rt *Router) adminScaleDelete(w http.ResponseWriter, r *http.Request, id string, parts []string) {
+    if len(parts) == 2 && parts[1] == "responses" {
+        tid, ok := middleware.TenantIDFromContext(r.Context())
+        if !ok {
+            http.Error(w, "unauthorized", http.StatusUnauthorized)
+            return
+        }
+        sc := rt.store.getScale(id)
+        if sc == nil || sc.TenantID != tid {
+            http.Error(w, "forbidden", http.StatusForbidden)
+            return
+        }
+        n := rt.store.deleteResponsesByScale(id)
+        rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "purge_responses", Target: id, Note: strconv.Itoa(n)})
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "removed": n})
+        return
+    }
+    if ok := rt.store.deleteScale(id); !ok {
+        http.NotFound(w, r)
+        return
+    }
+    rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "delete_scale", Target: id})
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
+func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id string) {
+    var raw map[string]any
+    if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    in := Scale{ID: id}
+    if v, ok := raw["name_i18n"]; ok {
+        if m, ok2 := v.(map[string]any); ok2 {
+            in.NameI18n = map[string]string{}
+            for k, vv := range m { in.NameI18n[k] = toString(vv) }
+        }
+    }
+    if v, ok := raw["points"].(float64); ok { in.Points = int(v) }
+    if v, ok := raw["randomize"].(bool); ok { in.Randomize = v }
+    if v, ok := raw["consent_i18n"]; ok {
+        if m, ok2 := v.(map[string]any); ok2 {
+            in.ConsentI18n = map[string]string{}
+            for k, vv := range m { in.ConsentI18n[k] = toString(vv) }
+        }
+    }
+    if v, ok := raw["collect_email"].(string); ok { in.CollectEmail = v }
+    if v, ok := raw["region"].(string); ok { in.Region = v }
+
+    old := rt.store.getScale(id)
+    if ok := rt.store.updateScale(&in); !ok {
+        http.NotFound(w, r)
+        return
+    }
+    if old != nil {
+        if v, ok := raw["e2ee_enabled"].(bool); ok && v != old.E2EEEnabled {
+            http.Error(w, "e2ee_enabled cannot be modified after creation", http.StatusBadRequest)
+            return
+        }
+        if in.Region != "" && in.Region != old.Region {
+            rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
+        }
+    }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
 
 func actorEmail(r *http.Request) string {
