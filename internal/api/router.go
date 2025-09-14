@@ -451,11 +451,11 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	items := rt.store.listItems(scaleID)
 	rs := rt.store.listResponsesByScale(scaleID)
 
-    switch format {
-    case "long":
-        rows := rt.buildLongRows(rs)
-        rt.appendConsentLong(&rows, rs, scaleID)
-        b, err := services.ExportLongCSV(rows)
+	switch format {
+	case "long":
+		rows := rt.buildLongRows(rs)
+		rt.appendConsentLong(&rows, rs, scaleID)
+		b, err := services.ExportLongCSV(rows)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -464,10 +464,10 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", "attachment; filename=long.csv")
 		_, _ = w.Write(b)
 		return
-    case "wide":
-        mp := rt.buildWideMap(rs)
-        rt.mergeConsentWide(mp, rs, scaleID)
-        b, err := services.ExportWideCSV(mp)
+	case "wide":
+		mp := rt.buildWideMap(rs)
+		rt.mergeConsentWide(mp, rs, scaleID)
+		b, err := services.ExportWideCSV(mp)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -476,9 +476,9 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", "attachment; filename=wide.csv")
 		_, _ = w.Write(b)
 		return
-    case "score":
-        totals := rt.buildTotals(items, rs)
-        b, err := services.ExportScoreCSV(totals)
+	case "score":
+		totals := rt.buildTotals(items, rs)
+		b, err := services.ExportScoreCSV(totals)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -495,32 +495,32 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 
 // buildLongRows converts responses into LongRow slice
 func (rt *Router) buildLongRows(rs []*Response) []services.LongRow {
-    out := make([]services.LongRow, 0, len(rs))
-    for _, r := range rs {
-        out = append(out, services.LongRow{ParticipantID: r.ParticipantID, ItemID: r.ItemID, RawValue: r.RawValue, ScoreValue: r.ScoreValue, SubmittedAt: r.SubmittedAt.Format(time.RFC3339)})
-    }
-    return out
+	out := make([]services.LongRow, 0, len(rs))
+	for _, r := range rs {
+		out = append(out, services.LongRow{ParticipantID: r.ParticipantID, ItemID: r.ItemID, RawValue: r.RawValue, ScoreValue: r.ScoreValue, SubmittedAt: r.SubmittedAt.Format(time.RFC3339)})
+	}
+	return out
 }
 
 // buildWideMap converts responses into map[participant]map[item]score
 func (rt *Router) buildWideMap(rs []*Response) map[string]map[string]int {
-    mp := map[string]map[string]int{}
-    for _, r := range rs {
-        if mp[r.ParticipantID] == nil {
-            mp[r.ParticipantID] = map[string]int{}
-        }
-        mp[r.ParticipantID][r.ItemID] = r.ScoreValue
-    }
-    return mp
+	mp := map[string]map[string]int{}
+	for _, r := range rs {
+		if mp[r.ParticipantID] == nil {
+			mp[r.ParticipantID] = map[string]int{}
+		}
+		mp[r.ParticipantID][r.ItemID] = r.ScoreValue
+	}
+	return mp
 }
 
 // buildTotals sums scores per participant for score CSV
 func (rt *Router) buildTotals(_ []*Item, rs []*Response) map[string][]int {
-    totals := map[string][]int{}
-    for _, r := range rs {
-        totals[r.ParticipantID] = append(totals[r.ParticipantID], r.ScoreValue)
-    }
-    return totals
+	totals := map[string][]int{}
+	for _, r := range rs {
+		totals[r.ParticipantID] = append(totals[r.ParticipantID], r.ScoreValue)
+	}
+	return totals
 }
 
 // appendConsentLong appends consent choices as pseudo-items to long rows
