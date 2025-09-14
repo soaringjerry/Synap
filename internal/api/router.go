@@ -56,6 +56,10 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	// AI config + translation preview
 	mux.Handle("/api/admin/ai/config", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAIConfig)))
 	mux.Handle("/api/admin/ai/translate/preview", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAITranslatePreview)))
+	// E2EE project keys
+	mux.Handle("/api/projects/", middleware.WithAuth(http.HandlerFunc(rt.handleProjectKeys)))
+	// E2EE encrypted responses (public submission)
+	mux.HandleFunc("/api/responses/e2ee", rt.handleE2EEResponse)
 }
 
 // POST /api/seed — create a sample scale+items
@@ -458,6 +462,96 @@ func (rt *Router) handleDeleteParticipant(w http.ResponseWriter, r *http.Request
 	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "delete_participant", Target: email, Note: map[bool]string{true: "hard", false: "soft"}[hard]})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
+}
+
+// --- E2EE: project keys management ---
+// Routes: /api/projects/{id}/keys (GET, POST)
+func (rt *Router) handleProjectKeys(w http.ResponseWriter, r *http.Request) {
+	if !strings.HasPrefix(r.URL.Path, "/api/projects/") {
+		http.NotFound(w, r)
+		return
+	}
+	rest := strings.TrimPrefix(r.URL.Path, "/api/projects/")
+	parts := strings.Split(rest, "/")
+	if len(parts) < 2 || parts[1] != "keys" {
+		http.NotFound(w, r)
+		return
+	}
+	id := parts[0]
+	// tenant scope check
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	sc := rt.store.getScale(id)
+	if sc == nil || sc.TenantID != tid {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		ks := rt.store.listProjectKeys(id)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"keys": ks})
+		return
+	case http.MethodPost:
+		var in struct {
+			Algorithm   string `json:"alg"`
+			KDF         string `json:"kdf"`
+			PublicKey   string `json:"public_key"`
+			Fingerprint string `json:"fingerprint"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		k := &ProjectKey{ScaleID: id, Algorithm: in.Algorithm, KDF: in.KDF, PublicKey: in.PublicKey, Fingerprint: in.Fingerprint, CreatedAt: time.Now().UTC()}
+		rt.store.addProjectKey(k)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		return
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}
+
+// --- E2EE: encrypted response intake ---
+// POST /api/responses/e2ee { scale_id, response_id?, ciphertext, nonce, enc_dek:[], aad_hash, pmk_fingerprint }
+func (rt *Router) handleE2EEResponse(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var in struct {
+		ScaleID        string   `json:"scale_id"`
+		ResponseID     string   `json:"response_id"`
+		Ciphertext     string   `json:"ciphertext"`
+		Nonce          string   `json:"nonce"`
+		AADHash        string   `json:"aad_hash"`
+		EncDEK         []string `json:"enc_dek"`
+		PMKFingerprint string   `json:"pmk_fingerprint"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if in.ScaleID == "" || in.Ciphertext == "" || in.Nonce == "" || len(in.EncDEK) == 0 {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	// store opaque ciphertext without touching plaintext
+	rid := in.ResponseID
+	if rid == "" {
+		rid = strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
+	}
+	rt.store.addE2EEResponse(&E2EEResponse{
+		ScaleID: in.ScaleID, ResponseID: rid, Ciphertext: in.Ciphertext, Nonce: in.Nonce,
+		AADHash: in.AADHash, EncDEK: in.EncDEK, PMKFingerprint: in.PMKFingerprint, CreatedAt: time.Now().UTC(),
+	})
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "response_id": rid})
 }
 
 // --- Admin AI config ---

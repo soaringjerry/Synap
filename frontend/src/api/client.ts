@@ -1,4 +1,4 @@
-export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string>; collect_email?: 'off'|'optional'|'required' }
+export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string>; collect_email?: 'off'|'optional'|'required'; e2ee_enabled?: boolean; region?: 'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa' }
 export type ItemOut = {
   id: string
   stem: string
@@ -104,6 +104,16 @@ export type AnalyticsSummary = {
 export async function adminAnalyticsSummary(scaleId: string) {
   const res = await fetch(`/api/admin/analytics/summary?scale_id=${encodeURIComponent(scaleId)}`, { headers: authHeaders() })
   return j<AnalyticsSummary>(res)
+}
+
+// E2EE keys management
+export async function adminListProjectKeys(projectId: string) {
+  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/keys`, { headers: authHeaders() })
+  return j<{ keys: { alg:string; kdf:string; public_key:string; fingerprint:string; created_at:string; disabled?: boolean }[] }>(res)
+}
+export async function adminAddProjectKey(projectId: string, input: { alg:string; kdf:string; public_key:string; fingerprint:string }) {
+  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/keys`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  return j<{ok:true}>(res)
 }
 
 // --- Admin AI config & translation ---

@@ -25,6 +25,9 @@ type Scale struct {
 	ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
 	// CollectEmail controls whether participant email is collected: off|optional|required
 	CollectEmail string `json:"collect_email,omitempty"`
+	// E2EE and Region mode (project-level controls)
+	E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
+	Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
 }
 
 type Item struct {
@@ -70,7 +73,31 @@ type TenantAIConfig struct {
 	StoreLogs     bool   `json:"store_logs"`
 }
 
+// E2EEResponse stores end-to-end encrypted submission payloads (content-level encrypted on client).
+type E2EEResponse struct {
+	ScaleID        string    `json:"scale_id"`
+	ResponseID     string    `json:"response_id"`
+	Ciphertext     string    `json:"ciphertext"` // opaque string (base64 or compact JSON) from client
+	Nonce          string    `json:"nonce"`
+	AADHash        string    `json:"aad_hash"`
+	EncDEK         []string  `json:"enc_dek"` // array of envelope-wrapped DEKs
+	PMKFingerprint string    `json:"pmk_fingerprint"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// ProjectKey stores registered public keys for E2EE per scale/project.
+type ProjectKey struct {
+	ScaleID     string    `json:"scale_id"`
+	Algorithm   string    `json:"alg"`         // x25519+xchacha20 | rsa+aesgcm
+	KDF         string    `json:"kdf"`         // hkdf-sha256
+	PublicKey   string    `json:"public_key"`  // PEM or base64 (opaque to server)
+	Fingerprint string    `json:"fingerprint"` // client-provided
+	CreatedAt   time.Time `json:"created_at"`
+	Disabled    bool      `json:"disabled"`
+}
+
 type memoryStore struct {
+	e2ee         []*E2EEResponse
 	mu           sync.RWMutex
 	scales       map[string]*Scale
 	items        map[string]*Item
@@ -82,12 +109,14 @@ type memoryStore struct {
 	aiConfigs    map[string]*TenantAIConfig
 	audit        []AuditEntry
 
+	projectKeys  map[string][]*ProjectKey
 	snapshotPath string
 	encKey       []byte
 }
 
 func newMemoryStore(path string) *memoryStore {
 	return &memoryStore{
+		e2ee:         []*E2EEResponse{},
 		scales:       map[string]*Scale{},
 		items:        map[string]*Item{},
 		itemsByScale: map[string][]*Item{},
@@ -98,6 +127,7 @@ func newMemoryStore(path string) *memoryStore {
 		aiConfigs:    map[string]*TenantAIConfig{},
 		audit:        []AuditEntry{},
 		snapshotPath: path,
+		projectKeys:  map[string][]*ProjectKey{},
 	}
 }
 
@@ -284,6 +314,38 @@ func (s *memoryStore) addResponses(rs []*Response) {
 	s.saveLocked()
 }
 
+func (s *memoryStore) addE2EEResponse(r *E2EEResponse) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.e2ee = append(s.e2ee, r)
+	s.saveLocked()
+}
+
+func (s *memoryStore) listE2EEResponses(scaleID string) []*E2EEResponse {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]*E2EEResponse, 0)
+	for _, r := range s.e2ee {
+		if r.ScaleID == scaleID {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func (s *memoryStore) addProjectKey(k *ProjectKey) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.projectKeys[k.ScaleID] = append(s.projectKeys[k.ScaleID], k)
+	s.saveLocked()
+}
+
+func (s *memoryStore) listProjectKeys(scaleID string) []*ProjectKey {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return append([]*ProjectKey(nil), s.projectKeys[scaleID]...)
+}
+
 func (s *memoryStore) listResponsesByScale(scaleID string) []*Response {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -431,14 +493,16 @@ func (s *memoryStore) listScalesByTenant(tid string) []*Scale {
 
 // --- snapshot persistence (MVP JSON) ---
 type snapshot struct {
-	Scales       []*Scale          `json:"scales"`
-	Items        []*Item           `json:"items"`
-	Participants []*Participant    `json:"participants"`
-	Responses    []*Response       `json:"responses"`
-	Tenants      []*Tenant         `json:"tenants"`
-	Users        []*User           `json:"users"`
-	AIConfigs    []*TenantAIConfig `json:"ai_configs"`
-	Audit        []AuditEntry      `json:"audit"`
+	Scales        []*Scale                 `json:"scales"`
+	Items         []*Item                  `json:"items"`
+	Participants  []*Participant           `json:"participants"`
+	Responses     []*Response              `json:"responses"`
+	ResponsesE2EE []*E2EEResponse          `json:"responses_e2ee"`
+	ProjectKeys   map[string][]*ProjectKey `json:"project_keys"`
+	Tenants       []*Tenant                `json:"tenants"`
+	Users         []*User                  `json:"users"`
+	AIConfigs     []*TenantAIConfig        `json:"ai_configs"`
+	Audit         []AuditEntry             `json:"audit"`
 }
 
 func (s *memoryStore) load() error {
@@ -484,6 +548,12 @@ func (s *memoryStore) load() error {
 		s.participants[p.ID] = p
 	}
 	s.responses = append([]*Response(nil), snap.Responses...)
+	s.e2ee = append([]*E2EEResponse(nil), snap.ResponsesE2EE...)
+	if snap.ProjectKeys != nil {
+		s.projectKeys = snap.ProjectKeys
+	} else {
+		s.projectKeys = map[string][]*ProjectKey{}
+	}
 	s.tenants = map[string]*Tenant{}
 	for _, t := range snap.Tenants {
 		s.tenants[t.ID] = t
@@ -521,14 +591,16 @@ func (s *memoryStore) saveUnlocked() {
 		return
 	}
 	snap := snapshot{
-		Scales:       []*Scale{},
-		Items:        []*Item{},
-		Participants: []*Participant{},
-		Responses:    []*Response{},
-		Tenants:      []*Tenant{},
-		Users:        []*User{},
-		AIConfigs:    []*TenantAIConfig{},
-		Audit:        append([]AuditEntry(nil), s.audit...),
+		Scales:        []*Scale{},
+		Items:         []*Item{},
+		Participants:  []*Participant{},
+		Responses:     []*Response{},
+		ResponsesE2EE: []*E2EEResponse{},
+		ProjectKeys:   map[string][]*ProjectKey{},
+		Tenants:       []*Tenant{},
+		Users:         []*User{},
+		AIConfigs:     []*TenantAIConfig{},
+		Audit:         append([]AuditEntry(nil), s.audit...),
 	}
 	for _, sc := range s.scales {
 		snap.Scales = append(snap.Scales, sc)
@@ -540,6 +612,8 @@ func (s *memoryStore) saveUnlocked() {
 		snap.Participants = append(snap.Participants, p)
 	}
 	snap.Responses = append(snap.Responses, s.responses...)
+	snap.ResponsesE2EE = append(snap.ResponsesE2EE, s.e2ee...)
+	snap.ProjectKeys = s.projectKeys
 	for _, t := range s.tenants {
 		snap.Tenants = append(snap.Tenants, t)
 	}
