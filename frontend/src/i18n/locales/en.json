@@ -131,11 +131,12 @@
       "region_strong": "Warning: For GDPR/PIPL projects, E2EE is strongly recommended.",
       "region_soft": "Note: Consider enabling E2EE for better privacy.",
       "enabled_hint": "E2EE is ON. Only registered recipients with project keys can decrypt.",
-      "export_title": "Export Encrypted Bundle",
-      "export_desc": "Create a short‑lived link containing ciphertext + signed manifest (Ed25519).",
+      "export_title": "Export & Evidence",
+      "export_bundle_title": "Encrypted Bundle (.json)",
+      "export_bundle_desc": "Contains: manifest (version, type, scale_id, count, created_at) + Ed25519 signature + encrypted responses. For archival and offline decryption.",
       "export_button": "Create Export",
       "export_ready": "Export link prepared (opened in new tab).",
-      "local_decrypt_hint": "Or decrypt locally and download plaintext (private key never leaves your browser).",
+      "local_export_desc": "Local plaintext export decrypts in your browser (private key never leaves your device). Default format: JSONL.",
       "passphrase": "Passphrase (local private key)",
       "passphrase_placeholder": "Enter passphrase to unlock local key",
       "local_plain_ready": "Decrypted JSONL downloaded.",
@@ -146,7 +147,8 @@
       "public_key": "Public Key",
       "pub_will_fill": "Will be filled after generation",
       "pub_placeholder": "Paste base64 (x25519 raw) or PEM SPKI (RSA)",
-      "key_loss_warning": "Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable."
+      "key_loss_warning": "Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable.",
+      "csv_notice": "Note: Server-side CSV exports (long/wide/score) are available only when E2EE is OFF. When E2EE is ON, plaintext stays local; convert JSONL to CSV using your analysis tools."
     },
 
     "cookie": {

@@ -49,8 +49,10 @@ Future (planned):
   - Body: `{ scale_id }`
   - Returns `{ url, expires_at }` — short‑lived link to download
 - GET `/api/exports/e2ee?job=...&token=...` — download `{ manifest, signature, responses }`
-  - `manifest` includes: `version`, `type=e2ee-bundle`, `scale_id`, `count`, `created_at`.
-  - `signature`: Ed25519 signature over `JSON(manifest)`; seed from `SYNAP_SIGN_SEED` (base64 32B) or ephemeral per boot.
+  - Encrypted bundle (.json) contains:
+    - `manifest`: `{ version, type=e2ee-bundle, scale_id, count, created_at }`
+    - `signature`: Ed25519 signature over `JSON(manifest)`; seed from `SYNAP_SIGN_SEED` (base64 32B) or ephemeral per boot.
+    - `responses`: encrypted payloads (ciphertext, nonce, encDEK[])
   - Audit: `export_e2ee_request` and `export_e2ee_download` recorded with actor and manifest hash.
   - Basic per‑tenant rate limit enforced.
   - Legacy: `GET /api/exports/e2ee?scale_id=...` with `X-Step-Up: true` still works.
@@ -66,7 +68,10 @@ Future (planned):
 
 - E2EE toggle (default ON) and Region (auto|gdpr|pipl|pdpa|ccpa)
 - Project Keys section: add and list public keys
- - Disabling E2EE triggers a red double confirmation and an audit record (`e2ee_disable`).
+- Disabling E2EE triggers a red double confirmation and an audit record (`e2ee_disable`).
+- Export behavior:
+  - When E2EE is ON: server produces only encrypted bundle; plaintext export happens locally in the browser (JSONL). CSV (long/wide/score) must be generated client‑side or in your analysis tools.
+  - When E2EE is OFF: server CSV exports are available (`/api/export?format=long|wide|score`).
 
 Planned UX:
 - Strong red warning + audit when turning E2EE OFF (especially gdpr/pipl projects)

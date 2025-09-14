@@ -318,8 +318,11 @@ export function AdminScale() {
           <div className="divider" />
           <div className="row">
             <div className="card span-12">
-              <h4 style={{marginTop:0}}>{t('e2ee.export_title')||'Export Encrypted Bundle'}</h4>
-              <div className="muted">{t('e2ee.export_desc')||'Create a short‑lived download link for encrypted responses with signed manifest.'}</div>
+              <h4 style={{marginTop:0}}>{t('e2ee.export_title')||'Export & Evidence'}</h4>
+              <div className="item">
+                <div className="label">{t('e2ee.export_bundle_title')||'Encrypted Bundle (.json)'}</div>
+                <div className="muted">{t('e2ee.export_bundle_desc')||'Contains: manifest (version, type, scale_id, count, created_at) + Ed25519 signature + encrypted responses. For archival and offline decryption.'}</div>
+              </div>
               <div className="cta-row" style={{marginTop:8}}>
                 <button className="btn btn-primary" onClick={async()=>{
                   try {
@@ -329,7 +332,7 @@ export function AdminScale() {
                   } catch(e:any) { setMsg(e.message||String(e)) }
                 }}>{t('e2ee.export_button')||'Create Export'}</button>
                 <div style={{flex:1}} />
-                <div className="muted">{t('e2ee.local_decrypt_hint')||'Or decrypt locally and download plaintext (private key never leaves your browser).'}</div>
+                <div className="muted">{t('e2ee.local_export_desc')||'Local plaintext export decrypts in your browser (private key never leaves your device). Default format: JSONL.'}</div>
               </div>
               <div className="row" style={{marginTop:8, alignItems:'flex-end'}}>
                 <div className="item span-4"><div className="label">{t('e2ee.passphrase')||'Passphrase (local private key)'}</div>
@@ -364,6 +367,10 @@ export function AdminScale() {
                 </div>
               </div>
               {decMsg && <div className="muted" style={{marginTop:8}}>{decMsg}</div>}
+              <div className="muted" style={{marginTop:8}}>
+                {t('e2ee.csv_notice')||'Note: Server-side CSV exports (long/wide/score) are available only when E2EE is OFF. When E2EE is ON, plaintext stays local; you may convert JSONL to CSV using your analysis tools.'}
+                {' '}<a className="btn btn-ghost" href="/docs/e2ee" target="_blank" rel="noreferrer">{t('learn_more')||'Learn more'}</a>
+              </div>
             </div>
           </div>
         </section>

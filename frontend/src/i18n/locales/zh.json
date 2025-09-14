@@ -131,11 +131,12 @@
       "region_strong": "警告：在 GDPR/PIPL 场景下，强烈建议开启 E2EE。",
       "region_soft": "提示：建议开启 E2EE 以提升隐私保护。",
       "enabled_hint": "E2EE 已开启。只有已登记公钥的接收方才能解密。",
-      "export_title": "导出加密包",
-      "export_desc": "创建一个短效的下载链接，包含密文与签名的清单（Ed25519）。",
+      "export_title": "导出与证据",
+      "export_bundle_title": "加密包（.json）",
+      "export_bundle_desc": "包含：清单（版本、类型、量表ID、条数、生成时间）+ Ed25519 签名 + 加密作答。用于归档与离线解密。",
       "export_button": "创建导出",
       "export_ready": "导出链接已生成（新标签页打开）。",
-      "local_decrypt_hint": "或在本地解密后下载明文（私钥不会离开你的浏览器）。",
+      "local_export_desc": "本地明文导出在你的浏览器内解密（私钥不会离开你的设备）。默认格式：JSONL。",
       "passphrase": "口令（本地私钥）",
       "passphrase_placeholder": "输入口令以解锁本地私钥",
       "local_plain_ready": "已下载解密的 JSONL。",
@@ -146,7 +147,8 @@
       "public_key": "公钥",
       "pub_will_fill": "生成后会自动填入",
       "pub_placeholder": "粘贴 base64（x25519 原始 32B）或 PEM SPKI（RSA）",
-      "key_loss_warning": "重要提示：私钥不会离开你的设备。丢失私钥将导致数据永久无法解密。"
+      "key_loss_warning": "重要提示：私钥不会离开你的设备。丢失私钥将导致数据永久无法解密。",
+      "csv_notice": "提示：服务器端 CSV 导出（长/宽/分数）仅在关闭 E2EE 时可用。开启 E2EE 时明文仅在本地，建议将 JSONL 用分析工具转换为 CSV。"
     },
 
     "cookie": {
