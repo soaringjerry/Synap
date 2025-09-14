@@ -153,9 +153,7 @@ export function Admin() {
                   <div className="card span-6"><div className="label">{t('e2ee.passphrase')||'Local private‑key passphrase'}</div>
                     <input className="input" type="password" value={pass} onChange={e=> setPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter passphrase (local only; never uploaded)'} />
                     <div className="muted" style={{marginTop:6}}>{t('e2ee.passphrase_help')||'Used to encrypt/unlock your private key in the browser. Never sent to the server.'}</div>
-                  </div>
-                  <div className="card span-6"><div className="label">{t('e2ee.public_key')||'Public Key (will be uploaded)'}</div>
-                    <input className="input" readOnly value={pub} placeholder={t('e2ee.pub_will_fill')||'Will be filled after generation'} />
+                    <div className="muted" style={{marginTop:6}}>{t('e2ee.pub_auto_note')||'Public key is generated and uploaded automatically when you click Create.'}</div>
                   </div>
                   <div className="muted span-12" style={{marginTop:8, color:'#b36b00'}}>{t('e2ee.key_loss_warning')||'Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable.'}</div>
                 </div>

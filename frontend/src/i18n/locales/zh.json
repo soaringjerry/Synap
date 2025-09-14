@@ -147,6 +147,7 @@
       "passphrase": "本地私钥口令",
       "passphrase_placeholder": "输入本地私钥口令（仅本地，不会上网）",
       "passphrase_help": "用于在浏览器内加密/解锁你的私钥；不会上传到服务器或 CDN。请使用强口令并妥善保存。",
+      "pub_auto_note": "点击创建后会在本地生成公私钥并自动上传公钥，无需在此查看或粘贴。",
       "local_plain_ready": "已下载解密的 JSONL。",
       "local_decrypt_button": "本地解密并下载 JSON",
       "key_setup": "密钥设置",

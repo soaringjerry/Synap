@@ -147,6 +147,7 @@
       "passphrase": "Local private‑key passphrase",
       "passphrase_placeholder": "Enter passphrase (local only; never uploaded)",
       "passphrase_help": "Used to encrypt/unlock your private key in the browser. Never sent to the server. Use a strong passphrase and store it safely.",
+      "pub_auto_note": "Public key is generated and uploaded automatically when you click Create.",
       "local_plain_ready": "Decrypted JSONL downloaded.",
       "local_decrypt_button": "Decrypt locally and Download JSON",
       "key_setup": "Key setup",
