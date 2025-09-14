@@ -326,6 +326,13 @@
         "exports_title": "导出",
         "exports_desc": "CSV（长/宽/分数）· 可导入 SPSS / R / JASP"
       },
+      "security": {
+        "title": "安全与隐私",
+        "e2ee": { "k": "端到端加密", "v": "作答在你的浏览器内加密，私钥永不上传。" },
+        "at_rest": { "k": "静态加密", "v": "所有快照均以 AES‑GCM 加密存储，不保存明文机密。" },
+        "self": { "k": "知情同意与自助", "v": "交互式同意与证据哈希；参与者可导出/删除自己的提交。" },
+        "anti": { "k": "反滥用与 CDN", "v": "Cloudflare CDN + Turnstile；信号仅用于安全，不用于广告。" }
+      },
       "stats_strip": {
         "uptime": "高可用架构（单一后端二进制 + CDN）",
         "privacy_first": "隐私优先默认 · 新加坡存储 · Cloudflare 传输",

@@ -327,6 +327,13 @@
         "exports_title": "Exports",
         "exports_desc": "CSV (long/wide/score) · Open formats for SPSS/R/JASP"
       },
+      "security": {
+        "title": "Security & Privacy",
+        "e2ee": { "k": "End‑to‑End Encryption", "v": "Encrypt answers in your browser; private keys never leave your device." },
+        "at_rest": { "k": "Encrypted at Rest", "v": "All snapshots encrypted (AES‑GCM); no plaintext secrets stored." },
+        "self": { "k": "Consent & Self‑Service", "v": "Interactive consent with evidence hashing; export/delete links for participants." },
+        "anti": { "k": "Anti‑abuse & CDN", "v": "Cloudflare CDN + Turnstile; signals used only for security, not advertising." }
+      },
       "stats_strip": {
         "uptime": "Uptime-friendly architecture (single binary + CDN)",
         "privacy_first": "Privacy‑first defaults · Singapore storage · Cloudflare edge transit",

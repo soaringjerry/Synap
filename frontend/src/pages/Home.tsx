@@ -26,6 +26,31 @@ export function Home() {
         </div>
       </section>
 
+      {/* Security & Privacy */}
+      <section className="section">
+        <div className="feature-wrap">
+          <h3 className="section-title">{t('home.security.title')}</h3>
+          <div className="feat-grid">
+            <div className="feat tile tilt">
+              <div className="feat-k">{t('home.security.e2ee.k')}</div>
+              <div className="muted">{t('home.security.e2ee.v')}</div>
+            </div>
+            <div className="feat tile tilt">
+              <div className="feat-k">{t('home.security.at_rest.k')}</div>
+              <div className="muted">{t('home.security.at_rest.v')}</div>
+            </div>
+            <div className="feat tile tilt">
+              <div className="feat-k">{t('home.security.self.k')}</div>
+              <div className="muted">{t('home.security.self.v')}</div>
+            </div>
+            <div className="feat tile tilt">
+              <div className="feat-k">{t('home.security.anti.k')}</div>
+              <div className="muted">{t('home.security.anti.v')}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Stats strip for quick trust signals */}
       <section className="section">
           <div className="stats">
