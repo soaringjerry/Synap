@@ -124,6 +124,7 @@
     "consent_zh": "Consent (ZH)",
     "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved.",
     "consent_md_hint": "Markdown supported: headings, lists, links, bold/italic, code.",
+    "consent_override_hint": "If provided, the default sections are hidden in the survey.",
     "consent": {
       "presets_title": "Pick a preset (you can still tweak below):",
       "preset_min": "Minimal",

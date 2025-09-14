@@ -125,6 +125,7 @@
     "consent_zh": "知情同意（中文）",
     "consent_hint": "可选，留空则使用默认知情同意文案。换行会保留。",
     "consent_md_hint": "支持 Markdown：标题、列表、链接、加粗/斜体、代码。",
+    "consent_override_hint": "填写后，问卷中的默认分段说明将隐藏，仅显示此自定义内容。",
     "consent": {
       "presets_title": "选择一个预设（仍可在下方微调）：",
       "preset_min": "最简",

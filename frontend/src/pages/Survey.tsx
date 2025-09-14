@@ -257,37 +257,39 @@ export function Survey() {
     return (
       <div className="card span-12">
         <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
-        {/* Segmented sections */}
-        <div className="item">
-          <div className="label">{t('survey.sec_purpose_title')}</div>
-          <div className="muted">{t('survey.sec_purpose_body')}</div>
-        </div>
-        <div className="item">
-          <div className="label">{t('survey.sec_risk_title')}</div>
-          <div className="muted">{t('survey.sec_risk_body')}</div>
-        </div>
-        <div className="item">
-          <div className="label">{t('survey.sec_withdrawal_title')}</div>
-          <div className="muted">{t('survey.sec_withdrawal_body')}</div>
-        </div>
-        <div className="item">
-          <div className="label">{t('survey.sec_datause_title')}</div>
-          <div className="muted">{t('survey.sec_datause_body')}</div>
-        </div>
-        <div className="item">
-          <div className="label">{t('survey.sec_anonymity_title')}</div>
-          <div className="muted">{t('survey.sec_anonymity_body')}</div>
-        </div>
-        <div className="item">
-          <div className="label">{t('survey.sec_contact_title')}</div>
-          <div className="muted">{t('survey.sec_contact_body')}</div>
-        </div>
-        {/* Custom consent text block if provided */}
-        {consentCustom && (
+        {/* If custom consent text is provided, use it exclusively; else show default structured sections */}
+        {consentCustom ? (
           <div className="item">
             <div className="label">{t('consent_custom')}</div>
             <div className="tile" style={{padding:12}} dangerouslySetInnerHTML={{ __html: mdToHtml(consentCustom) }} />
           </div>
+        ) : (
+          <>
+            <div className="item">
+              <div className="label">{t('survey.sec_purpose_title')}</div>
+              <div className="muted">{t('survey.sec_purpose_body')}</div>
+            </div>
+            <div className="item">
+              <div className="label">{t('survey.sec_risk_title')}</div>
+              <div className="muted">{t('survey.sec_risk_body')}</div>
+            </div>
+            <div className="item">
+              <div className="label">{t('survey.sec_withdrawal_title')}</div>
+              <div className="muted">{t('survey.sec_withdrawal_body')}</div>
+            </div>
+            <div className="item">
+              <div className="label">{t('survey.sec_datause_title')}</div>
+              <div className="muted">{t('survey.sec_datause_body')}</div>
+            </div>
+            <div className="item">
+              <div className="label">{t('survey.sec_anonymity_title')}</div>
+              <div className="muted">{t('survey.sec_anonymity_body')}</div>
+            </div>
+            <div className="item">
+              <div className="label">{t('survey.sec_contact_title')}</div>
+              <div className="muted">{t('survey.sec_contact_body')}</div>
+            </div>
+          </>
         )}
         {/* Interactive options */}
         <div className="item">
