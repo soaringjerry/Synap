@@ -130,6 +130,7 @@
       "preset_rec": "推荐",
       "preset_strict": "严格",
       "simple_title": "请让参与者确认：",
+      "simple_modes": "每个条目均可设置：关闭 / 可选 / 必选",
       "show_advanced": "展开高级设置",
       "hide_advanced": "收起高级设置",
       "require_signature": "需要签名",

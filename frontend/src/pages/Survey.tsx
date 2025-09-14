@@ -292,10 +292,10 @@ export function Survey() {
         {/* Interactive options */}
         <div className="item">
           <div className="label">{t('survey.consent_options')}</div>
-          {(consentConfig?.options||[
-            { key:'recording', required:false },
+          {(((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
             { key:'withdrawal', required:true },
             { key:'data_use', required:true },
+            { key:'recording', required:false },
           ]).map((opt:any)=> (
             <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
               <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>

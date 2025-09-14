@@ -425,16 +425,32 @@ export function AdminScale() {
                 </div>
               </div>
               <div className="tile" style={{padding:10}}>
-                <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')||'Ask participants to confirm:'}</div>
-                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('withdrawal')?.required} onChange={e=> { const next = consentOptions.some(o=>o.key==='withdrawal')? consentOptions.map(o=> o.key==='withdrawal'? {...o, required:e.target.checked}:o) : [...consentOptions, {key:'withdrawal', required:e.target.checked}]; setConsentOptions(next as any); saveConsentWith(next) }} /> {t('survey.consent_opt.withdrawal')||'I understand I can withdraw at any time.'}
-                </label>
-                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('data_use')?.required} onChange={e=> { const next = consentOptions.some(o=>o.key==='data_use')? consentOptions.map(o=> o.key==='data_use'? {...o, required:e.target.checked}:o) : [...consentOptions, {key:'data_use', required:e.target.checked}]; setConsentOptions(next as any); saveConsentWith(next) }} /> {t('survey.consent_opt.data_use')||'I understand my data is for academic/aggregate use only.'}
-                </label>
-                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('recording')?.required} onChange={e=> { const next = consentOptions.some(o=>o.key==='recording')? consentOptions.map(o=> o.key==='recording'? {...o, required:e.target.checked}:o) : [...consentOptions, {key:'recording', required:e.target.checked}]; setConsentOptions(next as any); saveConsentWith(next) }} /> {t('survey.consent_opt.recording')||'I consent to audio/video recording where applicable.'}
-                </label>
+                <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')||'Ask participants to confirm:'} · <span className="muted">{t('consent.simple_modes')||'Each item can be Off / Optional / Required'}</span></div>
+                {[{key:'withdrawal', label: t('survey.consent_opt.withdrawal')||'I understand I can withdraw at any time.'},
+                  {key:'data_use', label: t('survey.consent_opt.data_use')||'I understand my data is for academic/aggregate use only.'},
+                  {key:'recording', label: t('survey.consent_opt.recording')||'I consent to audio/video recording where applicable.'}
+                ].map(row=>{
+                  const cur = getOpt(row.key)
+                  const mode: 'off'|'optional'|'required' = !cur? 'off' : (cur.required? 'required':'optional')
+                  const setMode = (m:'off'|'optional'|'required')=>{
+                    let next = consentOptions
+                    if (m==='off') next = consentOptions.filter(o=> o.key!==row.key)
+                    if (m==='optional') next = consentOptions.some(o=>o.key===row.key)? consentOptions.map(o=> o.key===row.key? {...o, required:false}:o) : [...consentOptions, {key:row.key, required:false}]
+                    if (m==='required') next = consentOptions.some(o=>o.key===row.key)? consentOptions.map(o=> o.key===row.key? {...o, required:true}:o) : [...consentOptions, {key:row.key, required:true}]
+                    setConsentOptions(next as any); saveConsentWith(next)
+                  }
+                  const btnCls = (m:string)=> `btn ${mode===m?'btn-primary':''}`
+                  return (
+                    <div key={row.key} className="item" style={{display:'grid', gap:8}}>
+                      <div className="label">{row.label}</div>
+                      <div className="cta-row">
+                        <button className={btnCls('off')} onClick={()=>setMode('off')}>{t('collect_email_off')||'Off'}</button>
+                        <button className={btnCls('optional')} onClick={()=>setMode('optional')}>{t('collect_email_optional')||'Optional'}</button>
+                        <button className={btnCls('required')} onClick={()=>setMode('required')}>{t('collect_email_required')||'Required'}</button>
+                      </div>
+                    </div>
+                  )
+                })}
                 <label className="item" style={{display:'flex',alignItems:'center',gap:8, marginTop:6}}>
                   <input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> { setSignatureRequired(e.target.checked); saveConsentWith(undefined, e.target.checked) }} /> {t('consent.require_signature')||'Require signature'}
                 </label>

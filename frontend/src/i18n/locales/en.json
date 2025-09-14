@@ -130,6 +130,7 @@
       "preset_rec": "Recommended",
       "preset_strict": "Strict",
       "simple_title": "Ask participants to confirm:",
+      "simple_modes": "Each item can be Off / Optional / Required",
       "show_advanced": "Show Advanced",
       "hide_advanced": "Hide Advanced",
       "require_signature": "Require signature",
