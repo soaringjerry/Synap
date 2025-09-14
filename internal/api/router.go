@@ -77,8 +77,8 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	// AI config + translation preview
 	mux.Handle("/api/admin/ai/config", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAIConfig)))
 	mux.Handle("/api/admin/ai/translate/preview", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAITranslatePreview)))
-	// E2EE project keys: GET (public), POST (auth)
-	mux.HandleFunc("/api/projects/", rt.handleProjectKeys)
+    // E2EE project keys: GET (public), POST (auth) — WithAuth attaches claims when present (non-blocking for GET)
+    mux.Handle("/api/projects/", middleware.WithAuth(http.HandlerFunc(rt.handleProjectKeys)))
 	// E2EE encrypted responses (public submission)
 	mux.HandleFunc("/api/responses/e2ee", rt.handleE2EEResponse)
 	// Export encrypted bundle (auth + step-up header)
