@@ -167,7 +167,10 @@ export function Survey() {
           <div className="label">{t('survey.signature_title')||'Signature'}</div>
           <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
           <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
-          <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.width=600; el.height=150; el.style.border='1px solid var(--border)'; drawSigInit(el) } }} />
+          <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.style.width='100%'; el.style.maxWidth='100%'; el.height=150; el.style.border='1px solid var(--border)';
+            const resize=()=>{ const rect = el.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; el.width = Math.floor(rect.width * dpr); }
+            resize(); new ResizeObserver(resize).observe(el.parentElement||el); drawSigInit(el)
+          } }} />
           <div className="cta-row" style={{marginTop:8}}>
             <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
             <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
@@ -285,7 +288,7 @@ export function Survey() {
           </div>
         )
       })}
-      <div className="cta-row" style={{marginTop:12}}>
+      <div className="sticky-actions cta-row" style={{marginTop:12}}>
         <button className="btn btn-primary" disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim())} onClick={async()=>{
           try {
             if (e2ee) {

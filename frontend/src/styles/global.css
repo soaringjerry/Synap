@@ -258,6 +258,11 @@ a:hover, a:focus { text-decoration: none; }
   transition: transform 120ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease;
   box-shadow: 0 6px 18px rgba(0,0,0,0.25);
 }
+.scale .bubble { flex: 1 0 56px; }
+@media (max-width: 560px) {
+  /* cap 5 per row on narrow screens for better tapping */
+  .scale .bubble { flex: 1 0 calc(20% - 8px); min-width: 40px; height: 40px; }
+}
 .bubble:hover { transform: translateY(-1px); background: rgba(255,255,255,0.08); }
 .bubble:active { transform: translateY(0); }
 .bubble:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.35), 0 6px 18px rgba(0,0,0,0.25); }
@@ -275,6 +280,7 @@ a:hover, a:focus { text-decoration: none; }
   width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
   background: rgba(255,255,255,0.06); color: var(--text);
   transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  font-size: 16px; /* prevent iOS zoom */
 }
 .select:hover, .input:hover { border-color: rgba(125,211,252,0.45); }
 .select:focus-visible, .input:focus-visible { outline: none; border-color: rgba(125,211,252,0.75); box-shadow: 0 0 0 3px rgba(125,211,252,0.28); background: rgba(255,255,255,0.08); }
@@ -376,3 +382,9 @@ a:hover, a:focus { text-decoration: none; }
 .demo-card { border-radius: 14px; padding: 14px; border:1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); box-shadow: var(--shadow-md); }
 .demo-title { font-weight: 700; margin-bottom: 8px; }
 .demo-item { margin-top: 10px; }
+
+/* Sticky action bar for mobile (submit area) */
+.sticky-actions { position: sticky; bottom: 0; padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+  backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  background: linear-gradient(180deg, rgba(10,14,28,0.4), rgba(10,14,28,0.75)); border-top: 1px solid var(--border); z-index: 20; }
+.sticky-actions .btn { min-height: 42px; }
