@@ -84,9 +84,9 @@ type ConsentOptionConf struct {
 	Required  bool              `json:"required"`
 }
 type ConsentConfig struct {
-    Version string              `json:"version"`
-    Options []ConsentOptionConf `json:"options,omitempty"`
-    SignatureRequired bool      `json:"signature_required,omitempty"`
+	Version           string              `json:"version"`
+	Options           []ConsentOptionConf `json:"options,omitempty"`
+	SignatureRequired bool                `json:"signature_required,omitempty"`
 }
 
 // E2EEResponse stores end-to-end encrypted submission payloads (content-level encrypted on client).
