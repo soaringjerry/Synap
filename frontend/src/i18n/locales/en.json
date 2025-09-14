@@ -125,33 +125,42 @@
     "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved.",
     "consent_md_hint": "Markdown supported: headings, lists, links, bold/italic, code.",
     "consent_override_hint": "If provided, the default sections are hidden in the survey.",
-    "consent": {
-      "presets_title": "Pick a preset (you can still tweak below):",
-      "preset_min": "Minimal",
-      "preset_rec": "Recommended",
-      "preset_strict": "Strict",
-      "simple_title": "Ask participants to confirm:",
-      "simple_modes": "Each item can be Off / Optional / Required",
-      "show_advanced": "Show Advanced",
-      "hide_advanced": "Hide Advanced",
-      "require_signature": "Require signature",
-      "simple_hint": "These are the common confirmations. Click “Advanced” to add your own items.",
-      "advanced": {
-        "version_hint": "Increase version when content changes; helps manage re‑consent later.",
-        "signature_hint": "When ON, participants must click or draw a signature.",
-        "add_templates": "Quick add (templates):",
-        "key": "Key",
-        "key_hint": "Use lowercase letters/numbers/_/-. Example: recording",
-        "duplicate_key": "Duplicate key",
-        "empty_key": "Key required",
-        "required": "Required",
-        "label_en": "Label (EN)",
-        "label_zh": "Label (ZH)",
-        "add_option": "Add option",
-        "reset_rec": "Reset to Recommended",
-        "save_first_error": "Please fix highlighted fields"
+    "ai": {
+      "title": "AI Translation"
+    },
+    "label": {
+      "version": "Version",
+      "signature": "Signature",
+      "type": "Type",
+      "id": "ID",
+      "min": "Min",
+      "max": "Max",
+      "step": "Step",
+      "options_en": "Options (EN)",
+      "options_zh": "Options (ZH)",
+      "likert_anchors_item": "Likert Anchors (this item)"
+    },
+    "action": {
+      "apply": "Apply",
+      "edit_key": "Edit key",
+      "hide_key": "Hide key"
+    },
+    "hint": {
+      "options_lang_specific": "Options are language-specific; one per line.",
+      "likert_custom_labels": "Custom labels (comma separated; length should equal Points)"
+    },
+    "likert": {
+      "show_numbers": "Show numbers with labels",
+      "presets": {
+        "numeric": "Numeric only",
+        "agree5": "Agree (5‑point)",
+        "freq5": "Frequency (5‑point)",
+        "agree7": "Agree (7‑point)",
+        "bipolar7": "Bipolar (7‑point)",
+        "mono5": "Monopolar (5‑point)"
       }
     },
+    
     "consent_settings": "Consent Settings",
     "admin_console": "Admin Console",
     "admin_console_sub": "Publish surveys · Manage items · Export data",

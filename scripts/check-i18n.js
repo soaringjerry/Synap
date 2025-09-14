@@ -218,6 +218,48 @@ function main() {
     process.exit(1)
   } else {
     console.log('i18n check passed: en/zh key sets match and no duplicates found.')
+    // Heuristic scan: raw JSX text not wrapped by i18n
+    try {
+      const SRC_DIR = path.join(__dirname, '..', 'frontend', 'src')
+      const files = []
+      ;(function walk(dir){
+        for (const f of fs.readdirSync(dir)) {
+          const p = path.join(dir, f)
+          const st = fs.statSync(p)
+          if (st.isDirectory()) walk(p)
+          else if (/\.(t|j)sx$/.test(f)) files.push(p)
+        }
+      })(SRC_DIR)
+      const rawFind = []
+      const allowlist = new Set(['—','–','…','×','•'])
+      for (const fp of files) {
+        const text = fs.readFileSync(fp, 'utf8')
+        const lines = text.split(/\n/)
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          // Find JSX raw text between > and < not starting with { (i.e., not an expression)
+          const re = />\s*([^<{][^<]{1,120})\s*</g
+          let m
+          while ((m = re.exec(line))) {
+            const seg = (m[1] || '').trim()
+            if (!seg) continue
+            if (seg.length <= 1) continue
+            if (allowlist.has(seg)) continue
+            // Skip if looks like HTML entity or only punctuation
+            if (/^(&[a-zA-Z#0-9]+;|[\p{P}\p{S}\s]+)$/u.test(seg)) continue
+            // Likely non-i18n text; warn
+            rawFind.push({ fp, line: i+1, text: seg.slice(0, 80) })
+          }
+        }
+      }
+      if (rawFind.length) {
+        console.log(`[i18n] info: found ${rawFind.length} raw JSX text segment(s) that may need i18n:`)
+        for (const r of rawFind.slice(0, 40)) console.log(`  - ${path.relative(path.join(__dirname, '..'), r.fp)}:${r.line}  ${JSON.stringify(r.text)}`)
+        if (rawFind.length > 40) console.log(`  … (${rawFind.length - 40} more)`)
+      }
+    } catch (e) {
+      console.log('[i18n] raw text scan skipped:', e.message)
+    }
   }
 }
 

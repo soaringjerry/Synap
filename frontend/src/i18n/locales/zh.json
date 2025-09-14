@@ -126,6 +126,41 @@
     "consent_hint": "可选，留空则使用默认知情同意文案。换行会保留。",
     "consent_md_hint": "支持 Markdown：标题、列表、链接、加粗/斜体、代码。",
     "consent_override_hint": "填写后，问卷中的默认分段说明将隐藏，仅显示此自定义内容。",
+    "ai": {
+      "title": "AI 翻译"
+    },
+    "label": {
+      "version": "版本",
+      "signature": "签名",
+      "type": "类型",
+      "id": "ID",
+      "min": "最小值",
+      "max": "最大值",
+      "step": "步长",
+      "options_en": "选项（英文）",
+      "options_zh": "选项（中文）",
+      "likert_anchors_item": "本题 Likert 锚点"
+    },
+    "action": {
+      "apply": "应用",
+      "edit_key": "编辑键名",
+      "hide_key": "收起键名"
+    },
+    "hint": {
+      "options_lang_specific": "选项按语言填写，每行一个。",
+      "likert_custom_labels": "自定义标签（逗号分隔；数量应与 Points 一致）"
+    },
+    "likert": {
+      "show_numbers": "显示数字与标签",
+      "presets": {
+        "numeric": "仅数字",
+        "agree5": "同意（5 点）",
+        "freq5": "频率（5 点）",
+        "agree7": "同意（7 点）",
+        "bipolar7": "双极（7 点）",
+        "mono5": "单极（5 点）"
+      }
+    },
     "consent": {
       "presets_title": "选择一个预设（仍可在下方微调）：",
       "preset_min": "最简",

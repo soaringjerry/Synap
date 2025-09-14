@@ -585,7 +585,7 @@ export function AdminScale() {
                               <div className="muted" style={{marginTop:4}}>{t('consent.advanced.key_hint')||'Use lowercase letters/numbers/_/-. Example: recording'}</div>
                             </div>
                           )}
-                          <button className="btn btn-ghost" style={{marginTop:6}} onClick={()=> setNewConsent(v=> ({...v, showKey: !v.showKey}))}>{newConsent.showKey? 'Hide key' : 'Edit key'}</button>
+                          <button className="btn btn-ghost" style={{marginTop:6}} onClick={()=> setNewConsent(v=> ({...v, showKey: !v.showKey}))}>{newConsent.showKey? (t('action.hide_key')||'Hide key') : (t('action.edit_key')||'Edit key')}</button>
                         </div>
                         <div>
                           <div className="label">{t('consent.advanced.label_zh')||'Label (ZH)'}</div>
@@ -805,7 +805,7 @@ export function AdminScale() {
               <div className="item"><div className="label">{t('stem_zh')}</div>
                 <input className="input" value={newStemZh} onChange={e=>setNewStemZh(e.target.value)} />
               </div>
-              <div className="item"><div className="label">Type</div>
+              <div className="item"><div className="label">{t('label.type')||'Type'}</div>
                 <select className="select" value={newType} onChange={e=> setNewType(e.target.value as any)}>
                   <option value="likert">Likert</option>
                   <option value="single">Single choice</option>
@@ -824,15 +824,15 @@ export function AdminScale() {
                 <>
                   <div className="item"><label><input className="checkbox" type="checkbox" checked={newReverse} onChange={e=>setNewReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
                   <div className="item">
-                    <div className="label">Likert Anchors (this item)</div>
+                    <div className="label">{t('label.likert_anchors_item')||'Likert Anchors (this item)'}</div>
                     <div className="cta-row" style={{marginTop:6, flexWrap:'wrap'}}>
                       <select className="select" value={likertPreset} onChange={e=> setLikertPreset(e.target.value)}>
-                        <option value="numeric">Numeric only</option>
-                        <option value="agree5">Agree (5‑point)</option>
-                        <option value="freq5">Frequency (5‑point)</option>
-                        <option value="agree7">Agree (7‑point)</option>
-                        <option value="bipolar7">Bipolar (7‑point)</option>
-                        <option value="mono5">Monopolar (5‑point)</option>
+                        <option value="numeric">{t('likert.presets.numeric')||'Numeric only'}</option>
+                        <option value="agree5">{t('likert.presets.agree5')||'Agree (5‑point)'}</option>
+                        <option value="freq5">{t('likert.presets.freq5')||'Frequency (5‑point)'}</option>
+                        <option value="agree7">{t('likert.presets.agree7')||'Agree (7‑point)'}</option>
+                        <option value="bipolar7">{t('likert.presets.bipolar7')||'Bipolar (7‑point)'}</option>
+                        <option value="mono5">{t('likert.presets.mono5')||'Monopolar (5‑point)'}</option>
                       </select>
                       <button className="btn" onClick={()=>{
                         const presets: Record<string,{en:string[], zh:string[]}> = {
@@ -846,14 +846,14 @@ export function AdminScale() {
                         const p = presets[likertPreset] || presets.numeric
                         setLikertLabelsEn(p.en.join(', '))
                         setLikertLabelsZh(p.zh.join('，'))
-                      }}>Apply</button>
+                      }}>{t('action.apply')||'Apply'}</button>
                     </div>
-                    <div className="muted" style={{marginTop:6}}>Custom labels (comma separated; length should equal Points={scale.points||5})</div>
+                    <div className="muted" style={{marginTop:6}}>{t('hint.likert_custom_labels')||'Custom labels (comma separated; length should equal Points)'}</div>
                     <div className="row">
                       <div className="card span-6"><div className="label">EN</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder="Strongly disagree, Disagree, …" /></div>
                       <div className="card span-6"><div className="label">中文</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder="非常不同意，…" /></div>
                     </div>
-                    <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> Show numbers with labels</label>
+                    <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> {t('likert.show_numbers')||'Show numbers with labels'}</label>
                     <div className="tile" style={{padding:12}}>
                       <div className="label">{t('preview')||'Preview'}</div>
                       {(() => {
@@ -876,14 +876,14 @@ export function AdminScale() {
               )}
               {(newType==='single'||newType==='multiple'||newType==='dropdown') && (
                 <div className="item">
-                  <div className="muted">Options are language-specific; one per line.</div>
+                  <div className="muted">{t('hint.options_lang_specific')||'Options are language-specific; one per line.'}</div>
                   <div className="row">
                     <div className="card span-6">
-                      <div className="label">Options (EN)</div>
+                      <div className="label">{t('label.options_en')||'Options (EN)'}</div>
                       <textarea className="input" rows={4} value={newOptsEn} onChange={e=> setNewOptsEn(e.target.value)} placeholder={"Yes\nNo"} />
                     </div>
                     <div className="card span-6">
-                      <div className="label">选项（中文）</div>
+                      <div className="label">{t('label.options_zh')||'Options (ZH)'}</div>
                       <textarea className="input" rows={4} value={newOptsZh} onChange={e=> setNewOptsZh(e.target.value)} placeholder={"是\n否"} />
                     </div>
                   </div>
@@ -891,9 +891,9 @@ export function AdminScale() {
               )}
               {(newType==='rating'||newType==='numeric'||newType==='slider') && (
                 <div className="row">
-                  <div className="card span-4"><div className="label">Min</div><input className="input" type="number" placeholder="0" value={newMin} onChange={e=> setNewMin(e.target.value)} /></div>
-                  <div className="card span-4"><div className="label">Max</div><input className="input" type="number" placeholder="10" value={newMax} onChange={e=> setNewMax(e.target.value)} /></div>
-                  <div className="card span-4"><div className="label">Step</div><input className="input" type="number" placeholder="1" value={newStep} onChange={e=> setNewStep(e.target.value)} /></div>
+                  <div className="card span-4"><div className="label">{t('label.min')||'Min'}</div><input className="input" type="number" placeholder="0" value={newMin} onChange={e=> setNewMin(e.target.value)} /></div>
+                  <div className="card span-4"><div className="label">{t('label.max')||'Max'}</div><input className="input" type="number" placeholder="10" value={newMax} onChange={e=> setNewMax(e.target.value)} /></div>
+                  <div className="card span-4"><div className="label">{t('label.step')||'Step'}</div><input className="input" type="number" placeholder="1" value={newStep} onChange={e=> setNewStep(e.target.value)} /></div>
                 </div>
               )}
               {(newType==='short_text'||newType==='long_text') && (
@@ -993,14 +993,14 @@ export function AdminScale() {
           {items.length===0 && <div className="muted">{t('no_items')||'No items yet.'}</div>}
           {items.map((it:any)=> (
             <div key={it.id} className="item" style={{borderTop:'1px solid var(--border)', paddingTop:12, marginTop:8}}>
-              <div className="muted">ID: <b>{it.id}</b></div>
+              <div className="muted">{t('label.id')||'ID'}: <b>{it.id}</b></div>
               <div className="item"><div className="label">{t('stem_en')}</div>
                 <input className="input" value={it.stem_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), en: e.target.value }}:x))} />
               </div>
               <div className="item"><div className="label">{t('stem_zh')}</div>
                 <input className="input" value={it.stem_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), zh: e.target.value }}:x))} />
               </div>
-              <div className="muted">Type: <b>{it.type||'likert'}</b></div>
+              <div className="muted">{t('label.type')||'Type'}: <b>{it.type||'likert'}</b></div>
               {(it.type===undefined || it.type==='likert') && (
                 <>
                   <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
