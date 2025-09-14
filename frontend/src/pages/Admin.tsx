@@ -125,76 +125,81 @@ export function Admin() {
         <div className="muted">{t('admin_console_sub')}</div>
       </div>
       <div className="row">
-        <section className="card span-6">
+        <section className="card span-12">
           <h3 style={{marginTop:0}}>{t('create_scale')}</h3>
-          <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={nameEn} onChange={e=>setNameEn(e.target.value)} /></div>
-          <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={nameZh} onChange={e=>setNameZh(e.target.value)} /></div>
-          <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} /></div>
-          <div className="item"><label><input className="checkbox" type="checkbox" checked={e2ee} onChange={e=> setE2ee(e.target.checked)} /> {t('e2ee.enable_label')||'Enable E2EE (default)'}</label></div>
-          <div className="item"><div className="label">{t('e2ee.region')||'Region'}</div>
-            <select className="select" value={region} onChange={e=> setRegion(e.target.value as any)}>
-              <option value="auto">auto</option>
-              <option value="gdpr">gdpr</option>
-              <option value="pipl">pipl</option>
-              <option value="pdpa">pdpa</option>
-              <option value="ccpa">ccpa</option>
-            </select>
-          </div>
-          {e2ee && (
-            <div className="item" style={{borderTop:'1px dashed var(--border)', paddingTop:8, marginTop:8}}>
-              <div className="label">{t('e2ee.key_setup')||'Key setup'}</div>
-              <div className="cta-row" style={{marginTop:6}}>
-                <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="radio" type="radio" name="key_method" checked={keyMethod==='generate'} onChange={()=> setKeyMethod('generate')} /> {t('e2ee.key_generate')||'Generate in browser (recommended)'}</label>
-                <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="radio" type="radio" name="key_method" checked={keyMethod==='upload'} onChange={()=> setKeyMethod('upload')} /> {t('e2ee.key_upload')||'I have a public key'}</label>
+          <div className="row">
+            <div className="card span-6">
+              <h4 style={{marginTop:0}}>Scale Basics</h4>
+              <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={nameEn} onChange={e=>setNameEn(e.target.value)} /></div>
+              <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={nameZh} onChange={e=>setNameZh(e.target.value)} /></div>
+              <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} /></div>
+              <div className="item"><div className="label">{t('e2ee.region')||'Region'}</div>
+                <select className="select" value={region} onChange={e=> setRegion(e.target.value as any)}>
+                  <option value="auto">auto</option>
+                  <option value="gdpr">gdpr</option>
+                  <option value="pipl">pipl</option>
+                  <option value="pdpa">pdpa</option>
+                  <option value="ccpa">ccpa</option>
+                </select>
               </div>
-              {keyMethod==='generate' && (
-                <div className="row" style={{marginTop:8}}>
-                  <div className="card span-6"><div className="label">{t('e2ee.passphrase')||'Local private‑key passphrase'}</div>
-                    <input className="input" type="password" value={pass} onChange={e=> setPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter passphrase (local only; never uploaded)'} />
-                    <div className="muted" style={{marginTop:6}}>{t('e2ee.passphrase_help')||'Used to encrypt/unlock your private key in the browser. Never sent to the server.'}</div>
-                    <div className="muted" style={{marginTop:6}}>{t('e2ee.pub_auto_note')||'Public key is generated and uploaded automatically when you click Create.'}</div>
+              <div className="item"><label><input className="checkbox" type="checkbox" checked={e2ee} onChange={e=> setE2ee(e.target.checked)} /> {t('e2ee.enable_label')||'Enable E2EE (default)'}</label></div>
+              {e2ee && (
+                <div className="item" style={{borderTop:'1px dashed var(--border)', paddingTop:8, marginTop:8}}>
+                  <div className="label">{t('e2ee.key_setup')||'Key setup'}</div>
+                  <div className="cta-row" style={{marginTop:6}}>
+                    <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="radio" type="radio" name="key_method" checked={keyMethod==='generate'} onChange={()=> setKeyMethod('generate')} /> {t('e2ee.key_generate')||'Generate in browser (recommended)'}</label>
+                    <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="radio" type="radio" name="key_method" checked={keyMethod==='upload'} onChange={()=> setKeyMethod('upload')} /> {t('e2ee.key_upload')||'I have a public key'}</label>
                   </div>
-                  <div className="muted span-12" style={{marginTop:8, color:'#b36b00'}}>{t('e2ee.key_loss_warning')||'Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable.'}</div>
+                  {keyMethod==='generate' && (
+                    <div className="item" style={{marginTop:8}}>
+                      <div className="label">{t('e2ee.passphrase')||'Local private‑key passphrase'}</div>
+                      <input className="input" type="password" value={pass} onChange={e=> setPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter passphrase (local only; never uploaded)'} />
+                      <div className="muted" style={{marginTop:6}}>{t('e2ee.passphrase_help')||'Used to encrypt/unlock your private key in the browser. Never sent to the server.'}</div>
+                      <div className="muted" style={{marginTop:6}}>{t('e2ee.pub_auto_note')||'Public key is generated and uploaded automatically when you click Create.'}</div>
+                      <div className="muted" style={{marginTop:8, color:'#b36b00'}}>{t('e2ee.key_loss_warning')||'Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable.'}</div>
+                    </div>
+                  )}
+                  {keyMethod==='upload' && (
+                    <div className="item" style={{marginTop:8}}>
+                      <div className="label">{t('e2ee.public_key')||'Public Key'}</div>
+                      <textarea className="input" rows={4} value={pub} onChange={e=> setPub(e.target.value)} placeholder={t('e2ee.pub_placeholder')||'Paste base64 (x25519 raw) or PEM SPKI (RSA)'} />
+                    </div>
+                  )}
+                  {warn && <div className="muted" style={{marginTop:8}}>{warn}</div>}
                 </div>
               )}
-              {keyMethod==='upload' && (
-                <div className="item" style={{marginTop:8}}>
-                  <div className="label">{t('e2ee.public_key')||'Public Key'}</div>
-                  <textarea className="input" rows={4} value={pub} onChange={e=> setPub(e.target.value)} placeholder={t('e2ee.pub_placeholder')||'Paste base64 (x25519 raw) or PEM SPKI (RSA)'} />
-                </div>
-              )}
-              {warn && <div className="muted" style={{marginTop:8}}>{warn}</div>}
             </div>
-          )}
-          <div className="item" style={{borderTop:'1px dashed var(--border)', paddingTop:8, marginTop:8}}>
-            <div className="label">{t('consent_custom')||'Consent'}</div>
-            <div className="row">
-              <div className="card span-6"><div className="label">Version</div><input className="input" value={consentVersion} onChange={e=> setConsentVersion(e.target.value)} /></div>
-              <div className="card span-6"><div className="label">{t('consent_en')||'Consent (EN)'}</div><textarea className="input" rows={4} value={consentTextEn} onChange={e=> setConsentTextEn(e.target.value)} placeholder="Optional additional text" /></div>
-              <div className="card span-6"><div className="label">{t('consent_zh')||'Consent (ZH)'}</div><textarea className="input" rows={4} value={consentTextZh} onChange={e=> setConsentTextZh(e.target.value)} placeholder="可选补充文本" /></div>
-            </div>
-            <div className="label" style={{marginTop:8}}>{t('survey.consent_options')||'Interactive confirmations'}</div>
-            {consentOptions.map((o, idx)=> (
-              <div key={idx} className="row" style={{marginTop:8}}>
-                <div className="card span-3"><div className="label">Key</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
-                <div className="card span-3"><div className="label">Required</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> required</label></div>
-                <div className="card span-3"><div className="label">EN</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder="Optional"/></div>
-                <div className="card span-3"><div className="label">中文</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder="可选"/></div>
-                <div className="cta-row" style={{marginTop:6}}>
-                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>Remove</button>
-                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.max(0,idx-1)]; a[Math.max(0,idx-1)]=t; return a })}>Up</button>
-                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.min(list.length-1,idx+1)]; a[Math.min(list.length-1,idx+1)]=t; return a })}>Down</button>
-                </div>
+            <div className="card span-6">
+              <h4 style={{marginTop:0}}>{t('consent_settings')||'Consent Settings'}</h4>
+              <div className="row">
+                <div className="card span-6"><div className="label">Version</div><input className="input" value={consentVersion} onChange={e=> setConsentVersion(e.target.value)} /></div>
+                <div className="card span-6"><div className="label">{t('consent_en')||'Consent (EN)'}</div><textarea className="input" rows={3} value={consentTextEn} onChange={e=> setConsentTextEn(e.target.value)} placeholder="Optional additional text" /></div>
+                <div className="card span-6"><div className="label">{t('consent_zh')||'Consent (ZH)'}</div><textarea className="input" rows={3} value={consentTextZh} onChange={e=> setConsentTextZh(e.target.value)} placeholder="可选补充文本" /></div>
               </div>
-            ))}
-            <div className="cta-row" style={{marginTop:8}}>
-              <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>Add option</button>
-              <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> Require signature</label>
+              <div className="label" style={{marginTop:8}}>{t('survey.consent_options')||'Interactive confirmations'}</div>
+              {consentOptions.map((o, idx)=> (
+                <div key={idx} className="row" style={{marginTop:8}}>
+                  <div className="card span-3"><div className="label">Key</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
+                  <div className="card span-3"><div className="label">Required</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> required</label></div>
+                  <div className="card span-3"><div className="label">EN</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder="Optional"/></div>
+                  <div className="card span-3"><div className="label">中文</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder="可选"/></div>
+                  <div className="cta-row" style={{marginTop:6}}>
+                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>Remove</button>
+                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.max(0,idx-1)]; a[Math.max(0,idx-1)]=t; return a })}>Up</button>
+                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.min(list.length-1,idx+1)]; a[Math.min(list.length-1,idx+1)]=t; return a })}>Down</button>
+                  </div>
+                </div>
+              ))}
+              <div className="cta-row" style={{marginTop:8}}>
+                <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>Add option</button>
+                <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> Require signature</label>
+              </div>
             </div>
           </div>
-          <button className="btn btn-primary" onClick={createScale}>{t('create')}</button>
+          <div className="cta-row" style={{marginTop:12, justifyContent:'flex-end'}}>
+            <button className="btn btn-primary" onClick={createScale}>{t('create')}</button>
+          </div>
         </section>
-        {/* Per-item add/edit is available in per-scale management */}
       </div>
       <div className="row" style={{marginTop:16}}>
         <section className="card span-12">
