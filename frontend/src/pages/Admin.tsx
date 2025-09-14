@@ -131,7 +131,7 @@ export function Admin() {
                   <div className="card span-6"><div className="label">{t('e2ee.public_key')||'Public Key (will be uploaded)'}</div>
                     <input className="input" readOnly value={pub} placeholder={t('e2ee.pub_will_fill')||'Will be filled after generation'} />
                   </div>
-                  <div className="muted" style={{marginTop:8, color:'#b36b00'}}>{t('e2ee.key_loss_warning')||'Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable.'}</div>
+                  <div className="muted span-12" style={{marginTop:8, color:'#b36b00'}}>{t('e2ee.key_loss_warning')||'Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable.'}</div>
                 </div>
               )}
               {keyMethod==='upload' && (
