@@ -40,6 +40,35 @@ export function AdminScale() {
   const [pkPass, setPkPass] = useState('')
   const [decMsg, setDecMsg] = useState('')
   const toast = useToast()
+  // Helper: decrypt current export bundle into plain objects
+  async function decryptCurrentBundle(): Promise<{ out: any[], enMap: Record<string,string>, zhMap: Record<string,string> }> {
+    const priv = await unlockLocalPriv()
+    const { url } = await adminCreateE2EEExport(id)
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(await res.text())
+    const bundle = await res.json()
+    const out:any[] = []
+    const privB64 = btoa(String.fromCharCode(...priv))
+    for (const r of bundle.responses||[]) {
+      try {
+        const plain = await decryptSingleWithX25519(privB64, { ciphertext: r.ciphertext, nonce: r.nonce, enc_dek: r.enc_dek||r.EncDEK||[] })
+        out.push(plain)
+      } catch {}
+    }
+    if (out.length===0) throw new Error('No entries could be decrypted with the provided key')
+    const enMap: Record<string,string> = {}
+    const zhMap: Record<string,string> = {}
+    for (const it of items) {
+      enMap[it.id] = (it.stem_i18n?.en || it.stem || it.id)
+      zhMap[it.id] = (it.stem_i18n?.zh || it.stem_i18n?.en || it.stem || it.id)
+    }
+    return { out, enMap, zhMap }
+  }
+
+  function csvEsc(v: any): string {
+    const s = (v===null||v===undefined) ? '' : (Array.isArray(v) ? v.join(', ') : (typeof v==='object' ? JSON.stringify(v) : String(v)))
+    return '"' + s.replace(/"/g, '""') + '"'
+  }
   // Consent settings edit
   const [consentVersion, setConsentVersion] = useState('')
   const [signatureRequired, setSignatureRequired] = useState(true)
@@ -476,31 +505,11 @@ export function AdminScale() {
                   </div>
                   <div className="muted" style={{marginTop:6}}>{t('e2ee.import_priv_desc')||'Select the previously downloaded JSON key file. It will be stored in this browser only (never uploaded). Use your passphrase to unlock.'}</div>
                 </div>
-                <div className="item span-4">
+                <div className="item span-4" style={{display:'grid', gap:8}}>
                   <button className="btn" onClick={async()=>{
                     setDecMsg('')
                     try {
-                      const priv = await unlockLocalPriv()
-                      const { url } = await adminCreateE2EEExport(id)
-                      const res = await fetch(url)
-                      if (!res.ok) throw new Error(await res.text())
-                      const bundle = await res.json()
-                      const out:any[] = []
-                      const privB64 = btoa(String.fromCharCode(...priv))
-                      for (const r of bundle.responses||[]) {
-                        try {
-                          const plain = await decryptSingleWithX25519(privB64, { ciphertext: r.ciphertext, nonce: r.nonce, enc_dek: r.enc_dek||r.EncDEK||[] })
-                          out.push(plain)
-                        } catch {}
-                      }
-                      if (out.length===0) throw new Error('No entries could be decrypted with the provided key')
-                      // Build human-readable maps for item ids -> stems
-                      const enMap: Record<string,string> = {}
-                      const zhMap: Record<string,string> = {}
-                      for (const it of items) {
-                        enMap[it.id] = (it.stem_i18n?.en || it.stem || it.id)
-                        zhMap[it.id] = (it.stem_i18n?.zh || it.stem_i18n?.en || it.stem || it.id)
-                      }
+                      const { out, enMap, zhMap } = await decryptCurrentBundle()
                       const outReadable = out.map((o:any)=>{
                         const a = o.answers || {}
                         const readable_en: Record<string, any> = {}
@@ -521,6 +530,58 @@ export function AdminScale() {
                       setDecMsg(t('e2ee.local_plain_ready')||'Decrypted JSONL downloaded.')
                     } catch(e:any) { setDecMsg(e.message||String(e)) }
                   }}>{t('e2ee.local_decrypt_button')||'Decrypt locally and Download JSON'}</button>
+                  <button className="btn" onClick={async()=>{
+                    setDecMsg('')
+                    try {
+                      const { out, enMap, zhMap } = await decryptCurrentBundle()
+                      // Long CSV: response_index, email, item_id, stem_en, stem_zh, value
+                      const header = ['response_index','email','item_id','stem_en','stem_zh','value']
+                      const lines = [header.map(csvEsc).join(',')]
+                      out.forEach((o:any, idx:number)=>{
+                        const email = o.email || ''
+                        const a = o.answers || {}
+                        for (const [k, v] of Object.entries(a)) {
+                          lines.push([
+                            csvEsc(idx+1),
+                            csvEsc(email),
+                            csvEsc(k),
+                            csvEsc(enMap[k]||k),
+                            csvEsc(zhMap[k]||k),
+                            csvEsc(v)
+                          ].join(','))
+                        }
+                      })
+                      const blob = new Blob([lines.join('\r\n')+'\r\n'], { type: 'text/csv' })
+                      const a = document.createElement('a')
+                      a.href = URL.createObjectURL(blob)
+                      a.download = `e2ee_${id}_long.csv`
+                      a.click(); URL.revokeObjectURL(a.href)
+                      setDecMsg(t('e2ee.local_csv_long_ready')||'Long CSV downloaded.')
+                    } catch(e:any) { setDecMsg(e.message||String(e)) }
+                  }}>{t('e2ee.local_decrypt_csv_long')||'Decrypt locally and Download CSV (Long)'}</button>
+                  <button className="btn" onClick={async()=>{
+                    setDecMsg('')
+                    try {
+                      const { out, enMap } = await decryptCurrentBundle()
+                      // Wide CSV (EN headers): response_index, email, ...stems_en in item order
+                      const order = items.map((it:any)=> it.id)
+                      const header = ['response_index','email', ...order.map((id:string)=> enMap[id] || id)]
+                      const lines = [header.map(csvEsc).join(',')]
+                      out.forEach((o:any, idx:number)=>{
+                        const email = o.email || ''
+                        const a = o.answers || {}
+                        const row = [csvEsc(idx+1), csvEsc(email)]
+                        for (const id of order) row.push(csvEsc((a as any)[id]))
+                        lines.push(row.join(','))
+                      })
+                      const blob = new Blob([lines.join('\r\n')+'\r\n'], { type: 'text/csv' })
+                      const a = document.createElement('a')
+                      a.href = URL.createObjectURL(blob)
+                      a.download = `e2ee_${id}_wide_en.csv`
+                      a.click(); URL.revokeObjectURL(a.href)
+                      setDecMsg(t('e2ee.local_csv_wide_ready')||'Wide CSV downloaded.')
+                    } catch(e:any) { setDecMsg(e.message||String(e)) }
+                  }}>{t('e2ee.local_decrypt_csv_wide')||'Decrypt locally and Download CSV (Wide)'}</button>
                 </div>
               </div>
               {decMsg && <div className="muted" style={{marginTop:8}}>{decMsg}</div>}
