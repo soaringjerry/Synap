@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign } from '../api/client'
 import { e2eeInit, encryptForProject } from '../crypto/e2ee'
 import { useTranslation } from 'react-i18next'
+import { useToast } from '../components/Toast'
 
 export function Survey() {
   const { scaleId = '' } = useParams()
@@ -26,6 +27,7 @@ export function Survey() {
   const [points, setPoints] = useState<number>(5)
   const [collectEmail, setCollectEmail] = useState<'off'|'optional'|'required'>('optional')
   const [e2ee, setE2ee] = useState(false)
+  const toast = useToast()
 
   async function loadOrSeed() {
     setLoading(true)
@@ -303,15 +305,17 @@ export function Survey() {
               const enc = await encryptForProject(payload, scaleId, keys as any)
               const res = await submitE2EE({ scale_id: scaleId, ciphertext: enc.ciphertext, nonce: enc.nonce, enc_dek: enc.encDEK, aad_hash: enc.aad_hash, pmk_fingerprint: enc.pmk_fingerprint })
               setMsg(`Submitted (E2EE).`)
+              toast.success(t('submit_success')||'Submitted successfully')
               setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete, rid: res.response_id, token: res.self_token })
             } else {
               const arr = Object.entries(answers).map(([item_id, raw])=>({item_id, raw}))
               const res = await submitBulk(scaleId, email.trim(), arr as any)
               setMsg(`Submitted ${res.count} answers.`)
+              toast.success(t('submit_success')||'Submitted successfully')
               setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete })
             }
             setAnswers({})
-          } catch(e:any) { setMsg(e.message||String(e)) }
+          } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
         }}>Submit</button>
         {scaleId.toUpperCase()==='SAMPLE' && (
           <button className="btn btn-ghost" onClick={loadOrSeed}>{t('survey.reload')}</button>

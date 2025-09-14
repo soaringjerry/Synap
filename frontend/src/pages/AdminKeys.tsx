@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as sodium from 'libsodium-wrappers'
 import { adminAddProjectKey, adminListScales } from '../api/client'
+import { useToast } from '../components/Toast'
 
 function toAB(x: Uint8Array | ArrayBuffer) { return x instanceof Uint8Array ? x.slice(0).buffer : (x as ArrayBuffer).slice(0) }
 async function deriveKey(pass: string, salt: Uint8Array) {
@@ -15,6 +16,7 @@ async function sha256b64(u8: Uint8Array) { const d=await crypto.subtle.digest('S
 
 export function AdminKeys() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [pass, setPass] = useState('')
   const [pub, setPub] = useState('')
   const [fp, setFp] = useState('')
@@ -39,6 +41,7 @@ export function AdminKeys() {
       const blob = { v:1, alg:'x25519', enc_priv: b64(enc), iv: b64(iv), salt: b64(salt), pub: pubB64, fp: fingerprint }
       localStorage.setItem('synap_pmk', JSON.stringify(blob))
       setPub(pubB64); setFp(fingerprint); setMsg('Key generated and stored locally (encrypted). Keep your passphrase safe!')
+      toast.success('Key generated')
     } catch(e:any) { setMsg(e.message||String(e)) }
   }
 
@@ -49,6 +52,7 @@ export function AdminKeys() {
       if (!pub || !fp) throw new Error('Generate or paste a public key')
       await adminAddProjectKey(sel, { alg:'x25519+xchacha20', kdf:'hkdf-sha256', public_key: pub, fingerprint: fp })
       setMsg(t('saved') as string)
+      toast.success(t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) }
   }
 
@@ -96,9 +100,11 @@ export function AdminKeys() {
                 if (!obj || !obj.enc_priv || !obj.iv || !obj.salt || !obj.pub) throw new Error('Invalid key file')
                 localStorage.setItem('synap_pmk', JSON.stringify(obj))
                 setMsg(t('e2ee.import_ok')||'Key imported and stored locally. Not uploaded.')
+                toast.success(t('e2ee.import_ok')||'Imported')
                 e.currentTarget.value = ''
               } catch(err:any) {
                 setMsg(err.message||String(err))
+                toast.error(err.message||String(err))
               }
             }} />
           </div>

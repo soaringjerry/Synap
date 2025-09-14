@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useToast } from '../components/Toast'
 import { adminGetAIConfig, adminUpdateAIConfig } from '../api/client'
 
 export function AdminAI() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [cfg, setCfg] = useState<any>(null)
   const [msg, setMsg] = useState('')
   const [saving, setSaving] = useState(false)
@@ -20,6 +22,7 @@ export function AdminAI() {
       setSaving(true)
       await adminUpdateAIConfig({ openai_key: cfg.openai_key, openai_base: cfg.openai_base, allow_external: !!cfg.allow_external, store_logs: !!cfg.store_logs })
       setMsg(t('saved') as string)
+      toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
   }
 
@@ -51,4 +54,3 @@ export function AdminAI() {
     </div>
   )
 }
-

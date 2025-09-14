@@ -13,6 +13,7 @@ import { AdminKeys } from './pages/AdminKeys'
 import { AdminAI } from './pages/AdminAI'
 
 import React from 'react'
+import { ToastProvider } from './components/Toast'
 import { useTranslation } from 'react-i18next'
 
 function useAuthStatus() {
@@ -103,6 +104,8 @@ const router = createBrowserRouter([
 
 export function App() {
   return (
-    <RouterProvider router={router} future={{ v7_startTransition: true }} />
+    <ToastProvider>
+      <RouterProvider router={router} future={{ v7_startTransition: true }} />
+    </ToastProvider>
   )
 }

@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { adminListScales, adminCreateScale, adminAddProjectKey, adminDeleteScale } from '../api/client'
 import * as sodium from 'libsodium-wrappers'
+import { useToast } from '../components/Toast'
 
 export function Admin() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [scales, setScales] = useState<any[]>([])
   const [nameEn, setNameEn] = useState('')
   const [nameZh, setNameZh] = useState('')
@@ -116,11 +118,12 @@ export function Admin() {
           throw e
         }
       }
+      toast.success(t('create_success')||'Created successfully')
       setNameEn(''); setNameZh(''); setPoints(5); setPub(''); setPass(''); setKeyMethod('generate'); setWarn('');
       setConsentVersion('v1'); setConsentTextEn(''); setConsentTextZh(''); setSignatureRequired(true);
       setConsentOptions([{key:'recording',required:false},{key:'withdrawal',required:true},{key:'data_use',required:true}])
       loadScales()
-    } catch (e:any) { setMsg(e.message||String(e)) }
+    } catch (e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
   function shareLink(id: string, lang?: string) {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
@@ -132,10 +135,11 @@ export function Admin() {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url)
         setMsg(t('copied') as string)
+        toast.success(t('copied')||'Copied')
       } else {
         setMsg(url)
       }
-    } catch (e:any) { setMsg(e.message||String(e)) }
+    } catch (e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
   // Item creation is done within per-scale management page now.
 
@@ -274,7 +278,7 @@ export function Admin() {
                 <Link className="btn btn-primary" to={`/admin/scale/${encodeURIComponent(s.id)}`}>{t('manage')||'Manage'}</Link>
                 <button className="btn btn-ghost" onClick={async()=>{
                   if (!confirm(t('confirm_delete_scale')||'Delete this scale and all its items/responses?')) return
-                  try { await adminDeleteScale(s.id); setMsg(t('deleted') as string); loadScales() } catch(e:any) { setMsg(e.message||String(e)) }
+                  try { await adminDeleteScale(s.id); setMsg(t('deleted') as string); toast.success(t('delete_success')||t('deleted')||'Deleted'); loadScales() } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
                 }}>{t('delete')||'Delete'}</button>
               </div>
             </div>

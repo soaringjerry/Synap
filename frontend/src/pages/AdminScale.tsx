@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport, adminPurgeResponses, adminGetAIConfig } from '../api/client'
 import { decryptSingleWithX25519 } from '../crypto/e2ee'
+import { useToast } from '../components/Toast'
 
 export function AdminScale() {
   const { id = '' } = useParams()
@@ -38,6 +39,7 @@ export function AdminScale() {
   const [newFp, setNewFp] = useState('')
   const [pkPass, setPkPass] = useState('')
   const [decMsg, setDecMsg] = useState('')
+  const toast = useToast()
   // Consent settings edit
   const [consentVersion, setConsentVersion] = useState('')
   const [signatureRequired, setSignatureRequired] = useState(true)
@@ -115,23 +117,25 @@ export function AdminScale() {
       setSaving(true)
       await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto' })
       setMsg(t('saved'))
+      toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
   }
 
   async function removeScale() {
     if (!confirm(t('confirm_delete_scale'))) return
-    try { await adminDeleteScale(id); setMsg(t('deleted')); setScale(null); setItems([]) } catch(e:any) { setMsg(e.message||String(e)) }
+    try { await adminDeleteScale(id); setMsg(t('deleted')); toast.success(t('delete_success')||t('deleted')||'Deleted'); setScale(null); setItems([]) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
 
   async function saveItem(it:any) {
     try {
       await adminUpdateItem(it.id, { reverse_scored: !!it.reverse_scored, stem_i18n: it.stem_i18n, type: it.type, required: !!it.required })
       setMsg(t('saved'))
+      toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) }
   }
   async function removeItem(itemId:string) {
     if (!confirm(t('confirm_delete_item'))) return
-    try { await adminDeleteItem(itemId); setItems(items.filter(x=>x.id!==itemId)); setMsg(t('deleted')) } catch(e:any) { setMsg(e.message||String(e)) }
+    try { await adminDeleteItem(itemId); setItems(items.filter(x=>x.id!==itemId)); setMsg(t('deleted')); toast.success(t('delete_success')||t('deleted')||'Deleted') } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
   async function addItem() {
     try {
@@ -296,7 +300,8 @@ export function AdminScale() {
                     if (aiPreview.name_i18n) upd.name_i18n = { ...(scale.name_i18n||{}), ...aiPreview.name_i18n }
                     if (aiPreview.consent_i18n) upd.consent_i18n = { ...(scale.consent_i18n||{}), ...aiPreview.consent_i18n }
                     if (Object.keys(upd).length>0) await adminUpdateScale(id, upd)
-                    setMsg(t('saved') as string)
+      setMsg(t('saved') as string)
+      toast.success(t('save_success')||t('saved')||'Saved')
                     setAiPreview(null)
                     load()
                   } catch(e:any) { setMsg(e.message||String(e)) }
@@ -473,7 +478,7 @@ export function AdminScale() {
                       a.click(); URL.revokeObjectURL(a.href)
                       setDecMsg(t('e2ee.local_plain_ready')||'Decrypted JSONL downloaded.')
                     } catch(e:any) { setDecMsg(e.message||String(e)) }
-                  }}>{t('e2ee.local_decrypt_button')||'Decrypt locally and Download JSON'}</button>
+                }}>{t('e2ee.local_decrypt_button')||'Decrypt locally and Download JSON'}</button>
                 </div>
               </div>
               {decMsg && <div className="muted" style={{marginTop:8}}>{decMsg}</div>}
@@ -491,7 +496,7 @@ export function AdminScale() {
           <div className="item" style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
             <button className="btn" style={{borderColor:'#b3261e', color:'#b3261e'}} onClick={async()=>{
               if (!confirm(t('confirm_delete_responses')||'Delete ALL responses for this scale? This cannot be undone.')) return
-              try { const r = await adminPurgeResponses(id); setMsg(`${t('deleted')||'Deleted'} ${r.removed}`) } catch(e:any) { setMsg(e.message||String(e)) }
+              try { const r = await adminPurgeResponses(id); const m = `${t('deleted')||'Deleted'} ${r.removed}`; setMsg(m); toast.success(m) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
             }}>{t('delete_all_responses')||'Delete all responses'}</button>
             <button className="btn btn-ghost" onClick={removeScale}>{t('delete')||'Delete scale'}</button>
           </div>
