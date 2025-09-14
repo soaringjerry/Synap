@@ -221,7 +221,12 @@ export function AdminScale() {
 
   async function saveItem(it:any) {
     try {
-      await adminUpdateItem(it.id, { reverse_scored: !!it.reverse_scored, stem_i18n: it.stem_i18n, type: it.type, required: !!it.required })
+      const upd:any = { reverse_scored: !!it.reverse_scored, stem_i18n: it.stem_i18n, type: it.type, required: !!it.required }
+      if (!it.type || it.type==='likert') {
+        if (it.likert_labels_i18n) upd.likert_labels_i18n = it.likert_labels_i18n
+        if (typeof it.likert_show_numbers==='boolean') upd.likert_show_numbers = !!it.likert_show_numbers
+      }
+      await adminUpdateItem(it.id, upd)
       setMsg(t('saved'))
       toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) }
@@ -236,6 +241,15 @@ export function AdminScale() {
       if (newType==='single' || newType==='multiple' || newType==='dropdown') {
         payload.options_i18n = { en: newOptsEn.split(/\n/).map(s=>s.trim()).filter(Boolean), zh: newOptsZh.split(/\n/).map(s=>s.trim()).filter(Boolean) }
       }
+      if (newType==='likert') {
+        const en = likertLabelsEn.split(/[,，]/).map(s=>s.trim()).filter(Boolean)
+        const zh = likertLabelsZh.split(/[,，]/).map(s=>s.trim()).filter(Boolean)
+        const ll: any = {}
+        if (en.length) ll.en = en
+        if (zh.length) ll.zh = zh
+        if (Object.keys(ll).length>0) payload.likert_labels_i18n = ll
+        payload.likert_show_numbers = !!likertShowNumbers
+      }
       if (newType==='rating' || newType==='numeric' || newType==='slider') {
         if (newMin !== '') payload.min = Number(newMin)
         if (newMax !== '') payload.max = Number(newMax)
@@ -246,7 +260,7 @@ export function AdminScale() {
       }
       const res = await adminCreateItem(payload)
       setItems([...items, res])
-      setNewStemEn(''); setNewStemZh(''); setNewReverse(false); setNewType('likert'); setNewRequired(false); setNewOptsEn(''); setNewOptsZh(''); setNewMin(''); setNewMax(''); setNewStep(''); setNewPhEn(''); setNewPhZh('')
+      setNewStemEn(''); setNewStemZh(''); setNewReverse(false); setNewType('likert'); setNewRequired(false); setNewOptsEn(''); setNewOptsZh(''); setNewMin(''); setNewMax(''); setNewStep(''); setNewPhEn(''); setNewPhZh(''); setLikertLabelsEn(''); setLikertLabelsZh(''); setLikertShowNumbers(true)
     } catch(e:any) { setMsg(e.message||String(e)) }
   }
 
@@ -766,39 +780,7 @@ export function AdminScale() {
               <div className="item"><div className="label">{t('points')}</div>
                 <input className="input" type="number" min={2} max={9} value={scale.points||5} onChange={e=> setScale((s:any)=> ({...s, points: parseInt(e.target.value||'5')}))} />
               </div>
-              <div className="item"><div className="label">Likert Anchors</div>
-                <div className="cta-row" style={{marginTop:6, flexWrap:'wrap'}}>
-                  <select className="select" value={likertPreset} onChange={e=> setLikertPreset(e.target.value)}>
-                    <option value="numeric">Numeric only</option>
-                    <option value="agree5">Agree (5‑point)</option>
-                    <option value="freq5">Frequency (5‑point)</option>
-                    <option value="agree7">Agree (7‑point)</option>
-                    <option value="bipolar7">Bipolar (7‑point)</option>
-                    <option value="mono5">Monopolar (5‑point)</option>
-                  </select>
-                  <button className="btn" onClick={()=>{
-                    const presets: Record<string,{en:string[], zh:string[]}> = {
-                      numeric: { en: [], zh: [] },
-                      agree5: { en: ['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'], zh: ['非常不同意','不同意','一般','同意','非常同意'] },
-                      freq5: { en: ['Never','Rarely','Sometimes','Often','Always'], zh: ['从不','很少','有时','经常','总是'] },
-                      agree7: { en: ['Strongly disagree','Disagree','Somewhat disagree','Neutral','Somewhat agree','Agree','Strongly agree'], zh: ['非常不同意','不同意','略不同意','中立','略同意','同意','非常同意'] },
-                      bipolar7: { en: ['Very negative','Negative','Somewhat negative','Neutral','Somewhat positive','Positive','Very positive'], zh: ['非常负面','负面','略负面','中立','略正面','正面','非常正面'] },
-                      mono5: { en: ['Not at all','A little','Moderate','Quite a bit','Extremely'], zh: ['完全没有','有一点','中等','相当','非常强烈'] },
-                    }
-                    const p = presets[likertPreset] || presets.numeric
-                    const newPoints = p.en.length || scale.points
-                    setScale((s:any)=> ({...s, points: newPoints }))
-                    setLikertLabelsEn(p.en.join(', '))
-                    setLikertLabelsZh(p.zh.join('，'))
-                  }}>Apply</button>
-                </div>
-                <div className="muted" style={{marginTop:6}}>Custom labels (comma separated; length should equal Points)</div>
-                <div className="row">
-                  <div className="card span-6"><div className="label">EN</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder="Strongly disagree, Disagree, …" /></div>
-                  <div className="card span-6"><div className="label">中文</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder="非常不同意，…" /></div>
-                </div>
-                <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> Show numbers with labels</label>
-              </div>
+              {/* Likert Anchors moved to per-item editor */}
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!scale.randomize} onChange={e=> setScale((s:any)=> ({...s, randomize: e.target.checked}))} /> {t('randomize_items')||'Randomize items'}</label></div>
               <div className="item"><div className="label">{t('collect_email')||'Collect email'}</div>
                 <select className="select" value={scale.collect_email||'optional'} onChange={e=> setScale((s:any)=> ({...s, collect_email: e.target.value }))}>
@@ -836,7 +818,58 @@ export function AdminScale() {
                 </select>
               </div>
               {newType==='likert' && (
-                <div className="item"><label><input className="checkbox" type="checkbox" checked={newReverse} onChange={e=>setNewReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
+                <>
+                  <div className="item"><label><input className="checkbox" type="checkbox" checked={newReverse} onChange={e=>setNewReverse(e.target.checked)} /> {t('reverse_scored')}</label></div>
+                  <div className="item">
+                    <div className="label">Likert Anchors (this item)</div>
+                    <div className="cta-row" style={{marginTop:6, flexWrap:'wrap'}}>
+                      <select className="select" value={likertPreset} onChange={e=> setLikertPreset(e.target.value)}>
+                        <option value="numeric">Numeric only</option>
+                        <option value="agree5">Agree (5‑point)</option>
+                        <option value="freq5">Frequency (5‑point)</option>
+                        <option value="agree7">Agree (7‑point)</option>
+                        <option value="bipolar7">Bipolar (7‑point)</option>
+                        <option value="mono5">Monopolar (5‑point)</option>
+                      </select>
+                      <button className="btn" onClick={()=>{
+                        const presets: Record<string,{en:string[], zh:string[]}> = {
+                          numeric: { en: [], zh: [] },
+                          agree5: { en: ['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'], zh: ['非常不同意','不同意','一般','同意','非常同意'] },
+                          freq5: { en: ['Never','Rarely','Sometimes','Often','Always'], zh: ['从不','很少','有时','经常','总是'] },
+                          agree7: { en: ['Strongly disagree','Disagree','Somewhat disagree','Neutral','Somewhat agree','Agree','Strongly agree'], zh: ['非常不同意','不同意','略不同意','中立','略同意','同意','非常同意'] },
+                          bipolar7: { en: ['Very negative','Negative','Somewhat negative','Neutral','Somewhat positive','Positive','Very positive'], zh: ['非常负面','负面','略负面','中立','略正面','正面','非常正面'] },
+                          mono5: { en: ['Not at all','A little','Moderate','Quite a bit','Extremely'], zh: ['完全没有','有一点','中等','相当','非常强烈'] },
+                        }
+                        const p = presets[likertPreset] || presets.numeric
+                        setLikertLabelsEn(p.en.join(', '))
+                        setLikertLabelsZh(p.zh.join('，'))
+                      }}>Apply</button>
+                    </div>
+                    <div className="muted" style={{marginTop:6}}>Custom labels (comma separated; length should equal Points={scale.points||5})</div>
+                    <div className="row">
+                      <div className="card span-6"><div className="label">EN</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder="Strongly disagree, Disagree, …" /></div>
+                      <div className="card span-6"><div className="label">中文</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder="非常不同意，…" /></div>
+                    </div>
+                    <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> Show numbers with labels</label>
+                    <div className="tile" style={{padding:12}}>
+                      <div className="label">{t('preview')||'Preview'}</div>
+                      {(() => {
+                        const en = likertLabelsEn.split(/[,，]/).map(s=>s.trim()).filter(Boolean)
+                        const p = en.length>0? en.length : (scale.points||5)
+                        return (
+                          <>
+                            <div className="scale">{Array.from({length: p}, (_,i)=> i+1).map((n,i)=> <button key={n} className={`bubble ${i===Math.floor(p/2)?'active':''}`}>{likertShowNumbers? n : (en[i]||n)}</button>)}</div>
+                            {(en.length===p) && (
+                              <div className="muted" style={{display:'flex',gap:8,justifyContent:'space-between',marginTop:6,flexWrap:'wrap'}}>
+                                {en.map((lb,i)=> <div key={i} style={{flex:`1 1 ${Math.floor(100/Math.min(p,5))}%`,minWidth:60,fontSize:12,color:'var(--muted)'}}>{likertShowNumbers? `${i+1} = ${lb}` : lb}</div>)}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                </>
               )}
               {(newType==='single'||newType==='multiple'||newType==='dropdown') && (
                 <div className="item">
@@ -966,7 +999,35 @@ export function AdminScale() {
               </div>
               <div className="muted">Type: <b>{it.type||'likert'}</b></div>
               {(it.type===undefined || it.type==='likert') && (
-                <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
+                <>
+                  <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
+                  <div className="item">
+                    <div className="label">Likert Anchors (this item)</div>
+                    <div className="row">
+                      <div className="card span-6"><div className="label">EN</div><input className="input" value={(it as any).likert_labels_i18n?.en?.join(', ')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder="Strongly disagree, Disagree, …" /></div>
+                      <div className="card span-6"><div className="label">中文</div><input className="input" value={(it as any).likert_labels_i18n?.zh?.join('，')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder="非常不同意，…" /></div>
+                    </div>
+                    <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={!!(it as any).likert_show_numbers} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_show_numbers: e.target.checked }:x))} /> Show numbers with labels</label>
+                    <div className="tile" style={{padding:12}}>
+                      <div className="label">{t('preview')||'Preview'}</div>
+                      {(() => {
+                        const arrEn = ((it as any).likert_labels_i18n?.en||[]) as string[]
+                        const p = arrEn.length>0? arrEn.length : (scale.points||5)
+                        const showNums = !!(it as any).likert_show_numbers
+                        return (
+                          <>
+                            <div className="scale">{Array.from({length: p}, (_,i)=> i+1).map((n,i)=> <button key={n} className={`bubble ${i===Math.floor(p/2)?'active':''}`}>{showNums? n : (arrEn[i]||n)}</button>)}</div>
+                            {(arrEn.length===p) && (
+                              <div className="muted" style={{display:'flex',gap:8,justifyContent:'space-between',marginTop:6,flexWrap:'wrap'}}>
+                                {arrEn.map((lb,i)=> <div key={i} style={{flex:`1 1 ${Math.floor(100/Math.min(p,5))}%`,minWidth:60,fontSize:12,color:'var(--muted)'}}>{showNums? `${i+1} = ${lb}` : lb}</div>)}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                </>
               )}
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> Required</label></div>
               {/* Preview for existing item */}

@@ -37,22 +37,25 @@ type Scale struct {
 }
 
 type Item struct {
-	ID            string            `json:"id"`
-	ScaleID       string            `json:"scale_id"`
-	ReverseScored bool              `json:"reverse_scored"`
-	StemI18n      map[string]string `json:"stem_i18n"`
-	// Type defines the rendering/answer type (likert|single|multiple|dropdown|rating|short_text|long_text|numeric|date|time|slider)
-	Type string `json:"type,omitempty"`
+    ID            string            `json:"id"`
+    ScaleID       string            `json:"scale_id"`
+    ReverseScored bool              `json:"reverse_scored"`
+    StemI18n      map[string]string `json:"stem_i18n"`
+    // Type defines the rendering/answer type (likert|single|multiple|dropdown|rating|short_text|long_text|numeric|date|time|slider)
+    Type string `json:"type,omitempty"`
 	// OptionsI18n for choice-based items (single/multiple/dropdown)
 	OptionsI18n map[string][]string `json:"options_i18n,omitempty"`
-	// PlaceholderI18n for text inputs
-	PlaceholderI18n map[string]string `json:"placeholder_i18n,omitempty"`
+    // PlaceholderI18n for text inputs
+    PlaceholderI18n map[string]string `json:"placeholder_i18n,omitempty"`
 	// Validation / range
 	Min  int `json:"min,omitempty"`
 	Max  int `json:"max,omitempty"`
 	Step int `json:"step,omitempty"`
-	// Required indicates the question must be answered
-	Required bool `json:"required,omitempty"`
+    // Required indicates the question must be answered
+    Required bool `json:"required,omitempty"`
+    // Likert per-item anchors (optional; fallback to scale-level when empty)
+    LikertLabelsI18n  map[string][]string `json:"likert_labels_i18n,omitempty"`
+    LikertShowNumbers bool                `json:"likert_show_numbers,omitempty"`
 }
 
 type Participant struct {
@@ -277,9 +280,9 @@ func (s *memoryStore) updateItem(it *Item) bool {
 	if it.OptionsI18n != nil {
 		old.OptionsI18n = it.OptionsI18n
 	}
-	if it.PlaceholderI18n != nil {
-		old.PlaceholderI18n = it.PlaceholderI18n
-	}
+    if it.PlaceholderI18n != nil {
+        old.PlaceholderI18n = it.PlaceholderI18n
+    }
 	if it.Min != 0 || it.Max != 0 || it.Step != 0 {
 		// set individually to allow zero values intentionally
 		if it.Min != 0 {
@@ -292,9 +295,17 @@ func (s *memoryStore) updateItem(it *Item) bool {
 			old.Step = it.Step
 		}
 	}
-	old.Required = it.Required
-	s.saveLocked()
-	return true
+    old.Required = it.Required
+    if it.LikertLabelsI18n != nil {
+        old.LikertLabelsI18n = it.LikertLabelsI18n
+    }
+    // LikertShowNumbers is a bool; to allow explicit false we copy when type matches
+    // Note: zero value false is valid; we simply assign
+    if it.Type == "likert" || it.LikertShowNumbers || (!it.LikertShowNumbers && old.LikertShowNumbers) {
+        old.LikertShowNumbers = it.LikertShowNumbers
+    }
+    s.saveLocked()
+    return true
 }
 
 func (s *memoryStore) deleteItem(id string) bool {

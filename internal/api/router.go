@@ -204,18 +204,20 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 		lang = "en"
 	}
 	items := rt.store.listItems(id)
-	type outItem struct {
-		ID            string   `json:"id"`
-		ReverseScored bool     `json:"reverse_scored"`
-		Stem          string   `json:"stem"`
-		Type          string   `json:"type,omitempty"`
-		Options       []string `json:"options,omitempty"`
-		Min           int      `json:"min,omitempty"`
-		Max           int      `json:"max,omitempty"`
-		Step          int      `json:"step,omitempty"`
-		Required      bool     `json:"required,omitempty"`
-		Placeholder   string   `json:"placeholder,omitempty"`
-	}
+    type outItem struct {
+        ID            string   `json:"id"`
+        ReverseScored bool     `json:"reverse_scored"`
+        Stem          string   `json:"stem"`
+        Type          string   `json:"type,omitempty"`
+        Options       []string `json:"options,omitempty"`
+        Min           int      `json:"min,omitempty"`
+        Max           int      `json:"max,omitempty"`
+        Step          int      `json:"step,omitempty"`
+        Required      bool     `json:"required,omitempty"`
+        Placeholder   string   `json:"placeholder,omitempty"`
+        LikertLabels  []string `json:"likert_labels,omitempty"`
+        LikertShowNum bool     `json:"likert_show_numbers,omitempty"`
+    }
 	out := make([]outItem, 0, len(items))
 	for _, it := range items {
 		stem := it.StemI18n[lang]
@@ -237,19 +239,30 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 				ph = it.PlaceholderI18n["en"]
 			}
 		}
-		out = append(out, outItem{
-			ID:            it.ID,
-			ReverseScored: it.ReverseScored,
-			Stem:          stem,
-			Type:          it.Type,
-			Options:       opts,
-			Min:           it.Min,
-			Max:           it.Max,
-			Step:          it.Step,
-			Required:      it.Required,
-			Placeholder:   ph,
-		})
-	}
+        // Likert labels (per-item, fallback handled client-side using scale meta)
+        var likertLabels []string
+        if it.Type == "likert" && it.LikertLabelsI18n != nil {
+            if v := it.LikertLabelsI18n[lang]; len(v) > 0 {
+                likertLabels = v
+            } else if v := it.LikertLabelsI18n["en"]; len(v) > 0 {
+                likertLabels = v
+            }
+        }
+        out = append(out, outItem{
+            ID:            it.ID,
+            ReverseScored: it.ReverseScored,
+            Stem:          stem,
+            Type:          it.Type,
+            Options:       opts,
+            Min:           it.Min,
+            Max:           it.Max,
+            Step:          it.Step,
+            Required:      it.Required,
+            Placeholder:   ph,
+            LikertLabels:  likertLabels,
+            LikertShowNum: it.LikertShowNumbers,
+        })
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": id, "items": out})
 }

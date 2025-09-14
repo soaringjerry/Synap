@@ -371,21 +371,31 @@ export function Survey() {
         return (
           <div key={it.id} className="item">
             <div className="label">{it.stem}{it.required?' *':''}</div>
-            {/* Likert-like */}
+            {/* Likert-like (per-item anchors override scale defaults) */}
             {t==='likert' && (
               <div>
-                <div className="scale">
-                  {Array.from({length: points}, (_,i)=> i+1).map((x, idx)=> (
-                    <button key={x} className={`bubble ${v===x?'active':''}`} onClick={()=>set(x)}>{likertShowNumbers? x : (likertLabels[idx] || x)}</button>
-                  ))}
-                </div>
-                {likertLabels.length === points && (
-                  <div style={{display:'flex', gap:8, marginTop:6, flexWrap:'wrap'}}>
-                    {likertLabels.map((lb, i)=> (
-                      <div key={i} style={{flex: `1 1 ${Math.floor(100/Math.min(points,5))}%`, minWidth: 60, fontSize:12, color:'var(--muted)'}}>{likertShowNumbers? `${i+1} = ${lb}` : lb}</div>
-                    ))}
-                  </div>
-                )}
+                {(() => {
+                  const itemLabels: string[] = Array.isArray((it as any).likert_labels) ? (it as any).likert_labels : []
+                  const showNums = typeof (it as any).likert_show_numbers === 'boolean' ? (it as any).likert_show_numbers : likertShowNumbers
+                  const p = itemLabels.length > 0 ? itemLabels.length : points
+                  return (
+                    <>
+                      <div className="scale">
+                        {Array.from({length: p}, (_,i)=> i+1).map((x, idx)=> (
+                          <button key={x} className={`bubble ${v===x?'active':''}`} onClick={()=>set(x)}>{showNums? x : ((itemLabels[idx] || likertLabels[idx]) || x)}</button>
+                        ))}
+                      </div>
+                      {(itemLabels.length === p || likertLabels.length === p) && (
+                        <div style={{display:'flex', gap:8, marginTop:6, flexWrap:'wrap'}}>
+                          {Array.from({length: p}, (_,i)=> i).map((i)=> {
+                            const lb = (itemLabels[i] || likertLabels[i])
+                            return <div key={i} style={{flex: `1 1 ${Math.floor(100/Math.min(p,5))}%`, minWidth: 60, fontSize:12, color:'var(--muted)'}}>{showNums? `${i+1} = ${lb||''}` : (lb||'')}</div>
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             )}
             {/* Single choice */}

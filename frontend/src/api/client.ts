@@ -10,6 +10,8 @@ export type ItemOut = {
   step?: number
   required?: boolean
   placeholder?: string
+  likert_labels?: string[]
+  likert_show_numbers?: boolean
 }
 
 const base = '' // relative to same origin
@@ -77,11 +79,11 @@ export async function adminPurgeResponses(scaleId: string) {
   const res = await fetch(`/api/admin/scales/${encodeURIComponent(scaleId)}/responses`, { method: 'DELETE', headers: authHeaders() })
   return j<{ok:true; removed:number}>(res)
 }
-export async function adminCreateItem(input: { scale_id: string, reverse_scored?: boolean, stem_i18n: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string> }) {
+export async function adminCreateItem(input: { scale_id: string, reverse_scored?: boolean, stem_i18n: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string>, likert_labels_i18n?: Record<string,string[]>, likert_show_numbers?: boolean }) {
   const res = await fetch(`/api/items`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<any>(res)
 }
-export async function adminUpdateItem(id: string, input: { reverse_scored?: boolean, stem_i18n?: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string> }) {
+export async function adminUpdateItem(id: string, input: { reverse_scored?: boolean, stem_i18n?: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string>, likert_labels_i18n?: Record<string,string[]>, likert_show_numbers?: boolean }) {
   const res = await fetch(`/api/admin/items/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<{ok:true}>(res)
 }
