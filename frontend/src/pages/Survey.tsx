@@ -8,8 +8,8 @@ import { useToast } from '../components/Toast'
 export function Survey() {
   const { scaleId = '' } = useParams()
   const nav = useNavigate()
-  const { t } = useTranslation()
-  const [lang] = useState<string>(()=> new URLSearchParams(location.search).get('lang') || 'en')
+  const { t, i18n } = useTranslation()
+  const lang: 'en'|'zh' = i18n.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en'
   const [consented, setConsented] = useState(false)
   const [consentConfig, setConsentConfig] = useState<{ version?: string, signature_required?: boolean, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] }|null>(null)
   const [consentChoices, setConsentChoices] = useState<Record<string, boolean>>({})
