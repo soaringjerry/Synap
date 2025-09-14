@@ -32,7 +32,8 @@ function flatten(obj, prefix = '') {
 
 function findObjectSlice(jsonText, objectKey) {
   // returns { start, end, slice } for the substring of the object value braces
-  const keyIdx = jsonText.indexOf(`"${objectKey}"`)
+  // prefer the last occurrence to avoid matching nested keys like common.nav.auth
+  const keyIdx = jsonText.lastIndexOf(`"${objectKey}"`)
   if (keyIdx === -1) return null
   let i = keyIdx + objectKey.length + 2
   // move to first '{' after colon
@@ -142,4 +143,3 @@ function main() {
 }
 
 main()
-

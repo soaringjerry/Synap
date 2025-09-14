@@ -16,6 +16,13 @@ export function Admin() {
   const [pub, setPub] = useState('')
   const [pass, setPass] = useState('')
   const [warn, setWarn] = useState('')
+  // Consent settings at creation
+  const [consentVersion, setConsentVersion] = useState('v1')
+  const [consentTextEn, setConsentTextEn] = useState('')
+  const [consentTextZh, setConsentTextZh] = useState('')
+  const [optRecording, setOptRecording] = useState({ required: false, en: '', zh: '' })
+  const [optWithdrawal, setOptWithdrawal] = useState({ required: true, en: '', zh: '' })
+  const [optDataUse, setOptDataUse] = useState({ required: true, en: '', zh: '' })
 
   function toAB(x: Uint8Array | ArrayBuffer) { return x instanceof Uint8Array ? x.slice(0).buffer : (x as ArrayBuffer).slice(0) }
   async function deriveKey(pass: string, salt: Uint8Array) {
@@ -67,7 +74,14 @@ export function Admin() {
           prepared = { algorithm, public_key, fingerprint }
         }
       }
-      const body = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region }
+      const options = [
+        { key:'recording', required: !!optRecording.required, label_i18n: { en: optRecording.en || undefined, zh: optRecording.zh || undefined } },
+        { key:'withdrawal', required: !!optWithdrawal.required, label_i18n: { en: optWithdrawal.en || undefined, zh: optWithdrawal.zh || undefined } },
+        { key:'data_use', required: !!optDataUse.required, label_i18n: { en: optDataUse.en || undefined, zh: optDataUse.zh || undefined } },
+      ]
+      const body: any = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region }
+      if (consentTextEn || consentTextZh) body.consent_i18n = { en: consentTextEn || undefined, zh: consentTextZh || undefined }
+      body.consent_config = { version: consentVersion, options }
       const created = await adminCreateScale(body as any)
       if (e2ee && prepared) {
         try {
@@ -82,7 +96,10 @@ export function Admin() {
           throw e
         }
       }
-      setNameEn(''); setNameZh(''); setPoints(5); setPub(''); setPass(''); setKeyMethod('generate'); setWarn(''); loadScales()
+      setNameEn(''); setNameZh(''); setPoints(5); setPub(''); setPass(''); setKeyMethod('generate'); setWarn('');
+      setConsentVersion('v1'); setConsentTextEn(''); setConsentTextZh('');
+      setOptRecording({ required:false, en:'', zh:'' }); setOptWithdrawal({ required:true, en:'', zh:'' }); setOptDataUse({ required:true, en:'', zh:'' });
+      loadScales()
     } catch (e:any) { setMsg(e.message||String(e)) }
   }
   function shareLink(id: string, lang?: string) {
@@ -152,6 +169,35 @@ export function Admin() {
               {warn && <div className="muted" style={{marginTop:8}}>{warn}</div>}
             </div>
           )}
+          <div className="item" style={{borderTop:'1px dashed var(--border)', paddingTop:8, marginTop:8}}>
+            <div className="label">{t('consent_custom')||'Consent'}</div>
+            <div className="row">
+              <div className="card span-6"><div className="label">Version</div><input className="input" value={consentVersion} onChange={e=> setConsentVersion(e.target.value)} /></div>
+              <div className="card span-6"><div className="label">{t('consent_en')||'Consent (EN)'}</div><textarea className="input" rows={4} value={consentTextEn} onChange={e=> setConsentTextEn(e.target.value)} placeholder="Optional additional text" /></div>
+              <div className="card span-6"><div className="label">{t('consent_zh')||'Consent (ZH)'}</div><textarea className="input" rows={4} value={consentTextZh} onChange={e=> setConsentTextZh(e.target.value)} placeholder="可选补充文本" /></div>
+            </div>
+            <div className="label" style={{marginTop:8}}>{t('survey.consent_options')||'Interactive confirmations'}</div>
+            <div className="row">
+              <div className="card span-4">
+                <div className="label">{t('survey.consent_opt.recording')||'Recording consent'}</div>
+                <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={optRecording.required} onChange={e=> setOptRecording(s=> ({...s, required: e.target.checked}))} /> required</label>
+                <input className="input" placeholder="EN label (optional)" value={optRecording.en} onChange={e=> setOptRecording(s=> ({...s, en: e.target.value}))} />
+                <input className="input" placeholder="中文标签（可选）" value={optRecording.zh} onChange={e=> setOptRecording(s=> ({...s, zh: e.target.value}))} />
+              </div>
+              <div className="card span-4">
+                <div className="label">{t('survey.consent_opt.withdrawal')||'Withdrawal'}</div>
+                <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={optWithdrawal.required} onChange={e=> setOptWithdrawal(s=> ({...s, required: e.target.checked}))} /> required</label>
+                <input className="input" placeholder="EN label (optional)" value={optWithdrawal.en} onChange={e=> setOptWithdrawal(s=> ({...s, en: e.target.value}))} />
+                <input className="input" placeholder="中文标签（可选）" value={optWithdrawal.zh} onChange={e=> setOptWithdrawal(s=> ({...s, zh: e.target.value}))} />
+              </div>
+              <div className="card span-4">
+                <div className="label">{t('survey.consent_opt.data_use')||'Data use'}</div>
+                <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={optDataUse.required} onChange={e=> setOptDataUse(s=> ({...s, required: e.target.checked}))} /> required</label>
+                <input className="input" placeholder="EN label (optional)" value={optDataUse.en} onChange={e=> setOptDataUse(s=> ({...s, en: e.target.value}))} />
+                <input className="input" placeholder="中文标签（可选）" value={optDataUse.zh} onChange={e=> setOptDataUse(s=> ({...s, zh: e.target.value}))} />
+              </div>
+            </div>
+          </div>
           <button className="btn btn-primary" onClick={createScale}>{t('create')}</button>
         </section>
         {/* Per-item add/edit is available in per-scale management */}
