@@ -72,8 +72,9 @@ Future (planned):
 - Participant notice: the survey shows a banner that answers are encrypted in the browser and only visible to survey administrators holding the decryption keys — even the platform cannot read them.
 - Export behavior:
   - When E2EE is ON: server produces only encrypted bundle; plaintext export happens locally in the browser (JSONL/CSV long|wide) with readable EN/ZH question texts
-  - When E2EE is OFF: server CSV exports are available (`/api/export?format=long|wide|score`), UTF‑8 with BOM.
-- Consent receipts: participants can download a PDF (browser print) as human‑readable copy.
+  - When E2EE is OFF: server CSV exports are available (`/api/export?format=long|wide|score`), UTF‑8 with BOM. Use `consent_header=label_en|label_zh` to export consent columns as human‑readable labels.
+- Self‑management: after submit, a unified management link `/self?...` is shown; participants can open it anytime to export/delete their submission.
+- Consent receipts: participants can download a PDF (browser print) as human‑readable copy. The print view opens via a blob URL for better stability; if blocked, an HTML fallback is downloaded.
 
 Planned UX:
 - Strong red warning + audit when turning E2EE OFF (especially gdpr/pipl projects)

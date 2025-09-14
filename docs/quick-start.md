@@ -33,11 +33,11 @@ Create your first scale (Admin):
 
 Exports:
 - When E2EE is ON: server exports encrypted bundle only; plaintext export happens locally in your browser (JSONL/CSV long|wide) with readable EN/ZH question texts
-- When E2EE is OFF: server CSV exports (long/wide/score) are available (UTF‑8 with BOM to avoid garbling in Excel). Exports include consent.* (1/0) columns for interactive confirmations
+- When E2EE is OFF: server CSV exports (long/wide/score) are available (UTF‑8 with BOM to avoid garbling in Excel). You can use consent_header=label_en|label_zh to use human‑readable labels as column names (instead of consent.<key>).
 
 Consent evidence:
-- The consent page supports interactive confirmations and optional signature. A hashed record is stored on the server. Participants can download a PDF receipt (fallback to HTML if popup is blocked).
+- The consent page supports interactive confirmations and optional signature. A hashed record is stored on the server. Participants can download a PDF receipt（通过浏览器打印为 PDF；若被拦截会自动下载 HTML）
+- Consent Markdown supports inline markers to place interactive blocks inside your text: [[CONSENT]] inserts all (options+signature), [[CONSENT1]]/[[CONSENT2]] insert grouped options, [[CONSENT:options=withdrawal,data_use]] inserts selected keys.
 
 GDPR self‑service:
-- Non‑E2EE: participants can export/delete their records via capability links returned on submit (delete uses POST)
-- E2EE: per‑response export/delete endpoints are available via capability links
+- Submit returns a unified management link to /self?pid=...&token=... (non‑E2EE) or /self?response_id=...&token=... (E2EE). Participants can open the page anytime to export/delete their submission.

@@ -6,9 +6,9 @@
 
 * **Survey Builder** — customizable questionnaires (not limited to Likert scales)
 * **Automated Metrics** — reliability checks such as Cronbach’s α
-* **Consent & Compliance** — configurable interactive confirmations（Off/Optional/Required 三段式），可选签名；证据哈希存储；GDPR 自助导出/删除；知情同意支持 Markdown 渲染
+* **Consent & Compliance** — configurable interactive confirmations（Off/Optional/Required 三段式），可选签名；证据哈希存储；GDPR 自助导出/删除；知情同意支持 Markdown 渲染与“内嵌标记”放置交互区（[[CONSENT]] / [[CONSENT1]] / [[CONSENT:options=…]] 等）
 * **Region-Aware Privacy** — PDPA by default; GDPR/CCPA/PIPL applied when stricter
-* **End‑to‑End Encryption** — 端到端加密（创建时开启）；密钥在浏览器生成，私钥不外发；管理端可下载加密包；浏览器内本地解密导出 JSONL/CSV（长/宽），题干为可读文本
+* **End‑to‑End Encryption** — 端到端加密（创建时开启）；密钥在浏览器生成，私钥不外发；管理端可下载加密包；浏览器内本地解密导出 JSONL/CSV（长/宽），题干为可读文本；提交后提供统一“管理链接”/self 用于导出或删除
 * **Lightweight & Fast** — Go + TypeScript with encrypted snapshot storage (DB backends planned)
 * **AI Integration (Planned)** — automated analysis, summarization, adaptive survey design
 
@@ -66,7 +66,11 @@ Open [http://localhost:3000](http://localhost:3000)
 
 Admin quick path:
 - Create Scale → Basics + End‑to‑end Encryption（生成或上传公钥，创建后锁定）+ Consent（版本号、交互式确认、是否需要签名）。Likert 锚点可选择模板（同意/频率 5 点、同意/双极性 7 点、单极性 5 点）或自定义，支持“数字+文字”模式
-- Manage Scale → 分享链接；E2EE=ON 时，服务器仅提供加密包下载；明文导出在浏览器本地完成（JSONL/CSV 长宽），题干为 EN/ZH 可读文本；E2EE=OFF 时，服务器 CSV 导出可用
+- Manage Scale → 分享链接；E2EE=ON 时，服务器仅提供加密包下载；明文导出在浏览器本地完成（JSONL/CSV 长宽），题干为 EN/ZH 可读文本；E2EE=OFF 时，服务器 CSV 导出可用（支持 consent_header=label_en|label_zh 使用“标签”作为列名）
+- Consent Markdown 支持内嵌标记：[[CONSENT]] 插入全部“交互式确认（选项+签名）”；[[CONSENT1]]/[[CONSENT2]] 按分组插入；[[CONSENT:options=withdrawal,data_use]] 精确指定；无标记时交互区显示在正文末尾
+
+Participant self‑management:
+- After submit, a unified management link `/self?...` is shown (non‑E2EE uses `pid+token`; E2EE uses `response_id+token`). Participants can revisit the link to export/delete the submission.
 
 Participant UX:
 - 问卷顶部会显示“本问卷已启用端到端加密”的提示：作答在浏览器内加密；除问卷管理方外任何人（包括平台）不可见

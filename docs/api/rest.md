@@ -5,6 +5,7 @@
 - GET `/api/scales/{id}/items?lang=en|zh` → list items (i18n with fallback)
 - POST `/api/responses/bulk` → submit responses
 - GET `/api/export?scale_id=...&format=long|wide|score` → CSV
+  - Optional: `consent_header=key|label_en|label_zh` — controls how consent columns are named (default: `key`, e.g., `consent.recording`; label modes use human‑readable texts)
 - GET `/api/metrics/alpha?scale_id=...` → Cronbach’s α
 
 Consent & self‑service
@@ -13,6 +14,17 @@ Consent & self‑service
 - POST `/api/self/participant/delete?pid=...&token=...&hard=true|false`
 - GET `/api/self/e2ee/export?response_id=...&token=...`
 - POST `/api/self/e2ee/delete?response_id=...&token=...`
+
+Frontend self‑management page
+- `/self?pid=...&token=...` — manage a non‑E2EE submission (export/delete)
+- `/self?response_id=...&token=...` — manage an E2EE encrypted submission (export/delete)
+
+Consent Markdown (inline markers)
+- `[[CONSENT]]` / `<consent-interactive/>` — insert all (options + signature if enabled)
+- `[[CONSENT1]]`, `[[CONSENT2]]` — insert options by group (set per item in Admin → Consent)
+- `[[CONSENT:options=withdrawal,data_use]]` / `<consent-options keys="..."/>` — insert only specified keys
+- `[[CONSENT:option=recording]]` / `<consent-option key="..."/>` — insert a single key
+- `[[CONSENT:signature]]` / `<consent-signature/>` — insert signature area only
 
 ## Admin (Bearer JWT)
 - POST `/api/auth/register` `{ email, password, tenant_name }` → `{ token, tenant_id, user_id }`
