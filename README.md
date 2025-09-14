@@ -6,7 +6,9 @@
 
 * **Survey Builder** — customizable questionnaires (not limited to Likert scales)
 * **Automated Metrics** — reliability checks such as Cronbach’s α
+* **Consent & Compliance** — configurable interactive confirmations (per‑project), optional signature, hashed evidence records, GDPR self‑service export/delete
 * **Region-Aware Privacy** — PDPA by default; GDPR/CCPA/PIPL applied when stricter
+* **End‑to‑End Encryption** — client‑side encryption by default at creation; keys generated in browser; private keys never leave the device; encrypted bundle exports + local plaintext export
 * **Lightweight & Fast** — Go + TypeScript with encrypted snapshot storage (DB backends planned)
 * **AI Integration (Planned)** — automated analysis, summarization, adaptive survey design
 
@@ -61,6 +63,10 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
+
+Admin quick path:
+- Create Scale → set basics, decide E2EE at creation (generate key locally or upload public key), configure consent (version, interactive options, signature requirement)
+- Manage Scale → share link; when E2EE is ON, use encrypted bundle export + local plaintext export; CSV is available only when E2EE is OFF
 
 ### Docker (GHCR)
 
@@ -120,6 +126,7 @@ More options in `docs/deploy.md`.
 - Primary storage is in Singapore. Transport is HTTPS/TLS; at‑rest encryption is required for persistence.
 - We use Cloudflare CDN for performance and security. Requests may pass through edge nodes, but survey/response data resides only in our Singapore origin and is not retained at the edge. Cloudflare may temporarily process limited network metadata (e.g., IP) for routing/security; it is not used for advertising. See Privacy.
 - Raw IPs are **not stored** in content data. Only minimal technical logs may be kept for security/quality control.
+- Consent evidence is stored as a hashed record; participants receive a downloadable JSON copy.
 - GDPR/PDPA alignment: we aim to follow core principles. Controllers remain responsible for lawful basis and data-subject rights.
 - See: `/legal/privacy` (website) and `docs/legal/privacy.md`. Terms: `/legal/terms` and `docs/legal/terms.md`.
 
