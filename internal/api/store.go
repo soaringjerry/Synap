@@ -17,25 +17,25 @@ import (
 )
 
 type Scale struct {
-    ID          string            `json:"id"`
-    TenantID    string            `json:"tenant_id,omitempty"`
-    Points      int               `json:"points"`
-    Randomize   bool              `json:"randomize"`
-    NameI18n    map[string]string `json:"name_i18n,omitempty"`
-    ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
-    // CollectEmail controls whether participant email is collected: off|optional|required
-    CollectEmail string `json:"collect_email,omitempty"`
-    // E2EE and Region mode (project-level controls)
-    E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
-    Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
-    // Turnstile protection (Cloudflare). When enabled and server has secret configured,
-    // submissions must include a valid Turnstile token.
-    TurnstileEnabled bool `json:"turnstile_enabled,omitempty"`
-    // Consent configuration (version + options)
-    ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
-    // Likert anchors (labels) and display options
-    LikertLabelsI18n  map[string][]string `json:"likert_labels_i18n,omitempty"`
-    LikertShowNumbers bool                `json:"likert_show_numbers,omitempty"`
+	ID          string            `json:"id"`
+	TenantID    string            `json:"tenant_id,omitempty"`
+	Points      int               `json:"points"`
+	Randomize   bool              `json:"randomize"`
+	NameI18n    map[string]string `json:"name_i18n,omitempty"`
+	ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
+	// CollectEmail controls whether participant email is collected: off|optional|required
+	CollectEmail string `json:"collect_email,omitempty"`
+	// E2EE and Region mode (project-level controls)
+	E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
+	Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
+	// Turnstile protection (Cloudflare). When enabled and server has secret configured,
+	// submissions must include a valid Turnstile token.
+	TurnstileEnabled bool `json:"turnstile_enabled,omitempty"`
+	// Consent configuration (version + options)
+	ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
+	// Likert anchors (labels) and display options
+	LikertLabelsI18n  map[string][]string `json:"likert_labels_i18n,omitempty"`
+	LikertShowNumbers bool                `json:"likert_show_numbers,omitempty"`
 	LikertPreset      string              `json:"likert_preset,omitempty"`
 }
 
@@ -198,12 +198,12 @@ func (s *memoryStore) addScale(sc *Scale) {
 }
 
 func (s *memoryStore) updateScale(sc *Scale) bool {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    old := s.scales[sc.ID]
-    if old == nil {
-        return false
-    }
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	old := s.scales[sc.ID]
+	if old == nil {
+		return false
+	}
 	// Update allowed fields
 	if sc.NameI18n != nil {
 		old.NameI18n = sc.NameI18n
@@ -215,22 +215,22 @@ func (s *memoryStore) updateScale(sc *Scale) bool {
 	if sc.ConsentI18n != nil {
 		old.ConsentI18n = sc.ConsentI18n
 	}
-    if sc.CollectEmail != "" {
-        old.CollectEmail = sc.CollectEmail
-    }
-    // Region update (E2EEEnabled toggled in router to avoid unintended zeroing)
-    if sc.Region != "" {
-        old.Region = sc.Region
-    }
-    // Turnstile toggle (explicit assignment; default true is handled by creator UI)
-    if sc.TurnstileEnabled != old.TurnstileEnabled {
-        old.TurnstileEnabled = sc.TurnstileEnabled
-    }
-    if sc.ConsentConfig != nil {
-        old.ConsentConfig = sc.ConsentConfig
-    }
-    s.saveLocked()
-    return true
+	if sc.CollectEmail != "" {
+		old.CollectEmail = sc.CollectEmail
+	}
+	// Region update (E2EEEnabled toggled in router to avoid unintended zeroing)
+	if sc.Region != "" {
+		old.Region = sc.Region
+	}
+	// Turnstile toggle (explicit assignment; default true is handled by creator UI)
+	if sc.TurnstileEnabled != old.TurnstileEnabled {
+		old.TurnstileEnabled = sc.TurnstileEnabled
+	}
+	if sc.ConsentConfig != nil {
+		old.ConsentConfig = sc.ConsentConfig
+	}
+	s.saveLocked()
+	return true
 }
 
 // deleteScale removes the scale, its items, and responses associated with those items
