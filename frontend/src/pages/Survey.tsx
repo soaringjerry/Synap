@@ -29,20 +29,21 @@ export function Survey() {
   const [e2ee, setE2ee] = useState(false)
   const toast = useToast()
 
+  async function loadMeta() {
+    try {
+      const meta = await getScaleMeta(scaleId)
+      const c = (meta.consent_i18n && (meta.consent_i18n[lang] || meta.consent_i18n['en'])) || ''
+      setConsentCustom(c || '')
+      setPoints(meta.points || 5)
+      setCollectEmail((meta.collect_email as any) || 'optional')
+      setE2ee(!!(meta as any).e2ee_enabled)
+      setConsentConfig(meta.consent_config || null)
+    } catch {}
+  }
   async function loadOrSeed() {
     setLoading(true)
     setMsg('')
     try {
-      // Load scale meta for consent
-      try {
-        const meta = await getScaleMeta(scaleId)
-        const c = (meta.consent_i18n && (meta.consent_i18n[lang] || meta.consent_i18n['en'])) || ''
-        setConsentCustom(c || '')
-        setPoints(meta.points || 5)
-        setCollectEmail((meta.collect_email as any) || 'optional')
-        setE2ee(!!(meta as any).e2ee_enabled)
-        setConsentConfig(meta.consent_config || null)
-      } catch {}
       const d = await listItems(scaleId, lang)
       if (d.items.length === 0 && scaleId.toUpperCase() === 'SAMPLE') {
         await seedSample()
@@ -55,6 +56,7 @@ export function Survey() {
     setLoading(false)
   }
 
+  useEffect(()=>{ loadMeta() }, [scaleId, lang])
   useEffect(()=>{ if (consented) { loadOrSeed() } }, [consented, scaleId, lang])
 
   const progress = useMemo(()=>{
