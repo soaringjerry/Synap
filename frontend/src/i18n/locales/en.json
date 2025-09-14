@@ -125,6 +125,7 @@
     "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved.",
     "consent_md_hint": "Markdown supported: headings, lists, links, bold/italic, code.",
     "consent_inline_hint": "Tip: Insert [[CONSENT]] (or <interactive-consent/> / <context/>) to place the interactive confirmations (options + signature) inline. If not present, it appears after the text.",
+    "consent_group_hint": "You can set a Group number for each confirmation, then place them separately with [[CONSENT1]], [[CONSENT2]], etc. Or use [[CONSENT:options=withdrawal,data_use]] for explicit keys.",
     "consent_override_hint": "If provided, the default sections are hidden in the survey.",
     "ai": {
       "title": "AI Translation"
@@ -139,7 +140,8 @@
       "step": "Step",
       "options_en": "Options (EN)",
       "options_zh": "Options (ZH)",
-      "likert_anchors_item": "Likert Anchors (this item)"
+      "likert_anchors_item": "Likert Anchors (this item)",
+      "group": "Group"
     },
     "action": {
       "apply": "Apply",

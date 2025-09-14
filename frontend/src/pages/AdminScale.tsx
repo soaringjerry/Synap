@@ -107,7 +107,7 @@ export function AdminScale() {
   // Consent settings edit
   const [consentVersion, setConsentVersion] = useState('')
   const [signatureRequired, setSignatureRequired] = useState(true)
-  const [consentOptions, setConsentOptions] = useState<{ key:string; required:boolean; en?:string; zh?:string }[]>([])
+  const [consentOptions, setConsentOptions] = useState<{ key:string; required:boolean; en?:string; zh?:string; group?: number }[]>([])
   const [showAdvancedConsent, setShowAdvancedConsent] = useState(false)
   function getOpt(key:string){ return consentOptions.find(o=> o.key===key) }
   function setOptRequired(key:string, v:boolean){
@@ -119,7 +119,7 @@ export function AdminScale() {
   }
   async function saveConsentWith(nextOpts?: typeof consentOptions, nextSig?: boolean) {
     try {
-      const options = (nextOpts || consentOptions).map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
+      const options = (nextOpts || consentOptions).map(o=> ({ key:o.key.trim(), required: !!o.required, group: o.group && o.group>0 ? o.group : undefined, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
       await adminUpdateScale(id, { consent_config: { version: consentVersion||'v1', options, signature_required: typeof nextSig==='boolean'? nextSig : !!signatureRequired } } as any)
       setMsg(t('saved') as string)
       toast.success(t('save_success')||t('saved')||'Saved')
@@ -187,7 +187,7 @@ export function AdminScale() {
       const cc = (s as any).consent_config || {}
       setConsentVersion(cc.version||'v1')
       setSignatureRequired(!!(cc.signature_required ?? true))
-      const opts = (cc.options||[]).map((o:any)=> ({ key:o.key, required: !!o.required, en: o.label_i18n?.en, zh: o.label_i18n?.zh }))
+      const opts = (cc.options||[]).map((o:any)=> ({ key:o.key, required: !!o.required, en: o.label_i18n?.en, zh: o.label_i18n?.zh, group: (o as any).group || 1 }))
       setConsentOptions(opts)
       if (!opts || opts.length === 0) {
         applyConsentPreset('recommended')
@@ -526,10 +526,11 @@ export function AdminScale() {
                   </div>
                   {/* Items table-like layout */}
                   <div style={{marginTop:8}}>
-                    <div style={{display:'grid', gridTemplateColumns:'1.4fr 1.4fr 0.8fr 0.8fr', gap:8, fontWeight:600, color:'var(--muted)'}}>
+                    <div style={{display:'grid', gridTemplateColumns:'1.2fr 1.2fr 0.6fr 0.6fr 0.6fr', gap:8, fontWeight:600, color:'var(--muted)'}}>
                       <div>{t('consent.advanced.label_en')||'Label (EN)'}</div>
                       <div>{t('consent.advanced.label_zh')||'Label (ZH)'}</div>
                       <div>{t('consent.advanced.required')||'Required'}</div>
+                      <div>{t('label.group')||'Group'}</div>
                       <div>{t('delete')||'Delete'}</div>
                     </div>
                     {(consentOptions||[]).map((o, idx)=>{
@@ -537,19 +538,9 @@ export function AdminScale() {
                       const isDup = o.key && keys.indexOf(o.key.trim()) !== keys.lastIndexOf(o.key.trim())
                       const keyErr = !o.key?.trim() || isDup
                       return (
-                        <div key={idx} style={{display:'grid', gridTemplateColumns:'1.4fr 1.4fr 0.8fr 0.8fr', gap:8, alignItems:'center', marginTop:8, outline: flashKey===o.key? '2px solid var(--accent, #4f46e5)' : undefined, borderRadius: 6, padding: flashKey===o.key? 6 : 0}}>
+                        <div key={idx} style={{display:'grid', gridTemplateColumns:'1.2fr 1.2fr 0.6fr 0.6fr 0.6fr', gap:8, alignItems:'center', marginTop:8, outline: flashKey===o.key? '2px solid var(--accent, #4f46e5)' : undefined, borderRadius: 6, padding: flashKey===o.key? 6 : 0}}>
                           <div>
                             <input className="input" value={o.en||''} onChange={e=> { setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x)); autosave() }} placeholder={(o.key && t(`survey.consent_opt.${o.key}` as any) as string) || 'Optional'} />
-                            {showKeyRows[idx] && (
-                              <div style={{marginTop:6}}>
-                                <div className="label">{t('consent.advanced.key')||'Key'}</div>
-                                <input className="input" value={o.key} onChange={e=> { const v = sanitizeKey(e.target.value); setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: v}:x)); autosave() }} placeholder="recording" style={keyErr? { borderColor:'#e00' } : undefined} />
-                                <div className="muted" style={{marginTop:4}}>{t('consent.advanced.key_hint')||'Use lowercase letters/numbers/_/-. Example: recording'}</div>
-                                {isDup && <div className="muted" style={{color:'#e00', marginTop:4}}>{t('consent.advanced.duplicate_key')||'Duplicate key'}</div>}
-                                {!o.key?.trim() && <div className="muted" style={{color:'#e00', marginTop:4}}>{t('consent.advanced.empty_key')||'Key required'}</div>}
-                              </div>
-                            )}
-                            <button className="btn btn-ghost" style={{marginTop:6}} onClick={()=> setShowKeyRows(m=> ({...m, [idx]: !m[idx]}))}>{showKeyRows[idx]? 'Hide key' : 'Edit key'}</button>
                           </div>
                           <div>
                             <input className="input" value={o.zh||''} onChange={e=> { setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x)); autosave() }} placeholder={(o.key && t(`survey.consent_opt.${o.key}` as any) as string) || '可选'} />
@@ -560,8 +551,23 @@ export function AdminScale() {
                             </label>
                           </div>
                           <div>
-                            <button className="btn btn-ghost" onClick={()=> { const next = consentOptions.filter((_,i)=> i!==idx); setConsentOptions(next); saveConsentWith(next) }}>{t('delete')||'Delete'}</button>
+                            <input className="input" type="number" min={1} max={9} value={o.group||1} onChange={e=> { const v = Math.max(1, Math.min(9, parseInt(e.target.value||'1'))); setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, group: v}:x)); autosave() }} />
                           </div>
+                          <div>
+                            <div className="cta-row" style={{gap:6}}>
+                              <button className="btn btn-ghost" onClick={()=> setShowKeyRows(m=> ({...m, [idx]: !m[idx]}))}>{showKeyRows[idx]? (t('action.hide_key')||'Hide key') : (t('action.edit_key')||'Edit key')}</button>
+                              <button className="btn btn-ghost" onClick={()=> { const next = consentOptions.filter((_,i)=> i!==idx); setConsentOptions(next); saveConsentWith(next) }}>{t('delete')||'Delete'}</button>
+                            </div>
+                          </div>
+                          {showKeyRows[idx] && (
+                            <div style={{gridColumn: '1 / -1', marginTop:6}}>
+                              <div className="label">{t('consent.advanced.key')||'Key'}</div>
+                              <input className="input" value={o.key} onChange={e=> { const v = sanitizeKey(e.target.value); setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: v}:x)); autosave() }} placeholder="recording" style={keyErr? { borderColor:'#e00' } : undefined} />
+                              <div className="muted" style={{marginTop:4}}>{t('consent.advanced.key_hint')||'Use lowercase letters/numbers/_/-. Example: recording'}</div>
+                              {isDup && <div className="muted" style={{color:'#e00', marginTop:4}}>{t('consent.advanced.duplicate_key')||'Duplicate key'}</div>}
+                              {!o.key?.trim() && <div className="muted" style={{color:'#e00', marginTop:4}}>{t('consent.advanced.empty_key')||'Key required'}</div>}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -923,6 +929,7 @@ export function AdminScale() {
               <div className="muted">{t('consent_md_hint')||'Markdown supported: headings, lists, links, bold/italic, code.'}</div>
               <div className="muted">{t('consent_override_hint')||'If provided, the default sections are hidden in the survey.'}</div>
               <div className="muted">{t('consent_inline_hint')||'Tip: Insert [[CONSENT]] (or <interactive-consent/> / <context/>) to place the interactive confirmations (options + signature) inline. If not present, it appears after the text.'}</div>
+              <div className="muted">{t('consent_group_hint')||'You can set a Group number for each confirmation, then place them separately with [[CONSENT1]], [[CONSENT2]], etc. Or use [[CONSENT:options=withdrawal,data_use]] for explicit keys.'}</div>
               <div className="cta-row" style={{marginTop:8}}>
                 <button className="btn" onClick={async()=>{
                   try {

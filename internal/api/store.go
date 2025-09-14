@@ -88,9 +88,10 @@ type TenantAIConfig struct {
 
 // Consent configuration (per scale)
 type ConsentOptionConf struct {
-	Key       string            `json:"key"`
-	LabelI18n map[string]string `json:"label_i18n,omitempty"`
-	Required  bool              `json:"required"`
+    Key       string            `json:"key"`
+    LabelI18n map[string]string `json:"label_i18n,omitempty"`
+    Required  bool              `json:"required"`
+    Group     int               `json:"group,omitempty"`
 }
 type ConsentConfig struct {
 	Version           string              `json:"version"`

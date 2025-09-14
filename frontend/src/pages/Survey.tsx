@@ -34,19 +34,63 @@ export function Survey() {
   const [likertShowNumbers, setLikertShowNumbers] = useState<boolean>(true)
   const toast = useToast()
 
-  // Allow inline insertion of interactive consent via a placeholder in custom Markdown
-  function splitConsentByMarker(src: string): { before: string; after: string; has: boolean } {
-    if (!src) return { before: '', after: '', has: false }
-    const markers = ['<interactive-consent/>','<interactive-consent>','<context/>','<context>','[[CONSENT]]','[[consent]]']
-    for (const m of markers) {
-      const idx = src.indexOf(m)
-      if (idx >= 0) {
-        const before = src.slice(0, idx)
-        const after = src.slice(idx + m.length)
-        return { before, after, has: true }
+  // Tokenize custom consent with inline markers
+  type ConsentTok =
+    | { t: 'text'; s: string }
+    | { t: 'interactive' }
+    | { t: 'options'; keys?: string[] }
+    | { t: 'option'; key: string }
+    | { t: 'signature' }
+
+  function parseAttrs(s: string): Record<string,string> {
+    const out: Record<string,string> = {}
+    const re = /(\w+)\s*=\s*"([^"]*)"/g
+    let m: RegExpExecArray | null
+    while ((m = re.exec(s))) out[m[1]] = m[2]
+    return out
+  }
+  function tokenizeConsentTemplate(src: string): ConsentTok[] {
+    const toks: ConsentTok[] = []
+    if (!src) return toks
+    const re = /(\[\[CONSENT(\d*)(?::([^\]]+))?\]\])|(<consent-(interactive|options|option|signature)([^>]*)\s*\/?>)/gi
+    let last = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(src))) {
+      const i = m.index
+      if (i > last) toks.push({ t: 'text', s: src.slice(last, i) })
+      if (m[1]) {
+        // [[CONSENT:...]] form
+        const digits = (m[2] || '').trim()
+        const arg = (m[3] || '').trim().toLowerCase()
+        const groupNum = digits ? parseInt(digits) : undefined
+        if (!arg) toks.push({ t: 'interactive', ...(groupNum? { group: groupNum } as any : {}) })
+        else if (arg.startsWith('option=')) {
+          const key = arg.split('=')[1] || ''
+          if (key) toks.push({ t: 'option', key })
+        } else if (arg.startsWith('options=')) {
+          const keys = (arg.split('=')[1] || '').split(',').map(s=>s.trim()).filter(Boolean)
+          toks.push({ t: 'options', keys })
+        } else if (arg === 'options') toks.push({ t: 'options' })
+        else if (arg === 'signature') toks.push({ t: 'signature' })
+        else toks.push({ t: 'interactive', ...(groupNum? { group: groupNum } as any : {}) })
+      } else if (m[3]) {
+        // <consent-... attr/>
+        const kind = (m[4] || '').toLowerCase()
+        const attrs = parseAttrs(m[5] || '')
+        if (kind === 'interactive') toks.push({ t: 'interactive' })
+        else if (kind === 'signature') toks.push({ t: 'signature' })
+        else if (kind === 'options') {
+          const keys = (attrs.keys || '').split(',').map(s=>s.trim()).filter(Boolean)
+          toks.push({ t: 'options', keys: keys.length? keys : undefined })
+        } else if (kind === 'option') {
+          const key = (attrs.key || '').trim()
+          if (key) toks.push({ t: 'option', key })
+        }
       }
+      last = re.lastIndex
     }
-    return { before: src, after: '', has: false }
+    if (last < src.length) toks.push({ t: 'text', s: src.slice(last) })
+    return toks
   }
 
   async function loadMeta() {
@@ -272,71 +316,69 @@ export function Survey() {
     return (
       <div className="card span-12">
         <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
-        {/* If custom consent text is provided, allow inline insertion marker */}
         {consentCustom ? (() => {
-          const parts = splitConsentByMarker(consentCustom)
-          if (parts.has) {
-            return (
-              <div className="item">
-                <div className="label">{t('consent_custom')}</div>
-                <div className="tile" style={{padding:12}}>
-                  {parts.before && <div dangerouslySetInnerHTML={{ __html: mdToHtml(parts.before) }} />}
-                  {/* Inline interactive options */}
-                  <div className="item">
-                    <div className="label">{t('survey.consent_options')}</div>
-                    {(() => {
-                      const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
-                        { key:'withdrawal', required:true },
-                        { key:'data_use', required:true },
-                        { key:'recording', required:false },
-                      ])
-                      const seen = new Set<string>()
-                      const valid = base.filter((o:any)=> {
-                        const k = String(o?.key||'').trim()
-                        if (!k || !/^[a-z0-9_-]+$/.test(k)) return false
-                        if (seen.has(k)) return false
-                        seen.add(k)
-                        return true
-                      })
-                      return valid
-                    })().map((opt:any)=> (
-                      <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
-                        <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
-                          <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
-                          <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: true}))} /> {t('survey.yes')||'Yes'}</label>
-                          <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: false}))} /> {t('survey.no')||'No'}</label>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Inline signature if required */}
-                  {consentConfig?.signature_required === true && (
-                    <div className="item">
-                      <div className="label">{t('survey.signature_title')||'Signature'}</div>
-                      <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
-                      <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
-                      <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.style.width='100%'; el.style.maxWidth='100%'; el.height=150; el.style.border='1px solid var(--border)';
-                        const resize=()=>{ const rect = el.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; el.width = Math.floor(rect.width * dpr); }
-                        resize(); new ResizeObserver(resize).observe(el.parentElement||el); drawSigInit(el)
-                      } }} />
-                      <div className="cta-row" style={{marginTop:8}}>
-                        <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
-                        <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
-                      </div>
-                    </div>
-                  )}
-                  {parts.after && <div dangerouslySetInnerHTML={{ __html: mdToHtml(parts.after) }} />}
+          const toks = tokenizeConsentTemplate(consentCustom)
+          const hasInlineOptions = toks.some(tok => tok.t === 'interactive' || tok.t === 'options' || tok.t === 'option')
+          const hasInlineSig = toks.some(tok => tok.t === 'interactive' || tok.t === 'signature')
+          const renderOptions = (keys?: string[], group?: number) => {
+            const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
+              { key:'withdrawal', required:true },
+              { key:'data_use', required:true },
+              { key:'recording', required:false },
+            ])
+            const seen = new Set<string>()
+            let list = base.filter((o:any)=> { const k=String(o?.key||'').trim(); if (!k||!/^[a-z0-9_-]+$/.test(k)||seen.has(k)) return false; seen.add(k); return true })
+            if (group && group>0) list = list.filter((o:any)=> (o.group||1) === group)
+            if (keys && keys.length) list = list.filter((o:any)=> keys.includes(o.key))
+            return list.map((opt:any)=> (
+              <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
+                <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
+                  <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
+                  <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: true}))} /> {t('survey.yes')||'Yes'}</label>
+                  <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: false}))} /> {t('survey.no')||'No'}</label>
                 </div>
               </div>
-            )
+            ))
           }
-          return (
-            <>
+          const renderSignature = () => (
+            consentConfig?.signature_required === true ? (
               <div className="item">
-                <div className="label">{t('consent_custom')}</div>
-                <div className="tile" style={{padding:12}} dangerouslySetInnerHTML={{ __html: mdToHtml(consentCustom) }} />
+                <div className="label">{t('survey.signature_title')||'Signature'}</div>
+                <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
+                <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
+                <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.style.width='100%'; el.style.maxWidth='100%'; el.height=150; el.style.border='1px solid var(--border)';
+                  const resize=()=>{ const rect = el.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; el.width = Math.floor(rect.width * dpr); }
+                  resize(); new ResizeObserver(resize).observe(el.parentElement||el); drawSigInit(el)
+                } }} />
+                <div className="cta-row" style={{marginTop:8}}>
+                  <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
+                  <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
+                </div>
               </div>
-            </>
+            ) : null
+          )
+          return (
+            <div className="item">
+              <div className="label">{t('consent_custom')}</div>
+              <div className="tile" style={{padding:12}}>
+                {toks.map((tok, i) => {
+                  if (tok.t === 'text') return <div key={i} dangerouslySetInnerHTML={{ __html: mdToHtml(tok.s) }} />
+                  if (tok.t === 'interactive') return <div key={i}>{renderOptions(undefined, (tok as any).group)}{renderSignature()}</div>
+                  if (tok.t === 'options') return <div key={i}>{renderOptions(tok.keys)}</div>
+                  if (tok.t === 'option') return <div key={i}>{renderOptions([tok.key])}</div>
+                  if (tok.t === 'signature') return <div key={i}>{renderSignature()}</div>
+                  return null
+                })}
+              </div>
+              {/* If author did not place any options/signature inline, show default after text */}
+              {(!hasInlineOptions) && (
+                <div className="item">
+                  <div className="label">{t('survey.consent_options')}</div>
+                  {renderOptions(undefined)}
+                </div>
+              )}
+              {(!hasInlineSig) && renderSignature()}
+            </div>
           )
         })() : (
           <>

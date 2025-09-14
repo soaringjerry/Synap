@@ -1660,17 +1660,25 @@ func (rt *Router) parseConsentCfg(m map[string]any) *ConsentConfig {
 				if k, ok3 := om["key"].(string); ok3 {
 					opt.Key = k
 				}
-				if req, ok3 := om["required"].(bool); ok3 {
-					opt.Required = req
-				}
-				if li, ok3 := om["label_i18n"]; ok3 {
-					if lm, ok4 := li.(map[string]any); ok4 {
-						opt.LabelI18n = map[string]string{}
-						for lk, lv := range lm {
-							opt.LabelI18n[lk] = toString(lv)
-						}
-					}
-				}
+                if req, ok3 := om["required"].(bool); ok3 {
+                    opt.Required = req
+                }
+                if li, ok3 := om["label_i18n"]; ok3 {
+                    if lm, ok4 := li.(map[string]any); ok4 {
+                        opt.LabelI18n = map[string]string{}
+                        for lk, lv := range lm {
+                            opt.LabelI18n[lk] = toString(lv)
+                        }
+                    }
+                }
+                if gv, ok3 := om["group"]; ok3 {
+                    switch g := gv.(type) {
+                    case float64:
+                        opt.Group = int(g)
+                    case string:
+                        if n, err := strconv.Atoi(g); err == nil { opt.Group = n }
+                    }
+                }
 				if opt.Key != "" {
 					opts = append(opts, opt)
 				}
