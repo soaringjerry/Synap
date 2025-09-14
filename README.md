@@ -6,9 +6,9 @@
 
 * **Survey Builder** — customizable questionnaires (not limited to Likert scales)
 * **Automated Metrics** — reliability checks such as Cronbach’s α
-* **Consent & Compliance** — configurable interactive confirmations (per‑project), optional signature, hashed evidence records, GDPR self‑service export/delete
+* **Consent & Compliance** — configurable interactive confirmations（Off/Optional/Required 三段式），可选签名；证据哈希存储；GDPR 自助导出/删除；知情同意支持 Markdown 渲染
 * **Region-Aware Privacy** — PDPA by default; GDPR/CCPA/PIPL applied when stricter
-* **End‑to‑End Encryption** — client‑side encryption by default at creation; keys generated in browser; private keys never leave the device; encrypted bundle exports + local plaintext export
+* **End‑to‑End Encryption** — 端到端加密（创建时开启）；密钥在浏览器生成，私钥不外发；管理端可下载加密包；浏览器内本地解密导出 JSONL/CSV（长/宽），题干为可读文本
 * **Lightweight & Fast** — Go + TypeScript with encrypted snapshot storage (DB backends planned)
 * **AI Integration (Planned)** — automated analysis, summarization, adaptive survey design
 
@@ -65,8 +65,12 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000)
 
 Admin quick path:
-- Create Scale → set basics, decide E2EE at creation (generate key locally or upload public key), configure consent (version, interactive options, signature requirement)
-- Manage Scale → share link; when E2EE is ON, use encrypted bundle export + local plaintext export; CSV is available only when E2EE is OFF
+- Create Scale → Basics + End‑to‑end Encryption（生成或上传公钥，创建后锁定）+ Consent（版本号、交互式确认、是否需要签名）。Likert 锚点可选择模板（同意/频率 5 点、同意/双极性 7 点、单极性 5 点）或自定义，支持“数字+文字”模式
+- Manage Scale → 分享链接；E2EE=ON 时，服务器仅提供加密包下载；明文导出在浏览器本地完成（JSONL/CSV 长宽），题干为 EN/ZH 可读文本；E2EE=OFF 时，服务器 CSV 导出可用
+
+Participant UX:
+- 问卷顶部会显示“本问卷已启用端到端加密”的提示：作答在浏览器内加密；除问卷管理方外任何人（包括平台）不可见
+- 同意副本支持下载 PDF（浏览器打印）。若浏览器拦截，会自动下载 HTML 作为兜底
 
 ### Docker (GHCR)
 

@@ -69,9 +69,11 @@ Future (planned):
 - E2EE toggle (default ON) and Region (auto|gdpr|pipl|pdpa|ccpa)
 - Project Keys section: add and list public keys
 - Disabling E2EE triggers a red double confirmation and an audit record (`e2ee_disable`).
+- Participant notice: the survey shows a banner that answers are encrypted in the browser and only visible to survey administrators holding the decryption keys — even the platform cannot read them.
 - Export behavior:
-  - When E2EE is ON: server produces only encrypted bundle; plaintext export happens locally in the browser (JSONL). CSV (long/wide/score) must be generated client‑side or in your analysis tools.
-  - When E2EE is OFF: server CSV exports are available (`/api/export?format=long|wide|score`).
+  - When E2EE is ON: server produces only encrypted bundle; plaintext export happens locally in the browser (JSONL/CSV long|wide) with readable EN/ZH question texts
+  - When E2EE is OFF: server CSV exports are available (`/api/export?format=long|wide|score`), UTF‑8 with BOM.
+- Consent receipts: participants can download a PDF (browser print) as human‑readable copy.
 
 Planned UX:
 - Strong red warning + audit when turning E2EE OFF (especially gdpr/pipl projects)

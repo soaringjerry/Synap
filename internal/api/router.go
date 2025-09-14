@@ -462,6 +462,7 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", "attachment; filename=long.csv")
+		_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
 		_, _ = w.Write(b)
 		return
 	case "wide":
@@ -474,6 +475,7 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", "attachment; filename=wide.csv")
+		_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
 		_, _ = w.Write(b)
 		return
 	case "score":
@@ -485,6 +487,7 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", "attachment; filename=score.csv")
+		_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
 		_, _ = w.Write(b)
 		return
 	default:

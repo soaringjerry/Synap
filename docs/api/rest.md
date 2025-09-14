@@ -8,7 +8,7 @@
 - GET `/api/metrics/alpha?scale_id=...` → Cronbach’s α
 
 Consent & self‑service
-- POST `/api/consent/sign` `{ scale_id, version, locale, choices:{k:bool}, signed_at, signature_kind, evidence }` → store hashed consent evidence
+- POST `/api/consent/sign` `{ scale_id, version, locale, choices:{k:bool}, signed_at?, signature_kind?, evidence }` → store hashed consent evidence; returns `{ ok, id, hash }`。客户端可在提交作答时传 `consent_id=id` 把交互式确认与该提交关联，便于导出统计。
 - GET `/api/self/participant/export?pid=...&token=...`
 - POST `/api/self/participant/delete?pid=...&token=...&hard=true|false`
 - GET `/api/self/e2ee/export?response_id=...&token=...`
@@ -17,7 +17,7 @@ Consent & self‑service
 ## Admin (Bearer JWT)
 - POST `/api/auth/register` `{ email, password, tenant_name }` → `{ token, tenant_id, user_id }`
 - POST `/api/auth/login` `{ email, password }` → `{ token, tenant_id, user_id }`
-- POST `/api/scales` `{ name_i18n, points, randomize? }` → `{ id, ... }`
+- POST `/api/scales` `{ name_i18n, points, randomize?, collect_email?, e2ee_enabled?, region?, consent_config?, likert_labels_i18n?, likert_show_numbers?, likert_preset? }` → `{ id, ... }`
 - POST `/api/items` `{ scale_id, reverse_scored, stem_i18n }` → `{ id, ... }`
 - GET `/api/admin/scales` → `{ scales: [...] }`
 - GET `/api/admin/stats?scale_id=...` → `{ count }`
@@ -34,6 +34,9 @@ E2EE
 - GET `/api/exports/e2ee?job=...&token=...` → `{ manifest, signature, responses }`
 
 Notes:
-- Submit bulk body: `{ participant: {email?}, scale_id, answers: [{item_id, raw_value}] }`
+- Submit bulk body: `{ participant: {email?}, scale_id, answers: [{item_id, raw? , raw_value?}], consent_id? }`
 - Reverse coding is applied server‑side based on `reverse_scored` and scale points.
-- Consent: `evidence` is a JSON string downloaded to participant; server stores only a hash + metadata.
+- Consent: `evidence` is a JSON string downloaded to participant; server stores only a hash + metadata. Server CSV 导出（long/wide/score）为 UTF‑8 BOM，并包含 consent.*（1/0）。
+
+Scale meta:
+- GET `/api/scale/{id}` → `{ id, name_i18n, points, randomize, consent_i18n, collect_email, e2ee_enabled, region, consent_config, likert_labels_i18n?, likert_show_numbers?, likert_preset? }`

@@ -17,8 +17,6 @@ type LongRow struct {
 // ExportLongCSV renders rows into a long-format CSV.
 func ExportLongCSV(rows []LongRow) ([]byte, error) {
 	buf := &bytes.Buffer{}
-	// Write UTF-8 BOM so Excel opens Unicode correctly
-	_, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
 	w := csv.NewWriter(buf)
 	_ = w.Write([]string{"participant_id", "item_id", "raw_value", "score_value", "submitted_at"})
 	for _, r := range rows {
@@ -61,8 +59,6 @@ func ExportWideCSV(inputs map[string]map[string]int) ([]byte, error) {
 	sort.Strings(pids)
 
 	buf := &bytes.Buffer{}
-	// Write UTF-8 BOM so Excel opens Unicode correctly
-	_, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
 	w := csv.NewWriter(buf)
 	header := append([]string{"participant_id"}, items...)
 	_ = w.Write(header)
@@ -90,8 +86,6 @@ func ExportScoreCSV(inputs map[string][]int) ([]byte, error) {
 	sort.Strings(pids)
 
 	buf := &bytes.Buffer{}
-	// Write UTF-8 BOM so Excel opens Unicode correctly
-	_, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
 	w := csv.NewWriter(buf)
 	_ = w.Write([]string{"participant_id", "total_score"})
 	for _, pid := range pids {
