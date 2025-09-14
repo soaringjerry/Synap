@@ -36,7 +36,7 @@ Exports:
 - When E2EE is OFF: server CSV exports (long/wide/score) are available (UTF‑8 with BOM to avoid garbling in Excel). You can use consent_header=label_en|label_zh to use human‑readable labels as column names (instead of consent.<key>).
 
 Consent evidence:
-- The consent page supports interactive confirmations and optional signature. A hashed record is stored on the server. Participants can download a PDF receipt（通过浏览器打印为 PDF；若被拦截会自动下载 HTML）
+- The consent page supports interactive confirmations and optional signature. A hashed record is stored on the server. Participants can download a PDF receipt (printed via the browser; if a popup is blocked, an HTML fallback is downloaded).
 - Consent Markdown supports inline markers to place interactive blocks inside your text: [[CONSENT]] inserts all (options+signature), [[CONSENT1]]/[[CONSENT2]] insert grouped options, [[CONSENT:options=withdrawal,data_use]] inserts selected keys.
 
 GDPR self‑service:
