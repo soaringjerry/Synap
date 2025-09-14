@@ -899,13 +899,15 @@ export function AdminScale() {
                   <div className="card span-6"><div className="label">占位（中文）</div><input className="input" value={newPhZh} onChange={e=> setNewPhZh(e.target.value)} /></div>
                 </div>
               )}
-              {/* Type preview */}
-              <div className="item">
-                <div className="label">{t('preview')||'Preview'}</div>
-                <div className="tile" style={{padding:12}}>
-                  {renderNewPreview()}
+              {/* Type preview (skip for Likert; Likert has its own richer preview above) */}
+              {newType !== 'likert' && (
+                <div className="item">
+                  <div className="label">{t('preview')||'Preview'}</div>
+                  <div className="tile" style={{padding:12}}>
+                    {renderNewPreview()}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="item"><label><input className="checkbox" type="checkbox" checked={newRequired} onChange={e=> setNewRequired(e.target.checked)} /> Required</label></div>
               <button className="btn btn-primary" onClick={addItem}>{t('add')}</button>
             </div>
