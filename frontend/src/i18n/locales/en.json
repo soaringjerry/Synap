@@ -187,7 +187,7 @@
       "export_bundle_desc": "Contains: manifest (version, type, scale_id, count, created_at) + Ed25519 signature + encrypted responses. For archival and offline decryption.",
       "export_button": "Create Export",
       "export_ready": "Export link prepared (opened in new tab).",
-      "local_export_desc": "Local plaintext export decrypts in your browser (private key never leaves your device). Default format: JSONL.",
+      "local_export_desc": "Local plaintext export decrypts in your browser (private key never leaves your device). Default format: JSONL; includes human‑readable question texts (EN/ZH).",
       "passphrase": "Local private‑key passphrase",
       "passphrase_placeholder": "Enter passphrase (local only; never uploaded)",
       "passphrase_help": "Used to encrypt/unlock your private key in the browser. Never sent to the server. Use a strong passphrase and store it safely.",

@@ -494,14 +494,33 @@ export function AdminScale() {
                         } catch {}
                       }
                       if (out.length===0) throw new Error('No entries could be decrypted with the provided key')
-                      const blob = new Blob([out.map(o=> JSON.stringify(o)).join('\n')+"\n"], { type: 'application/jsonl' })
+                      // Build human-readable maps for item ids -> stems
+                      const enMap: Record<string,string> = {}
+                      const zhMap: Record<string,string> = {}
+                      for (const it of items) {
+                        enMap[it.id] = (it.stem_i18n?.en || it.stem || it.id)
+                        zhMap[it.id] = (it.stem_i18n?.zh || it.stem_i18n?.en || it.stem || it.id)
+                      }
+                      const outReadable = out.map((o:any)=>{
+                        const a = o.answers || {}
+                        const readable_en: Record<string, any> = {}
+                        const readable_zh: Record<string, any> = {}
+                        for (const [k, v] of Object.entries(a)) {
+                          const keyEn = enMap[k] || k
+                          const keyZh = zhMap[k] || k
+                          readable_en[keyEn] = v
+                          readable_zh[keyZh] = v
+                        }
+                        return { ...o, answers_readable_en: readable_en, answers_readable_zh: readable_zh }
+                      })
+                      const blob = new Blob([outReadable.map(o=> JSON.stringify(o)).join('\n')+"\n"], { type: 'application/jsonl' })
                       const a = document.createElement('a')
                       a.href = URL.createObjectURL(blob)
                       a.download = `e2ee_${id}_plaintext.jsonl`
                       a.click(); URL.revokeObjectURL(a.href)
                       setDecMsg(t('e2ee.local_plain_ready')||'Decrypted JSONL downloaded.')
                     } catch(e:any) { setDecMsg(e.message||String(e)) }
-                }}>{t('e2ee.local_decrypt_button')||'Decrypt locally and Download JSON'}</button>
+                  }}>{t('e2ee.local_decrypt_button')||'Decrypt locally and Download JSON'}</button>
                 </div>
               </div>
               {decMsg && <div className="muted" style={{marginTop:8}}>{decMsg}</div>}
