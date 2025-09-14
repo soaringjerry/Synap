@@ -384,7 +384,16 @@ a:hover, a:focus { text-decoration: none; }
 .demo-item { margin-top: 10px; }
 
 /* Sticky action bar for mobile (submit area) */
-.sticky-actions { position: sticky; bottom: 0; padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
-  backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2);
-  background: linear-gradient(180deg, rgba(10,14,28,0.4), rgba(10,14,28,0.75)); border-top: 1px solid var(--border); z-index: 20; }
+/* Match card surface to avoid visible color seams */
+.sticky-actions {
+  position: sticky; bottom: 0;
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+  border-top: 1px solid var(--border);
+  z-index: 20;
+}
+/* Make sticky bar visually full-bleed within card without misaligned edges */
+.card .sticky-actions { margin-left: -22px; margin-right: -22px; padding-left: 22px; padding-right: 22px; }
 .sticky-actions .btn { min-height: 42px; }

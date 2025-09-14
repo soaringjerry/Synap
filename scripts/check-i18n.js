@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /*
- Simple i18n consistency check
+ i18n consistency check (enhanced)
  - Compares flattened key sets between en and zh for namespaces: common, auth
+ - Scans frontend source for used translation keys (t('...') / i18n.t('...'))
+   and verifies they exist in both en and zh
  - Detects duplicate top-level properties inside each namespace by scanning raw JSON
+ - Optionally reports unused keys (defined but not referenced in code)
  - Exits non‑zero on problems
 */
 const fs = require('fs')
@@ -101,7 +104,7 @@ function main() {
   const namespaces = ['common', 'auth']
   let errors = 0
 
-  // Missing keys check
+  // Missing keys parity check between languages
   for (const ns of namespaces) {
     const enKeys = new Set(flatten(en[ns] || {}).map(k => `${ns}.${k}`))
     const zhKeys = new Set(flatten(zh[ns] || {}).map(k => `${ns}.${k}`))
@@ -132,6 +135,82 @@ function main() {
         errors++
       }
     }
+  }
+
+  // Scan frontend source for used keys
+  const SRC_DIR = path.join(__dirname, '..', 'frontend', 'src')
+  const used = new Set()
+  const fileList = []
+  ;(function walk(dir){
+    for (const f of fs.readdirSync(dir)) {
+      const p = path.join(dir, f)
+      const st = fs.statSync(p)
+      if (st.isDirectory()) walk(p)
+      else if (/\.(t|j)sx?$/.test(f)) fileList.push(p)
+    }
+  })(SRC_DIR)
+
+  const re = /(?:\b|\.)t\(\s*['\"]([A-Za-z0-9_.:]+)['\"]\s*\)/g
+  for (const fp of fileList) {
+    const txt = fs.readFileSync(fp, 'utf8')
+    let m
+    while ((m = re.exec(txt))) {
+      used.add(m[1])
+    }
+  }
+
+  // Build key sets for quick lookup
+  const langSets = {
+    en: {
+      common: new Set(flatten(en.common || {})),
+      auth: new Set(flatten(en.auth || {})),
+    },
+    zh: {
+      common: new Set(flatten(zh.common || {})),
+      auth: new Set(flatten(zh.auth || {})),
+    }
+  }
+
+  const missingIn = (lang, ns, key) => !langSets[lang][ns].has(key)
+
+  const missing = []
+  for (const key of used) {
+    let ns = 'common', pathKey = key
+    // Support namespace prefix in key like "auth:title_login"
+    if (key.includes(':')) {
+      const [nsPrefix, rest] = key.split(':', 2)
+      ns = nsPrefix
+      pathKey = rest
+    }
+    // If code writes e.g. 'survey.title', it's path inside 'common'
+    if (!['common', 'auth'].includes(ns)) {
+      // treat as path within default 'common'
+      ns = 'common'
+      pathKey = key
+    }
+    if (missingIn('en', ns, pathKey) || missingIn('zh', ns, pathKey)) {
+      missing.push({ key, ns, en: missingIn('en', ns, pathKey), zh: missingIn('zh', ns, pathKey) })
+    }
+  }
+
+  if (missing.length) {
+    console.error('[i18n] missing keys referenced in code:')
+    for (const m of missing) {
+      const parts = []
+      if (m.en) parts.push('en')
+      if (m.zh) parts.push('zh')
+      console.error(`  - ${m.key} (missing in ${parts.join('/')})`)
+    }
+    errors++
+  }
+
+  // Optional: report unused keys (not an error)
+  const definedCommon = new Set(flatten(en.common || {}))
+  const definedAuth = new Set(flatten(en.auth || {}))
+  const unused = [...definedCommon].filter(k => !used.has(k))
+  if (unused.length) {
+    console.log(`[i18n] info: ${unused.length} common.* keys not referenced in code (first 20):`)
+    for (const k of unused.slice(0, 20)) console.log('  -', `common.${k}`)
   }
 
   if (errors) {

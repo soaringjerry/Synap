@@ -21,6 +21,7 @@ export function Survey() {
   const [msg, setMsg] = useState('')
   const [selfManage, setSelfManage] = useState<{exportUrl?: string; deleteUrl?: string; pid?: string; token?: string; rid?: string} | null>(null)
   const [loading, setLoading] = useState(false)
+  const [consentEvidence, setConsentEvidence] = useState<any|null>(null)
   const [consentCustom, setConsentCustom] = useState('')
   const [points, setPoints] = useState<number>(5)
   const [collectEmail, setCollectEmail] = useState<'off'|'optional'|'required'>('optional')
@@ -97,10 +98,9 @@ export function Survey() {
     try {
       await postConsentSign({ scale_id: scaleId, version: consentConfig?.version || 'v1', locale: lang, choices: consentChoices, signed_at: evidence.ts, signature_kind: evidence.signature.kind, evidence: JSON.stringify(evidence) })
     } catch {}
+    // Store locally and continue; download will be optional after submit
+    setConsentEvidence(evidence)
     setConsented(true)
-    // Offer download of JSON copy automatically
-    const blob = new Blob([JSON.stringify(evidence,null,2)], { type: 'application/json' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `consent_${scaleId}_${Date.now()}.json`; a.click(); URL.revokeObjectURL(a.href)
   }
 
   function consentOptionLabel(opt: {key:string; label_i18n?:Record<string,string>}) {
@@ -324,6 +324,18 @@ export function Survey() {
           <div style={{fontWeight:600}}>{t('survey.self_manage')||'Manage your data'}</div>
           <div className="muted" style={{marginTop:4}}>{t('survey.self_manage_hint')||'You can export or delete your submission using the links below. Keep them safe.'}</div>
           <div className="cta-row" style={{marginTop:8, display:'flex', gap:8, flexWrap:'wrap'}}>
+            {!!consentEvidence && (
+              <button className="btn btn-ghost" onClick={()=>{
+                try {
+                  const blob = new Blob([JSON.stringify(consentEvidence, null, 2)], { type: 'application/json' })
+                  const a = document.createElement('a')
+                  a.href = URL.createObjectURL(blob)
+                  a.download = `consent_${scaleId}_${Date.now()}.json`
+                  a.click()
+                  URL.revokeObjectURL(a.href)
+                } catch {}
+              }}>{t('survey.download_consent')||'Download consent copy'}</button>
+            )}
             {selfManage.exportUrl && <a className="btn" href={selfManage.exportUrl} target="_blank" rel="noreferrer">{t('survey.self_export')||'Export my data'}</a>}
             {selfManage.deleteUrl && <a className="btn btn-ghost" href={selfManage.deleteUrl} target="_blank" rel="noreferrer">{t('survey.self_delete')||'Delete my data'}</a>}
           </div>

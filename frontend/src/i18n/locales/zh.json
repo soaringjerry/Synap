@@ -100,12 +100,14 @@
         "withdrawal": "我理解我可以随时撤回",
         "data_use": "我理解我的数据仅用于学术/汇总用途"
       },
-      "security_badges": "安全：静态加密，支持端到端加密；遵循 GDPR/PDPA 原则设计。"
+      "security_badges": "安全：静态加密，支持端到端加密；遵循 GDPR/PDPA 原则设计。",
+      "self_manage": "管理我的数据",
+      "self_manage_hint": "你可以随时通过以下链接导出或删除本次提交。请妥善保管这些链接。",
+      "self_export": "导出我的数据",
+      "self_delete": "删除我的数据",
+      "download_consent": "下载知情同意副本"
     },
-    "self_manage": "管理我的数据",
-    "self_manage_hint": "你可以随时通过以下链接导出或删除本次提交。请妥善保管这些链接。",
-    "self_export": "导出我的数据",
-    "self_delete": "删除我的数据",
+    "learn_more": "了解更多",
     "consent_custom": "知情同意",
     "consent_en": "知情同意（英文）",
     "consent_zh": "知情同意（中文）",

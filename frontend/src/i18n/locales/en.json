@@ -100,12 +100,14 @@
         "withdrawal": "I understand I can withdraw at any time",
         "data_use": "I understand my data is for academic/aggregate use only"
       },
-      "security_badges": "Security: encrypted at rest, end‑to‑end encryption supported; designed for GDPR/PDPA compliance."
+      "security_badges": "Security: encrypted at rest, end‑to‑end encryption supported; designed for GDPR/PDPA compliance.",
+      "self_manage": "Manage your data",
+      "self_manage_hint": "You can export or delete your submission using the links below. Keep them safe.",
+      "self_export": "Export my data",
+      "self_delete": "Delete my data",
+      "download_consent": "Download consent copy"
     },
-    "self_manage": "Manage your data",
-    "self_manage_hint": "Export or delete your submission at any time using the links below. Keep them safe.",
-    "self_export": "Export my data",
-    "self_delete": "Delete my data",
+    "learn_more": "Learn more",
     "consent_custom": "Consent",
     "consent_en": "Consent (EN)",
     "consent_zh": "Consent (ZH)",
