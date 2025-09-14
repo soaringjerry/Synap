@@ -126,10 +126,7 @@ export function AdminScale() {
     } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
   function sanitizeKey(input: string) {
-    const v = input.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '').slice(0, 32)
-    // prevent reserved or confusing keys
-    if (v === 'email') return 'email_opt'
-    return v
+    return input.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '').slice(0, 32)
   }
   function applyConsentPreset(preset: 'minimal'|'recommended'|'strict'){
     if (preset==='minimal'){

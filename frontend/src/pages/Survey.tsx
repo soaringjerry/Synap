@@ -133,18 +133,10 @@ export function Survey() {
     setConsented(true)
   }
 
-  function isEmailLike(s?: string) {
-    if (!s) return false
-    return /\S+@\S+\.[\w]+/.test(s)
-  }
   function consentOptionLabel(opt: {key:string; label_i18n?:Record<string,string>}) {
-    let lbl = ''
-    if (opt.label_i18n) lbl = opt.label_i18n[lang] || opt.label_i18n['en'] || ''
-    if (!lbl || isEmailLike(lbl)) {
-      const fb = t(`survey.consent_opt.${opt.key}`) as string
-      lbl = (fb && !fb.startsWith('survey.consent_opt.')) ? fb : opt.key
-    }
-    return lbl
+    if (opt.label_i18n) return opt.label_i18n[lang] || opt.label_i18n['en'] || opt.key
+    const fb = t(`survey.consent_opt.${opt.key}`) as string
+    return (fb && !fb.startsWith('survey.consent_opt.')) ? fb : opt.key
   }
 
   function openPrintWindow(title: string, bodyHtml: string): boolean {
@@ -312,8 +304,7 @@ export function Survey() {
             const seen = new Set<string>()
             const valid = base.filter((o:any)=> {
               const k = String(o?.key||'').trim()
-              if (!k || /@/.test(k) || !/^[a-z0-9_-]+$/.test(k)) return false
-              if (k === 'email') return false
+              if (!k || !/^[a-z0-9_-]+$/.test(k)) return false
               if (seen.has(k)) return false
               seen.add(k)
               return true
