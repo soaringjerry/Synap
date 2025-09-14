@@ -32,7 +32,26 @@ export function Survey() {
   const [metaReady, setMetaReady] = useState(false)
   const [likertLabels, setLikertLabels] = useState<string[]>([])
   const [likertShowNumbers, setLikertShowNumbers] = useState<boolean>(true)
+  // Turnstile (Cloudflare) state
+  const [turnstileEnabled, setTurnstileEnabled] = useState<boolean>(false)
+  const [turnstileSitekey, setTurnstileSitekey] = useState<string>('')
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const turnstileRef = useRef<HTMLDivElement|null>(null)
   const toast = useToast()
+
+  // Lazy-load Turnstile JS
+  function ensureTurnstile(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as any).turnstile) return resolve()
+      const s = document.createElement('script')
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+      s.async = true
+      s.defer = true
+      s.onload = () => resolve()
+      s.onerror = () => reject(new Error('Turnstile script failed to load'))
+      document.head.appendChild(s)
+    })
+  }
 
   // Tokenize custom consent with inline markers
   type ConsentTok =
@@ -101,6 +120,9 @@ export function Survey() {
       } catch {
         meta = await getScaleMeta(scaleId)
       }
+      // Turnstile flags (sitekey public)
+      setTurnstileEnabled(!!(meta as any).turnstile_enabled)
+      setTurnstileSitekey((meta as any).turnstile_sitekey || '')
       const c = (meta.consent_i18n && (meta.consent_i18n[lang] || meta.consent_i18n['en'])) || ''
       setConsentCustom(c || '')
       setPoints(meta.points || 5)
@@ -138,6 +160,29 @@ export function Survey() {
 
   useEffect(()=>{ loadMeta() }, [scaleId, lang])
   useEffect(()=>{ if (consented) { loadOrSeed() } }, [consented, scaleId, lang])
+  // Render Turnstile once consented and when enabled
+  useEffect(() => {
+    (async () => {
+      if (!consented) return
+      if (!turnstileEnabled || !turnstileSitekey) return
+      try {
+        await ensureTurnstile()
+        if (turnstileRef.current && (window as any).turnstile) {
+          turnstileRef.current.innerHTML = ''
+          ;(window as any).turnstile.render(turnstileRef.current, {
+            sitekey: turnstileSitekey,
+            callback: (token: string) => setTurnstileToken(token),
+            'error-callback': () => setTurnstileToken(''),
+            'expired-callback': () => setTurnstileToken(''),
+            theme: 'auto'
+          })
+        }
+      } catch (e) {
+        // Non-fatal: allow submission without widget if script failed but server may still enforce
+        console.warn(e)
+      }
+    })()
+  }, [consented, turnstileEnabled, turnstileSitekey])
 
   const progress = useMemo(()=>{
     const total = items.length || 0
@@ -511,6 +556,13 @@ export function Survey() {
           <input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required={collectEmail==='required'} />
         </div>
       )}
+      {consented && turnstileEnabled && turnstileSitekey && (
+        <div className="item">
+          <div className="label">{t('survey.security_check')||'Security check'}</div>
+          <div ref={turnstileRef} />
+          {!turnstileToken && <div className="muted" style={{marginTop:6}}>{t('survey.security_check_hint')||'Please complete the verification to submit.'}</div>}
+        </div>
+      )}
       {loading && <div className="muted">{t('survey.loading')}</div>}
       {!loading && items.map(it=> {
         const t = it.type || 'likert'
@@ -610,7 +662,7 @@ export function Survey() {
         )
       })}
       <div className="sticky-actions cta-row" style={{marginTop:12}}>
-        <button className="btn btn-primary" disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim())} onClick={async()=>{
+        <button className="btn btn-primary" disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim()) || (turnstileEnabled && !!turnstileSitekey && !turnstileToken)} onClick={async()=>{
           try {
             if (e2ee) {
               const { keys } = await listProjectKeysPublic(scaleId)
@@ -619,7 +671,7 @@ export function Survey() {
               const payload: any = { scale_id: scaleId, answers }
               if (collectEmail !== 'off') payload.email = email.trim()
               const enc = await encryptForProject(payload, scaleId, keys as any)
-              const res = await submitE2EE({ scale_id: scaleId, ciphertext: enc.ciphertext, nonce: enc.nonce, enc_dek: enc.encDEK, aad_hash: enc.aad_hash, pmk_fingerprint: enc.pmk_fingerprint })
+              const res = await submitE2EE({ scale_id: scaleId, ciphertext: enc.ciphertext, nonce: enc.nonce, enc_dek: enc.encDEK, aad_hash: enc.aad_hash, pmk_fingerprint: enc.pmk_fingerprint, turnstile_token: turnstileToken || undefined })
               setMsg(t('submit_success')||'Submitted successfully')
               toast.success(t('submit_success')||'Submitted successfully')
               const manage = `${window.location.origin}/self?response_id=${encodeURIComponent(res.response_id)}&token=${encodeURIComponent(res.self_token||'')}`
@@ -628,7 +680,7 @@ export function Survey() {
               return
             } else {
               const arr = Object.entries(answers).map(([item_id, raw])=>({item_id, raw}))
-              const res = await submitBulk(scaleId, email.trim(), arr as any, { consent_id: consentId || undefined })
+              const res = await submitBulk(scaleId, email.trim(), arr as any, { consent_id: consentId || undefined, turnstile_token: turnstileToken || undefined })
               const manage = `${window.location.origin}/self?pid=${encodeURIComponent((res as any).participant_id)}&token=${encodeURIComponent((res as any).self_token||'')}`
               const ctx = { consentEvidence, stems: items.reduce((m:any,it:any)=> (m[it.id]=it.stem, m), {} as Record<string,string>), lang }
               storeSelfContextAndRedirect(manage, ctx)

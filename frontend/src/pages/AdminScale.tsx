@@ -37,6 +37,7 @@ export function AdminScale() {
   const [likertLabelsZh, setLikertLabelsZh] = useState<string>('')
   const [likertShowNumbers, setLikertShowNumbers] = useState<boolean>(true)
   const [likertPreset, setLikertPreset] = useState<string>('numeric')
+  const [turnstile, setTurnstile] = useState<boolean>(true)
   const [keys, setKeys] = useState<any[]>([])
   const [newPub, setNewPub] = useState('')
   const [newAlg, setNewAlg] = useState<'x25519+xchacha20'|'rsa+aesgcm'>('x25519+xchacha20')
@@ -177,6 +178,7 @@ export function AdminScale() {
       const s = await adminGetScale(id)
       const its = await adminGetScaleItems(id)
       setScale(s)
+      setTurnstile(!!(s as any).turnstile_enabled)
       const labs = (s as any).likert_labels_i18n || {}
       setLikertLabelsEn((labs.en||[]).join(', '))
       setLikertLabelsZh((labs.zh||[]).join('，'))
@@ -207,7 +209,7 @@ export function AdminScale() {
       const likert_labels_i18n: any = {}
       if (labsEn.length) likert_labels_i18n.en = labsEn
       if (labsZh.length) likert_labels_i18n.zh = labsZh
-      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto', likert_labels_i18n, likert_show_numbers: likertShowNumbers, likert_preset: likertPreset } as any)
+      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto', turnstile_enabled: !!turnstile, likert_labels_i18n, likert_show_numbers: likertShowNumbers, likert_preset: likertPreset } as any)
       setMsg(t('saved'))
       toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
@@ -776,6 +778,7 @@ export function AdminScale() {
                   <option value="required">{t('collect_email_required')||'Required'}</option>
                 </select>
               </div>
+              <div className="item"><label><input className="checkbox" type="checkbox" checked={turnstile} onChange={e=> setTurnstile(e.target.checked)} /> {t('turnstile.enable_label')||'Enable Cloudflare Turnstile (default)'}</label></div>
               <div className="cta-row" style={{marginTop:12}}>
                 <button className="btn btn-primary" onClick={saveScale} disabled={saving}>{t('save')}</button>
                 <button className="btn btn-ghost" onClick={removeScale}>{t('delete')}</button>

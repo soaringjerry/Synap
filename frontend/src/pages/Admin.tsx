@@ -14,6 +14,7 @@ export function Admin() {
   const [points, setPoints] = useState(5)
   const [e2ee, setE2ee] = useState(true)
   const [region, setRegion] = useState<'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa'>('auto')
+  const [turnstile, setTurnstile] = useState(false)
   const [keyMethod, setKeyMethod] = useState<'upload'|'generate'>('generate')
   const [pub, setPub] = useState('')
   const [pass, setPass] = useState('')
@@ -101,7 +102,7 @@ export function Admin() {
         }
       }
       const options = consentOptions.map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
-      const body: any = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region }
+      const body: any = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region, turnstile_enabled: !!turnstile }
       if (consentTextEn || consentTextZh) body.consent_i18n = { en: consentTextEn || undefined, zh: consentTextZh || undefined }
       body.consent_config = { version: consentVersion, options, signature_required: !!signatureRequired }
       const created = await adminCreateScale(body as any)
@@ -168,6 +169,7 @@ export function Admin() {
                 </select>
               </div>
               <div className="item"><label><input className="checkbox" type="checkbox" checked={e2ee} onChange={e=> setE2ee(e.target.checked)} /> {t('e2ee.enable_label')||'Enable E2EE (default)'}</label></div>
+              <div className="item"><label><input className="checkbox" type="checkbox" checked={turnstile} onChange={e=> setTurnstile(e.target.checked)} /> {t('turnstile.enable_label')||'Enable Cloudflare Turnstile (default)'}</label></div>
               {e2ee && (
                 <div className="item" style={{borderTop:'1px dashed var(--border)', paddingTop:8, marginTop:8}}>
                   <div className="label">{t('e2ee.key_setup')||'Key setup'}</div>

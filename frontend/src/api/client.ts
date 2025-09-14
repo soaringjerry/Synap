@@ -1,4 +1,4 @@
-export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string>; collect_email?: 'off'|'optional'|'required'; e2ee_enabled?: boolean; region?: 'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa'; likert_labels_i18n?: Record<string,string[]>; likert_show_numbers?: boolean; likert_preset?: string }
+export type Scale = { id: string; points: number; randomize?: boolean; name_i18n?: Record<string, string>; consent_i18n?: Record<string,string>; collect_email?: 'off'|'optional'|'required'; e2ee_enabled?: boolean; region?: 'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa'; turnstile_enabled?: boolean; turnstile_sitekey?: string; likert_labels_i18n?: Record<string,string[]>; likert_show_numbers?: boolean; likert_preset?: string }
 export type ItemOut = {
   id: string
   stem: string
@@ -31,11 +31,11 @@ export async function listItems(scaleId: string, lang: string) {
   return j<{ scale_id: string; items: ItemOut[] }>(res)
 }
 
-export async function submitBulk(scaleId: string, email: string, answers: { item_id: string; raw: any }[], opts?: { consent_id?: string }) {
+export async function submitBulk(scaleId: string, email: string, answers: { item_id: string; raw: any }[], opts?: { consent_id?: string, turnstile_token?: string }) {
   const res = await fetch(`${base}/api/responses/bulk`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ participant: { email }, scale_id: scaleId, answers, consent_id: opts?.consent_id })
+    body: JSON.stringify({ participant: { email }, scale_id: scaleId, answers, consent_id: opts?.consent_id, turnstile_token: opts?.turnstile_token })
   })
   return j<{ ok: boolean; participant_id: string; count: number; self_token?: string; self_export?: string; self_delete?: string }>(res)
 }
@@ -94,7 +94,7 @@ export async function adminDeleteItem(id: string) {
 
 export async function getScaleMeta(id: string) {
   const res = await fetch(`${base}/api/scale/${encodeURIComponent(id)}`)
-  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string>; collect_email?: Scale['collect_email']; e2ee_enabled?: boolean; region?: Scale['region']; consent_config?: { version?: string, signature_required?: boolean, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] }, likert_labels_i18n?: Record<string,string[]>; likert_show_numbers?: boolean; likert_preset?: string }>(res)
+  return j<{ id:string; name_i18n?: Record<string,string>; points:number; randomize?: boolean; consent_i18n?: Record<string,string>; collect_email?: Scale['collect_email']; e2ee_enabled?: boolean; region?: Scale['region']; turnstile_enabled?: boolean; turnstile_sitekey?: string; consent_config?: { version?: string, signature_required?: boolean, options?: { key:string; label_i18n?: Record<string,string>; required?: boolean }[] }, likert_labels_i18n?: Record<string,string[]>; likert_show_numbers?: boolean; likert_preset?: string }>(res)
 }
 
 export type AnalyticsSummary = {
@@ -127,7 +127,7 @@ export async function listProjectKeysPublic(projectId: string) {
   return j<{ keys: { alg:string; kdf:string; public_key:string; fingerprint:string }[] }>(res)
 }
 
-export async function submitE2EE(input: { scale_id: string; response_id?: string; ciphertext: string; nonce: string; enc_dek: string[]; aad_hash: string; pmk_fingerprint?: string }) {
+export async function submitE2EE(input: { scale_id: string; response_id?: string; ciphertext: string; nonce: string; enc_dek: string[]; aad_hash: string; pmk_fingerprint?: string; turnstile_token?: string }) {
   const res = await fetch(`/api/responses/e2ee`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(input) })
   return j<{ ok: boolean; response_id: string; self_token?: string; self_export?: string; self_delete?: string }>(res)
 }

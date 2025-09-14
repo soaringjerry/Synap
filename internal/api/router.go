@@ -132,14 +132,22 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var sc Scale
-	if err := json.NewDecoder(r.Body).Decode(&sc); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if sc.ID == "" {
-		sc.ID = strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
-	}
+    // Decode into raw first to detect presence of optional flags
+    var raw map[string]any
+    if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    b, _ := json.Marshal(raw)
+    var sc Scale
+    _ = json.Unmarshal(b, &sc)
+    // Default: Turnstile is disabled unless explicitly enabled by the creator
+    if _, ok := raw["turnstile_enabled"]; !ok {
+        sc.TurnstileEnabled = false
+    }
+    if sc.ID == "" {
+        sc.ID = strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
+    }
 	if sc.Points == 0 {
 		sc.Points = 5
 	}
@@ -280,20 +288,69 @@ func (rt *Router) handleScaleMeta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"id":                  sc.ID,
-		"name_i18n":           sc.NameI18n,
-		"points":              sc.Points,
-		"randomize":           sc.Randomize,
-		"consent_i18n":        sc.ConsentI18n,
-		"collect_email":       sc.CollectEmail,
-		"e2ee_enabled":        sc.E2EEEnabled,
-		"region":              sc.Region,
-		"consent_config":      sc.ConsentConfig,
-		"likert_labels_i18n":  sc.LikertLabelsI18n,
-		"likert_show_numbers": sc.LikertShowNumbers,
-		"likert_preset":       sc.LikertPreset,
-	})
+    _ = json.NewEncoder(w).Encode(map[string]any{
+        "id":                  sc.ID,
+        "name_i18n":           sc.NameI18n,
+        "points":              sc.Points,
+        "randomize":           sc.Randomize,
+        "consent_i18n":        sc.ConsentI18n,
+        "collect_email":       sc.CollectEmail,
+        "e2ee_enabled":        sc.E2EEEnabled,
+        "region":              sc.Region,
+        "turnstile_enabled":   sc.TurnstileEnabled,
+        // Expose sitekey when enabled; this is public information
+        "turnstile_sitekey":   os.Getenv("SYNAP_TURNSTILE_SITEKEY"),
+        "consent_config":      sc.ConsentConfig,
+        "likert_labels_i18n":  sc.LikertLabelsI18n,
+        "likert_show_numbers": sc.LikertShowNumbers,
+        "likert_preset":       sc.LikertPreset,
+    })
+}
+
+// verifyTurnstile validates a Turnstile token with Cloudflare when server secret is set.
+// Returns true if verification succeeds. If secret is missing, returns true (skip enforcement).
+func (rt *Router) verifyTurnstile(r *http.Request, token string) bool {
+    secret := strings.TrimSpace(os.Getenv("SYNAP_TURNSTILE_SECRET"))
+    if secret == "" {
+        // Secret not configured; treat as pass (useful in dev). Enforcement is gated additionally by scale flag.
+        return true
+    }
+    token = strings.TrimSpace(token)
+    if token == "" {
+        return false
+    }
+    // Prepare form payload
+    data := "secret=" + urlEncode(secret) + "&response=" + urlEncode(token)
+    if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
+        data += "&remoteip=" + urlEncode(ip)
+    }
+    req, _ := http.NewRequest(http.MethodPost, "https://challenges.cloudflare.com/turnstile/v0/siteverify", strings.NewReader(data))
+    req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        return false
+    }
+    defer func() { _ = resp.Body.Close() }()
+    var out struct{ Success bool `json:"success"` }
+    if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+        return false
+    }
+    return out.Success
+}
+
+func urlEncode(s string) string {
+    var b strings.Builder
+    for i := 0; i < len(s); i++ {
+        c := s[i]
+        if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~' {
+            b.WriteByte(c)
+        } else if c == ' ' {
+            b.WriteByte('+')
+        } else {
+            b.WriteString(fmt.Sprintf("%%%02X", c))
+        }
+    }
+    return b.String()
 }
 
 // POST /api/consent/sign { scale_id, version, locale, choices:map, signed_at, signature_kind, evidence }
@@ -345,32 +402,40 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var req struct {
-		Participant struct {
-			Email string `json:"email"`
-		} `json:"participant"`
-		ScaleID string `json:"scale_id"`
-		Answers []struct {
-			ItemID string          `json:"item_id"`
-			Raw    json.RawMessage `json:"raw"`
-			RawInt *int            `json:"raw_value,omitempty"`
-		} `json:"answers"`
-		ConsentID string `json:"consent_id,omitempty"`
-	}
+    var req struct {
+        Participant struct {
+            Email string `json:"email"`
+        } `json:"participant"`
+        ScaleID string `json:"scale_id"`
+        Answers []struct {
+            ItemID string          `json:"item_id"`
+            Raw    json.RawMessage `json:"raw"`
+            RawInt *int            `json:"raw_value,omitempty"`
+        } `json:"answers"`
+        ConsentID string `json:"consent_id,omitempty"`
+        TurnstileToken string `json:"turnstile_token,omitempty"`
+    }
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(req.ScaleID)
-	if sc == nil {
-		http.Error(w, "scale not found", http.StatusNotFound)
-		return
-	}
-	// E2EE projects must not accept plaintext submissions
-	if sc.E2EEEnabled {
-		http.Error(w, "plaintext submissions are disabled for E2EE projects", http.StatusBadRequest)
-		return
-	}
+    sc := rt.store.getScale(req.ScaleID)
+    if sc == nil {
+        http.Error(w, "scale not found", http.StatusNotFound)
+        return
+    }
+    // Turnstile verification if enabled for this scale
+    if sc.TurnstileEnabled {
+        if ok := rt.verifyTurnstile(r, req.TurnstileToken); !ok {
+            http.Error(w, "turnstile verification failed", http.StatusBadRequest)
+            return
+        }
+    }
+    // E2EE projects must not accept plaintext submissions
+    if sc.E2EEEnabled {
+        http.Error(w, "plaintext submissions are disabled for E2EE projects", http.StatusBadRequest)
+        return
+    }
 	pid := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
 	p := &Participant{ID: pid, Email: req.Participant.Email}
 	if req.ConsentID != "" {
@@ -832,23 +897,30 @@ func (rt *Router) handleE2EEResponse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var in struct {
-		ScaleID        string   `json:"scale_id"`
-		ResponseID     string   `json:"response_id"`
-		Ciphertext     string   `json:"ciphertext"`
-		Nonce          string   `json:"nonce"`
-		AADHash        string   `json:"aad_hash"`
-		EncDEK         []string `json:"enc_dek"`
-		PMKFingerprint string   `json:"pmk_fingerprint"`
-	}
+    var in struct {
+        ScaleID        string   `json:"scale_id"`
+        ResponseID     string   `json:"response_id"`
+        Ciphertext     string   `json:"ciphertext"`
+        Nonce          string   `json:"nonce"`
+        AADHash        string   `json:"aad_hash"`
+        EncDEK         []string `json:"enc_dek"`
+        PMKFingerprint string   `json:"pmk_fingerprint"`
+        TurnstileToken string   `json:"turnstile_token,omitempty"`
+    }
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if in.ScaleID == "" || in.Ciphertext == "" || in.Nonce == "" || len(in.EncDEK) == 0 {
-		http.Error(w, "invalid payload", http.StatusBadRequest)
-		return
-	}
+    if in.ScaleID == "" || in.Ciphertext == "" || in.Nonce == "" || len(in.EncDEK) == 0 {
+        http.Error(w, "invalid payload", http.StatusBadRequest)
+        return
+    }
+    if sc := rt.store.getScale(in.ScaleID); sc != nil && sc.TurnstileEnabled {
+        if ok := rt.verifyTurnstile(r, in.TurnstileToken); !ok {
+            http.Error(w, "turnstile verification failed", http.StatusBadRequest)
+            return
+        }
+    }
 	// store opaque ciphertext without touching plaintext
 	rid := in.ResponseID
 	if rid == "" {
@@ -1609,6 +1681,9 @@ func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id strin
 	}
 	if v, ok := raw["region"].(string); ok {
 		in.Region = v
+	}
+	if v, ok := raw["turnstile_enabled"].(bool); ok {
+		in.TurnstileEnabled = v
 	}
 	// Parse consent_config if provided (use helper to reduce complexity)
 	if v, ok := raw["consent_config"]; ok && v != nil {

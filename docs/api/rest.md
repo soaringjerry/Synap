@@ -4,6 +4,7 @@
 - POST `/api/seed` → create sample scale+items (SAMPLE)
 - GET `/api/scales/{id}/items?lang=en|zh` → list items (i18n with fallback)
 - POST `/api/responses/bulk` → submit responses
+  - When Cloudflare Turnstile is enabled for the scale (default OFF; opt‑in per scale), include `turnstile_token` in the body. The server verifies it when `SYNAP_TURNSTILE_SECRET` is configured.
 - GET `/api/export?scale_id=...&format=long|wide|score` → CSV
   - Optional: `consent_header=key|label_en|label_zh` — controls how consent columns are named (default: `key`, e.g., `consent.recording`; label modes use human‑readable texts)
 - GET `/api/metrics/alpha?scale_id=...` → Cronbach’s α
@@ -42,6 +43,15 @@ E2EE
 - POST `/api/projects/{id}/keys` `{ alg, kdf, public_key, fingerprint }` → register public key (auth)
 - POST `/api/exports/e2ee` `{ scale_id }` (auth + `X-Step-Up: true`) → create short‑lived download link
 - GET `/api/exports/e2ee?job=...&token=...` → `{ manifest, signature, responses }`
+
+Turnstile
+- Env: `SYNAP_TURNSTILE_SITEKEY` (public) and `SYNAP_TURNSTILE_SECRET` (server verify)
+- Scale creation/update supports `turnstile_enabled` (default is OFF when omitted)
+- Public scale metadata includes `turnstile_enabled` and `turnstile_sitekey` to allow client-side widget rendering.
+
+Encrypted submission
+- POST `/api/responses/e2ee` — submit encrypted payload
+  - Body: `{ scale_id, ciphertext, nonce, enc_dek:[], aad_hash, pmk_fingerprint?, turnstile_token? }`
 
 Notes:
 - Submit bulk body: `{ participant: {email?}, scale_id, answers: [{item_id, raw? , raw_value?}], consent_id? }`

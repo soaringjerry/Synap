@@ -113,6 +113,8 @@
       "self_manage_hint": "You can export or delete your submission using the links below. Keep them safe.",
       "self_export": "Export my data",
       "self_delete": "Delete my data",
+      "security_check": "Security check",
+      "security_check_hint": "Please complete the verification to submit.",
       "download_consent": "Download consent copy",
       "download_consent_pdf": "Download consent (PDF)",
       "download_data_pdf": "Download my data (PDF)",
@@ -121,6 +123,9 @@
       "download_consent_html": "Download consent (HTML)"
     },
     "learn_more": "Learn more",
+    "turnstile": {
+      "enable_label": "Enable Cloudflare Turnstile"
+    },
     "consent_custom": "Consent",
     "consent_en": "Consent (EN)",
     "consent_zh": "Consent (ZH)",

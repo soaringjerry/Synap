@@ -16,8 +16,10 @@ export function Privacy() {
       <p><b>ZH —</b> 托管：你/你的机构为控制者；我们按你的书面指示作为处理者。自托管：你自行负责；本政策不适用于自托管。</p>
 
       <h3>2. Data We Collect｜我们收集的数据</h3>
-      <p><b>EN —</b> (a) Account data; (b) Surveys & responses; (c) Technical logs; (d) Cookies — necessary by default; analytics/performance require opt‑in.</p>
-      <p><b>ZH —</b> (a) 账户；(b) 问卷与作答；(c) 技术日志；(d) Cookie——默认仅必要；分析/性能需同意。</p>
+      <p><b>EN —</b> (a) Account data; (b) Surveys & responses; (c) Technical logs (may include IP address, device and browser signals; some may also be collected by third‑party providers such as Cloudflare CDN/Turnstile for security and anti‑abuse purposes); (d) Cookies — necessary by default; analytics/performance require opt‑in.</p>
+      <p><b>Learn More:</b> <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">Cloudflare Privacy Policy</a></p>
+      <p><b>ZH —</b> (a) 账户；(b) 问卷与作答；(c) 技术日志（可能包含 IP 地址、设备与浏览器信号；部分数据也可能由 Cloudflare CDN/Turnstile 等第三方为安全与防滥用目的收集）；(d) Cookie —— 默认仅必要；分析/性能需同意。</p>
+      <p><b>了解更多：</b><a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">Cloudflare 隐私政策</a></p>
 
       <h3>3. Purposes & Legal Bases｜处理目的与法律依据</h3>
       <p><b>EN —</b> Provide/improve services, security, support, compliance. Legal bases: contract, legitimate interests, consent, legal obligation.</p>
@@ -56,6 +58,10 @@ export function Privacy() {
       <h3>11. Sharing with Third Parties｜第三方共享</h3>
       <p><b>EN —</b> Shared only as necessary to provide services or comply with law (e.g., Cloudflare CDN/security, email delivery, error monitoring). No sale of personal data.</p>
       <p><b>ZH —</b> 仅在必要时共享（如 Cloudflare、邮件、错误监控）；不出售个人数据。</p>
+
+      <h3>11.1 Cloudflare Turnstile｜Cloudflare Turnstile 人机验证</h3>
+      <p><b>EN —</b> Some surveys may enable Cloudflare Turnstile (bot protection). Turnstile processes client‑side signals ("Signals") such as client IP address, TLS fingerprint, User‑Agent header, and the sitekey with associated origin. Cloudflare states it does not have the ability to directly identify any individuals from any Signals Turnstile collects, including IP addresses. Signals are used only to detect and prevent automated abuse, not for advertising, and are not shared with external trackers. <a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noreferrer">Learn more</a>.</p>
+      <p><b>ZH —</b> 部分问卷可能启用 Cloudflare Turnstile 验证机制（防止机器人滥用）。Turnstile 会处理多种客户端信号（“Signals”），例如客户端 IP 地址、TLS 指纹、User‑Agent 请求头以及站点密钥与来源等。Cloudflare 表示其无法基于 Turnstile 收集的任何 Signals（包括 IP 地址）直接识别到个人身份。上述信号仅用于识别与防止自动化滥用，不用于广告，也不会与外部追踪器共享。<a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noreferrer">了解更多</a>。</p>
 
       <h3>12. Cookies & Preferences｜Cookie 与偏好</h3>
       <p><b>EN —</b> Necessary cookies always on; analytics/performance opt‑in; banner and preferences link provided.</p>

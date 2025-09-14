@@ -128,6 +128,8 @@ More options in `docs/deploy.md`.
 * `SYNAP_ADDR` — server listen address (default `:8080`)
 * `SYNAP_REGION_MODE` — privacy mode: `auto` (geo-aware) or `pdpa`/`gdpr`/`ccpa`/`pipl`
 * `SYNAP_STATIC_DIR` — when set, backend serves static files from this directory (used by fullstack image)
+* `SYNAP_TURNSTILE_SITEKEY` — Cloudflare Turnstile sitekey (public). When set, public scale metadata exposes it to render the widget.
+* `SYNAP_TURNSTILE_SECRET` — Cloudflare Turnstile secret key (server verification). When a scale has Turnstile enabled (opt‑in per scale), submissions must include a valid token.
 
 ## Data & Privacy
 
