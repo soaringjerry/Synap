@@ -591,7 +591,7 @@ export function Survey() {
                           <button key={x} className={`bubble ${v===x?'active':''}`} onClick={()=>set(x)}>{showNums? x : ((itemLabels[idx] || likertLabels[idx]) || x)}</button>
                         ))}
                       </div>
-                      {(itemLabels.length === p || likertLabels.length === p) && (
+                      {showNums && (itemLabels.length === p || likertLabels.length === p) && (
                         <div style={{display:'flex', gap:8, marginTop:6, flexWrap:'wrap'}}>
                           {Array.from({length: p}, (_,i)=> i).map((i)=> {
                             const lb = (itemLabels[i] || likertLabels[i])
