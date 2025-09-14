@@ -9,6 +9,7 @@ export function Admin() {
   const { t } = useTranslation()
   const toast = useToast()
   const [scales, setScales] = useState<any[]>([])
+  const [consentHeader, setConsentHeader] = useState<'key'|'label_en'|'label_zh'>('key')
   const [nameEn, setNameEn] = useState('')
   const [nameZh, setNameZh] = useState('')
   const [points, setPoints] = useState(5)
@@ -261,15 +262,38 @@ export function Admin() {
       <div className="row" style={{marginTop:16}}>
         <section className="card span-12">
           <h3 style={{marginTop:0}}>{t('your_scales')}</h3>
-          {scales.length===0 && <div className="muted">{t('no_scales')}</div>}
+          {scales.length===0 && (
+            <div className="tile" style={{padding:12}}>
+              <div className="muted" style={{marginBottom:8}}>{t('no_scales')}</div>
+              <div className="label">Checklist</div>
+              <ul className="kv-list">
+                <li>✅ Create your first scale (E2EE recommended)</li>
+                <li>✅ Set Consent version and interactive options</li>
+                <li>✅ Optional: Enable Cloudflare Turnstile</li>
+                <li>✅ Share the link and submit a test response</li>
+                <li>✅ Try export: E2EE ON → local CSV; E2EE OFF → server CSV</li>
+              </ul>
+            </div>
+          )}
+          {scales.length>0 && (
+            <div className="item" style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginBottom:8}}>
+              <div className="label">Consent column header</div>
+              <select className="select" value={consentHeader} onChange={e=> setConsentHeader(e.target.value as any)}>
+                <option value="key">key (consent.&lt;key&gt;)</option>
+                <option value="label_en">label_en</option>
+                <option value="label_zh">label_zh</option>
+              </select>
+              <span className="muted">CSV is UTF‑8 with BOM (Excel‑friendly)</span>
+            </div>
+          )}
           {scales.map((s:any)=>(
             <div key={s.id} className="item" style={{display:'flex',justifyContent:'space-between', alignItems:'center'}}>
               <div><b>{s.id}</b> · {(s.name_i18n?.en||'')}{s.name_i18n?.zh?` / ${s.name_i18n.zh}`:''} · {s.points} {t('points')}</div>
               <div style={{display:'flex',gap:8}}>
                 {!s.e2ee_enabled ? (
                   <>
-                    <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_long_csv')}</a>
-                    <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_wide_csv')}</a>
+                    <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(s.id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank">{t('export_long_csv')}</a>
+                    <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(s.id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank">{t('export_wide_csv')}</a>
                     <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_score_csv')}</a>
                   </>
                 ) : (

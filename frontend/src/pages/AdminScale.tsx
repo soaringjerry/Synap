@@ -913,6 +913,14 @@ export function AdminScale() {
               <div className="muted">{t('consent_md_hint')||'Markdown supported: headings, lists, links, bold/italic, code.'}</div>
               <div className="muted">{t('consent_override_hint')||'If provided, the default sections are hidden in the survey.'}</div>
               <div className="muted">{t('consent_inline_hint')||'Tip: Insert [[CONSENT]] (or <interactive-consent/> / <context/>) to place the interactive confirmations (options + signature) inline. If not present, it appears after the text.'}</div>
+              <div className="cta-row" style={{marginTop:8}}>
+                <button className="btn" onClick={()=>{
+                  const opts = consentOptions.map((o:any)=> `<tr><td>${o.en||o.key}</td><td>${o.required? 'required':'optional'}</td></tr>`).join('')
+                  const body = `<h1>Consent Preview</h1><div class=\"muted\">Version ${consentVersion||'v1'}</div><h2>Options</h2><table><thead><tr><th>Item</th><th>Mode</th></tr></thead><tbody>${opts}</tbody></table>`
+                  const html = `<!doctype html><html><head><meta charset=\"utf-8\"/><title>Consent Preview</title><style>@page{margin:16mm;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','PingFang SC','Microsoft YaHei',sans-serif;color:#111}.wrap{max-width:820px;margin:24px auto;padding:0 16px}h1{font-size:20px;margin:0 0 8px}h2{font-size:16px;margin:18px 0 8px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;font-size:13px;vertical-align:top;page-break-inside:avoid}th{background:#f7f7f7;text-align:left}</style><script>window.onload=function(){setTimeout(function(){try{window.print()}catch(e){}},200)}</script></head><body><div class=\"wrap\">${body}</div></body></html>`
+                  try { const blob = new Blob([html], { type:'text/html' }); const url = URL.createObjectURL(blob); const w = window.open(url, '_blank', 'noopener,noreferrer'); if (!w) { URL.revokeObjectURL(url) } setTimeout(()=> URL.revokeObjectURL(url), 60_000) } catch {}
+                }}>{t('preview')||'Preview'} + {t('survey.download_consent_pdf')||'Download consent (PDF)'}</button>
+              </div>
               <div className="muted">{t('consent_group_hint')||'You can set a Group number for each confirmation, then place them separately with [[CONSENT1]], [[CONSENT2]], etc. Or use [[CONSENT:options=withdrawal,data_use]] for explicit keys.'}</div>
               <div className="cta-row" style={{marginTop:8}}>
                 <button className="btn" onClick={async()=>{

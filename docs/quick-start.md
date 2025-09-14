@@ -1,5 +1,13 @@
 # Quick Start
 
+## UI: 3 steps to get started
+
+1) Visit `/auth` to register and sign in.
+2) Go to Admin → Create Scale. Set Points, enable End‑to‑end Encryption (recommended), and configure Consent (version + confirmations/signature).
+3) Share the participant link to collect responses. If E2EE is ON, export plaintext locally (CSV/JSONL) or download an encrypted bundle for offline decryption; if E2EE is OFF, use server CSV exports.
+
+## Advanced: API & local run
+
 Run the minimal stack locally:
 
 ```bash
@@ -22,7 +30,7 @@ Export data:
 - /api/export?format=wide&scale_id=...
 - /api/export?format=score&scale_id=...
 
-Create your first scale (Admin):
+Create your first scale (Admin UI):
 
 1) Register + Login (UI: /auth)
 2) Admin → Create Scale

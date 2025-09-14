@@ -2,6 +2,19 @@
 
 **Synap** is a modern platform for psychological and behavioral research. It helps researchers design and run surveys, capture insights, and explore new ways of blending traditional methods with AI-driven analysis.
 
+## Understand Synap in 30 seconds
+
+```mermaid
+flowchart LR
+  A[Create Project\n• Enable E2EE\n• Configure Consent] --> B[Publish\n• Share link\n• Optional Turnstile]
+  B --> C[Collect\n• Interactive consent\n• Evidence hash]
+  C --> D[Export\n• Local CSV/JSONL (E2EE)\n• Encrypted bundle]
+  D --> E[Self-Service\n• /self export/delete]
+```
+
+- Promise highlights: end‑to‑end encryption (E2EE), local plaintext export for E2EE projects, self‑service participant rights, hashed consent evidence.
+- Where to find in UI: Admin → Create Scale (E2EE + Consent), Admin → Manage, Survey → inline consent, Self page `/self` after submit.
+
 ## Features
 
 * **Survey Builder** — customizable questionnaires (not limited to Likert scales)
@@ -11,6 +24,24 @@
 * **End‑to‑End Encryption** — end‑to‑end encryption (enabled at creation); keys are generated in the browser and private keys never leave the device; admins can download encrypted bundles; local decryption exports JSONL/CSV (long/wide) with readable question texts; after submit a unified management link (/self) is shown for export/delete
 * **Lightweight & Fast** — Go + TypeScript with encrypted snapshot storage (DB backends planned)
 * **AI Integration (Planned)** — automated analysis, summarization, adaptive survey design
+
+## Quick Start (UI in 3 steps)
+
+1) Open `/auth` and register/sign in.
+2) Admin → Create Scale: set Name, Points; toggle E2EE (recommended) and configure Consent (version + options/signature).
+3) Share participant link and collect responses; for E2EE projects, export locally as CSV/JSONL (Admin → Manage), or download encrypted bundle for offline decryption.
+
+Advanced/Automation: see Quick Start (API) in `docs/quick-start.md`.
+
+## At‑a‑Glance Comparison (key factors)
+
+| Capability | Synap | Typical hosted survey | Open‑source form builder |
+|---|---|---|---|
+| End‑to‑End Encryption | Yes (client‑side keys) | Rare/No | Rare/No |
+| Consent Evidence | Interactive + hashed receipt | Varies | Varies |
+| GDPR Self‑Service | Unified `/self` export/delete | Varies | Varies |
+| Bilingual (EN/ZH) | Built‑in i18n | Varies | Varies |
+| Server plaintext exports | Optional (E2EE OFF). E2EE → local only | Often server CSV | Often server CSV |
 
 ## Why Synap
 
@@ -68,6 +99,12 @@ Admin quick path:
 - Create Scale → Basics + End‑to‑end Encryption (generate or upload a public key; locked after creation) + Consent (version, interactive confirmations, optional signature). Likert anchors are configured per item (add/edit) with presets (Agree 5/7, Frequency 5, Bipolar 7, Monopolar 5) or custom labels, and a “show numbers with labels” toggle.
 - Manage Scale → Share the participant link. With E2EE ON, server exposes only encrypted bundles; plaintext export happens locally in the browser (JSONL/CSV long|wide) with readable EN/ZH texts. With E2EE OFF, server CSV exports are available; use `consent_header=label_en|label_zh` to use labels as column names.
 - Consent Markdown supports inline markers: [[CONSENT]] inserts all (options + signature), [[CONSENT1]]/[[CONSENT2]] insert grouped options, [[CONSENT:signature]] inserts signature only. If no marker is present, the interactive block is shown after the text.
+
+Security & Privacy snapshot:
+- End‑to‑end encryption (E2EE) — content encrypted in browser; server stores only ciphertext.
+- Encrypted at rest — snapshots use AES‑GCM.
+- Consent evidence — hashed receipt for participants (printable PDF via browser print).
+- Anti‑abuse — Cloudflare CDN + optional Turnstile; signals used only for security.
 
 Participant self‑management:
 - After submit, a unified management link `/self?...` is shown (non‑E2EE uses `pid+token`; E2EE uses `response_id+token`). Participants can revisit the link to export/delete the submission.
