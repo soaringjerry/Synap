@@ -146,6 +146,7 @@ Author: [Jerry](https://github.com/soaringjerry)
 Email: *synap@forgotmail.com*
 
 Additional docs: see `docs/ci-cd.md`, `docs/deploy.md`, `docs/i18n.md`, `docs/persistence.md`.
+See also E2EE design and usage: `docs/e2ee.md`.
 More docs:
 - Installation: `docs/installation.md`
 - Quick Start: `docs/quick-start.md`
