@@ -7,7 +7,7 @@ import { useToast } from '../components/Toast'
 
 export function AdminScale() {
   const { id = '' } = useParams()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [scale, setScale] = useState<any>(null)
   const [items, setItems] = useState<any[]>([])
   const [msg, setMsg] = useState('')
@@ -56,6 +56,25 @@ export function AdminScale() {
   // UI state for adding a custom consent item
   const [newConsent, setNewConsent] = useState<{ en: string; zh: string; required: boolean; key: string; showKey: boolean; open: boolean }>({ en: '', zh: '', required: false, key: '', showKey: false, open: false })
   const [showKeyRows, setShowKeyRows] = useState<Record<number, boolean>>({})
+  const [flashKey, setFlashKey] = useState<string>('')
+  function highlight(key: string) {
+    setFlashKey(key)
+    window.setTimeout(()=> setFlashKey(''), 1000)
+  }
+  function addTemplate(key: 'withdrawal'|'data_use'|'recording', required: boolean) {
+    const exists = consentOptions.some(o=> o.key === key)
+    if (exists) {
+      highlight(key)
+      toast.info(t('consent.advanced.already_added') as string || 'Already added')
+      return
+    }
+    const en = i18n.t(`survey.consent_opt.${key}`, { lng: 'en' }) as string
+    const zh = i18n.t(`survey.consent_opt.${key}`, { lng: 'zh' }) as string
+    const next = [...consentOptions, { key, required, en, zh }]
+    setConsentOptions(next)
+    saveConsentWith(next)
+    highlight(key)
+  }
   // Helper: decrypt current export bundle into plain objects
   async function decryptCurrentBundle(): Promise<{ out: any[], enMap: Record<string,string>, zhMap: Record<string,string> }> {
     const priv = await unlockLocalPriv()
@@ -504,7 +523,7 @@ export function AdminScale() {
                       const isDup = o.key && keys.indexOf(o.key.trim()) !== keys.lastIndexOf(o.key.trim())
                       const keyErr = !o.key?.trim() || isDup
                       return (
-                        <div key={idx} style={{display:'grid', gridTemplateColumns:'1.4fr 1.4fr 0.8fr 0.8fr', gap:8, alignItems:'center', marginTop:8}}>
+                        <div key={idx} style={{display:'grid', gridTemplateColumns:'1.4fr 1.4fr 0.8fr 0.8fr', gap:8, alignItems:'center', marginTop:8, outline: flashKey===o.key? '2px solid var(--accent, #4f46e5)' : undefined, borderRadius: 6, padding: flashKey===o.key? 6 : 0}}>
                           <div>
                             <input className="input" value={o.en||''} onChange={e=> { setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x)); autosave() }} placeholder={(o.key && t(`survey.consent_opt.${o.key}` as any) as string) || 'Optional'} />
                             {showKeyRows[idx] && (
@@ -577,9 +596,9 @@ export function AdminScale() {
                   </div>
                   <div className="cta-row" style={{marginTop:8}}>
                     <div className="label" style={{marginRight:8}}>{t('consent.advanced.add_templates')||'Quick add (templates):'}</div>
-                    <button className="btn btn-ghost" onClick={()=> { const next = consentOptions.some(o=>o.key==='withdrawal')? consentOptions : [...consentOptions, { key:'withdrawal', required:true }]; setConsentOptions(next); saveConsentWith(next) }}>{t('survey.consent_opt.withdrawal')||'Withdrawal'}</button>
-                    <button className="btn btn-ghost" onClick={()=> { const next = consentOptions.some(o=>o.key==='data_use')? consentOptions : [...consentOptions, { key:'data_use', required:true }]; setConsentOptions(next); saveConsentWith(next) }}>{t('survey.consent_opt.data_use')||'Data use'}</button>
-                    <button className="btn btn-ghost" onClick={()=> { const next = consentOptions.some(o=>o.key==='recording')? consentOptions : [...consentOptions, { key:'recording', required:false }]; setConsentOptions(next); saveConsentWith(next) }}>{t('survey.consent_opt.recording')||'Recording'}</button>
+                    <button className="btn" onClick={()=> addTemplate('withdrawal', true)}>{t('survey.consent_opt.withdrawal')||'Withdrawal'}</button>
+                    <button className="btn" onClick={()=> addTemplate('data_use', true)}>{t('survey.consent_opt.data_use')||'Data use'}</button>
+                    <button className="btn" onClick={()=> addTemplate('recording', false)}>{t('survey.consent_opt.recording')||'Recording'}</button>
                     <div style={{flex:1}} />
                     <button className="btn btn-ghost" onClick={()=>{ if (confirm(t('confirm_reset')||'Reset to recommended?')) { applyConsentPreset('recommended'); setTimeout(()=> saveConsentWith(), 0) } }}>{t('consent.advanced.reset_rec')||'Reset to Recommended'}</button>
                   </div>

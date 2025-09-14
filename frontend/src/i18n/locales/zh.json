@@ -152,7 +152,8 @@
         "reset_rec": "重置为推荐",
         "save_first_error": "请先修正高亮项",
         "no_order_needed": "顺序自动处理，无需手动上/下移动。",
-        "key_help_export": "用于导出时生成 consent.<键名> 的 CSV 列名；建议使用简单的小写英文。"
+        "key_help_export": "用于导出时生成 consent.<键名> 的 CSV 列名；建议使用简单的小写英文。",
+        "already_added": "已在列表中"
       }
     },
     "consent_settings": "知情同意设置",
