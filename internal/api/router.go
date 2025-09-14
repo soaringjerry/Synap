@@ -2,23 +2,23 @@ package api
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"crypto/ed25519"
-	"crypto/rand"
-	"encoding/base64"
 	"github.com/google/uuid"
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
 	"golang.org/x/crypto/bcrypt"
-	"log"
-	"os"
 )
 
 type Router struct {
