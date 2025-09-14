@@ -140,13 +140,9 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 	if sc.ID == "" {
 		sc.ID = strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
 	}
-	if sc.Points == 0 {
-		sc.Points = 5
-	}
-	if !sc.E2EEEnabled {
-		// default E2EE to on unless explicitly set false
-		sc.E2EEEnabled = true
-	}
+    if sc.Points == 0 {
+        sc.Points = 5
+    }
 	sc.TenantID = tid
 	rt.store.addScale(&sc)
 	w.Header().Set("Content-Type", "application/json")
