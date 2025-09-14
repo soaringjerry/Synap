@@ -165,7 +165,11 @@
       "pub_placeholder": "粘贴 base64（x25519 原始 32B）或 PEM SPKI（RSA）",
       "key_loss_warning": "重要提示：私钥不会离开你的设备。丢失私钥将导致数据永久无法解密。",
       "csv_notice": "提示：服务器端 CSV 导出（长/宽/分数）仅在关闭 E2EE 时可用。开启 E2EE 时明文仅在本地，建议将 JSONL 用分析工具转换为 CSV。",
-      "analytics_notice": "开启 E2EE 后，服务器端的高级统计（如直方图、Cronbach’s α）不可用；仅显示基础数量等。请使用本地明文导出进行分析。"
+      "analytics_notice": "开启 E2EE 后，服务器端的高级统计（如直方图、Cronbach’s α）不可用；仅显示基础数量等。请使用本地明文导出进行分析。",
+      "import_priv_title": "导入本地私钥",
+      "import_priv_desc": "选择之前下载的 JSON 密钥文件。它将仅保存在本浏览器（绝不上传）。使用你的口令解锁。",
+      "import_button": "导入密钥文件",
+      "import_ok": "已导入并保存在本地（未上传）。"
     },
 
     "cookie": {

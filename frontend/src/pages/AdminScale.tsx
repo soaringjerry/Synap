@@ -38,6 +38,7 @@ export function AdminScale() {
   const [newFp, setNewFp] = useState('')
   const [pkPass, setPkPass] = useState('')
   const [decMsg, setDecMsg] = useState('')
+  const fileInputRef = React.useRef<HTMLInputElement|null>(null)
 
   async function unlockLocalPriv(): Promise<Uint8Array> {
     const blobStr = localStorage.getItem('synap_pmk')
@@ -324,6 +325,27 @@ export function AdminScale() {
                 <div className="item span-4"><div className="label">{t('e2ee.passphrase')||'Local private‑key passphrase'}</div>
                   <input className="input" type="password" value={pkPass} onChange={e=> setPkPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter passphrase (local only; never uploaded)'} />
                   <div className="muted" style={{marginTop:6}}>{t('e2ee.passphrase_help')||'Used to encrypt/unlock your private key in the browser. Never sent to the server.'}</div>
+                </div>
+                <div className="item span-4">
+                  <div className="label">{t('e2ee.import_priv_title')||'Import local private key'}</div>
+                  <div className="cta-row">
+                    <button className="btn" onClick={()=> fileInputRef.current?.click()}>{t('e2ee.import_button')||'Import key file'}</button>
+                    <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={async (e)=>{
+                      try {
+                        setDecMsg('')
+                        const f = e.target.files?.[0]; if (!f) return
+                        const text = await f.text()
+                        const obj = JSON.parse(text)
+                        if (!obj || !obj.enc_priv || !obj.iv || !obj.salt || !obj.pub) throw new Error('Invalid key file')
+                        localStorage.setItem('synap_pmk', JSON.stringify(obj))
+                        setDecMsg(t('e2ee.import_ok')||'Key imported and stored locally. Not uploaded.')
+                        e.currentTarget.value = ''
+                      } catch(err:any) {
+                        setDecMsg(err.message||String(err))
+                      }
+                    }} />
+                  </div>
+                  <div className="muted" style={{marginTop:6}}>{t('e2ee.import_priv_desc')||'Select the previously downloaded JSON key file. It will be stored in this browser only (never uploaded). Use your passphrase to unlock.'}</div>
                 </div>
                 <div className="item span-4">
                   <button className="btn" onClick={async()=>{

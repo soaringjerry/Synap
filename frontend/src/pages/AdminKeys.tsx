@@ -21,6 +21,7 @@ export function AdminKeys() {
   const [msg, setMsg] = useState('')
   const [scales, setScales] = useState<any[]>([])
   const [sel, setSel] = useState('')
+  const fileRef = React.useRef<HTMLInputElement|null>(null)
 
   useEffect(()=>{ (async()=>{ try { const res = await adminListScales(); setScales(res.scales||[]); if (res.scales?.length) setSel(res.scales[0].id) } catch{} })() },[])
 
@@ -81,6 +82,26 @@ export function AdminKeys() {
           </div>
           <button className="btn" onClick={register} disabled={!sel || !pub || !fp}>Register Public Key</button>
           <div className="muted" style={{marginTop:8}}>Keep your passphrase safe. Losing it means you cannot decrypt data.</div>
+          <div className="divider" />
+          <h4 style={{marginTop:0}}>{t('e2ee.import_priv_title')||'Import local private key'}</h4>
+          <div className="muted">{t('e2ee.import_priv_desc')||'Select the previously downloaded JSON key file. It will be stored in this browser only (never uploaded). Use your passphrase to unlock.'}</div>
+          <div className="cta-row" style={{marginTop:8}}>
+            <button className="btn" onClick={()=> fileRef.current?.click()}>{t('e2ee.import_button')||'Import key file'}</button>
+            <input ref={fileRef} type="file" accept="application/json" style={{display:'none'}} onChange={async (e)=>{
+              try {
+                setMsg('')
+                const f = e.target.files?.[0]; if (!f) return
+                const text = await f.text()
+                const obj = JSON.parse(text)
+                if (!obj || !obj.enc_priv || !obj.iv || !obj.salt || !obj.pub) throw new Error('Invalid key file')
+                localStorage.setItem('synap_pmk', JSON.stringify(obj))
+                setMsg(t('e2ee.import_ok')||'Key imported and stored locally. Not uploaded.')
+                e.currentTarget.value = ''
+              } catch(err:any) {
+                setMsg(err.message||String(err))
+              }
+            }} />
+          </div>
         </section>
       </div>
       {msg && <div className="muted" style={{marginTop:12}}>{msg}</div>}

@@ -165,7 +165,11 @@
       "pub_placeholder": "Paste base64 (x25519 raw) or PEM SPKI (RSA)",
       "key_loss_warning": "Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable.",
       "csv_notice": "Note: Server-side CSV exports (long/wide/score) are available only when E2EE is OFF. When E2EE is ON, plaintext stays local; convert JSONL to CSV using your analysis tools.",
-      "analytics_notice": "When E2EE is ON, advanced analytics (e.g., histograms, Cronbach's alpha) are unavailable on the server; only basic counts may be shown. Use local plaintext export for analysis."
+      "analytics_notice": "When E2EE is ON, advanced analytics (e.g., histograms, Cronbach's alpha) are unavailable on the server; only basic counts may be shown. Use local plaintext export for analysis.",
+      "import_priv_title": "Import local private key",
+      "import_priv_desc": "Select the previously downloaded JSON key file. It will be stored in this browser only (never uploaded). Use your passphrase to unlock.",
+      "import_button": "Import key file",
+      "import_ok": "Key imported and stored locally. Not uploaded."
     },
 
     "cookie": {
