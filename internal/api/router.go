@@ -77,8 +77,8 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	// AI config + translation preview
 	mux.Handle("/api/admin/ai/config", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAIConfig)))
 	mux.Handle("/api/admin/ai/translate/preview", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAITranslatePreview)))
-    // E2EE project keys: GET (public), POST (auth) — WithAuth attaches claims when present (non-blocking for GET)
-    mux.Handle("/api/projects/", middleware.WithAuth(http.HandlerFunc(rt.handleProjectKeys)))
+	// E2EE project keys: GET (public), POST (auth) — WithAuth attaches claims when present (non-blocking for GET)
+	mux.Handle("/api/projects/", middleware.WithAuth(http.HandlerFunc(rt.handleProjectKeys)))
 	// E2EE encrypted responses (public submission)
 	mux.HandleFunc("/api/responses/e2ee", rt.handleE2EEResponse)
 	// Export encrypted bundle (auth + step-up header)
@@ -140,9 +140,9 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 	if sc.ID == "" {
 		sc.ID = strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
 	}
-    if sc.Points == 0 {
-        sc.Points = 5
-    }
+	if sc.Points == 0 {
+		sc.Points = 5
+	}
 	sc.TenantID = tid
 	rt.store.addScale(&sc)
 	w.Header().Set("Content-Type", "application/json")
@@ -1352,8 +1352,8 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-        // Build partial Scale for updateScale-compatible fields
-        in := Scale{ID: id}
+		// Build partial Scale for updateScale-compatible fields
+		in := Scale{ID: id}
 		if v, ok := raw["name_i18n"]; ok {
 			if m, ok2 := v.(map[string]any); ok2 {
 				in.NameI18n = map[string]string{}
@@ -1389,16 +1389,16 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-        // E2EE status is immutable after creation — reject attempts to change
-        if old != nil {
-            if v, ok := raw["e2ee_enabled"].(bool); ok && v != old.E2EEEnabled {
-                http.Error(w, "e2ee_enabled cannot be modified after creation", http.StatusBadRequest)
-                return
-            }
-            if in.Region != "" && in.Region != old.Region {
-                rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
-            }
-        }
+		// E2EE status is immutable after creation — reject attempts to change
+		if old != nil {
+			if v, ok := raw["e2ee_enabled"].(bool); ok && v != old.E2EEEnabled {
+				http.Error(w, "e2ee_enabled cannot be modified after creation", http.StatusBadRequest)
+				return
+			}
+			if in.Region != "" && in.Region != old.Region {
+				rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		return
