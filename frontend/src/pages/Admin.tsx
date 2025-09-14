@@ -28,6 +28,27 @@ export function Admin() {
   ])
 
   function toAB(x: Uint8Array | ArrayBuffer) { return x instanceof Uint8Array ? x.slice(0).buffer : (x as ArrayBuffer).slice(0) }
+  const [showAdvancedConsent, setShowAdvancedConsent] = useState(false)
+  function getOpt(key:string){ return consentOptions.find(o=> o.key===key) }
+  function setOptRequired(key:string, v:boolean){
+    setConsentOptions(list=> {
+      const idx = list.findIndex(o=> o.key===key)
+      if (idx===-1) return [...list, { key, required: v }]
+      const a=[...list]; a[idx] = { ...a[idx], required: v }; return a
+    })
+  }
+  function applyConsentPreset(preset: 'minimal'|'recommended'|'strict'){
+    if (preset==='minimal'){
+      setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}])
+      setSignatureRequired(false)
+    } else if (preset==='recommended'){
+      setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}])
+      setSignatureRequired(true)
+    } else {
+      setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:true}])
+      setSignatureRequired(true)
+    }
+  }
   async function deriveKey(pass: string, salt: Uint8Array) {
     const enc = new TextEncoder()
     const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pass).buffer, 'PBKDF2', false, ['deriveKey'])
@@ -177,23 +198,53 @@ export function Admin() {
                 <div className="card span-6"><div className="label">{t('consent_zh')||'Consent (ZH)'}</div><textarea className="input" rows={3} value={consentTextZh} onChange={e=> setConsentTextZh(e.target.value)} placeholder="可选补充文本" /></div>
               </div>
               <div className="label" style={{marginTop:8}}>{t('survey.consent_options')||'Interactive confirmations'}</div>
-              {consentOptions.map((o, idx)=> (
-                <div key={idx} className="row" style={{marginTop:8}}>
-                  <div className="card span-3"><div className="label">Key</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
-                  <div className="card span-3"><div className="label">Required</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> required</label></div>
-                  <div className="card span-3"><div className="label">EN</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder="Optional"/></div>
-                  <div className="card span-3"><div className="label">中文</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder="可选"/></div>
-                  <div className="cta-row" style={{marginTop:6}}>
-                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>Remove</button>
-                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.max(0,idx-1)]; a[Math.max(0,idx-1)]=t; return a })}>Up</button>
-                    <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.min(list.length-1,idx+1)]; a[Math.min(list.length-1,idx+1)]=t; return a })}>Down</button>
-                  </div>
+              <div className="tile" style={{padding:10, marginBottom:8}}>
+                <div className="muted" style={{marginBottom:6}}>{t('consent.presets_title')||'Pick a preset (you can still tweak below):'}</div>
+                <div className="cta-row">
+                  <button className="btn" onClick={()=> applyConsentPreset('minimal')}>{t('consent.preset_min')||'Minimal'}</button>
+                  <button className="btn" onClick={()=> applyConsentPreset('recommended')}>{t('consent.preset_rec')||'Recommended'}</button>
+                  <button className="btn" onClick={()=> applyConsentPreset('strict')}>{t('consent.preset_strict')||'Strict'}</button>
                 </div>
-              ))}
-              <div className="cta-row" style={{marginTop:8}}>
-                <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>Add option</button>
-                <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> Require signature</label>
               </div>
+              <div className="tile" style={{padding:10}}>
+                <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')||'Ask participants to confirm:'}</div>
+                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input className="checkbox" type="checkbox" checked={!!getOpt('withdrawal')?.required} onChange={e=> setOptRequired('withdrawal', e.target.checked)} /> {t('survey.consent_opt.withdrawal')||'I understand I can withdraw at any time.'}
+                </label>
+                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input className="checkbox" type="checkbox" checked={!!getOpt('data_use')?.required} onChange={e=> setOptRequired('data_use', e.target.checked)} /> {t('survey.consent_opt.data_use')||'I understand my data is for academic/aggregate use only.'}
+                </label>
+                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input className="checkbox" type="checkbox" checked={!!getOpt('recording')?.required} onChange={e=> setOptRequired('recording', e.target.checked)} /> {t('survey.consent_opt.recording')||'I consent to audio/video recording where applicable.'}
+                </label>
+                <label className="item" style={{display:'flex',alignItems:'center',gap:8, marginTop:6}}>
+                  <input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> {t('consent.require_signature')||'Require signature'}
+                </label>
+                <div className="muted" style={{marginTop:6}}>{t('consent.simple_hint')||'These are the common confirmations. Click “Advanced” to add your own items.'}</div>
+                <div className="cta-row" style={{marginTop:6}}>
+                  <button className="btn btn-ghost" onClick={()=> setShowAdvancedConsent(s=> !s)}>{showAdvancedConsent? (t('consent.hide_advanced')||'Hide Advanced') : (t('consent.show_advanced')||'Show Advanced')}</button>
+                </div>
+              </div>
+              {showAdvancedConsent && (
+                <>
+                  {consentOptions.map((o, idx)=> (
+                    <div key={idx} className="row" style={{marginTop:8}}>
+                      <div className="card span-3"><div className="label">Key</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
+                      <div className="card span-3"><div className="label">Required</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> required</label></div>
+                      <div className="card span-3"><div className="label">EN</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder="Optional"/></div>
+                      <div className="card span-3"><div className="label">中文</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder="可选"/></div>
+                      <div className="cta-row" style={{marginTop:6}}>
+                        <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>Remove</button>
+                        <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.max(0,idx-1)]; a[Math.max(0,idx-1)]=t; return a })}>Up</button>
+                        <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.min(list.length-1,idx+1)]; a[Math.min(list.length-1,idx+1)]=t; return a })}>Down</button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="cta-row" style={{marginTop:8}}>
+                    <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>Add option</button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="cta-row" style={{marginTop:12, justifyContent:'flex-end'}}>

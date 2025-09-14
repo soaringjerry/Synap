@@ -110,6 +110,17 @@
     "consent_en": "Consent (EN)",
     "consent_zh": "Consent (ZH)",
     "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved.",
+    "consent": {
+      "presets_title": "Pick a preset (you can still tweak below):",
+      "preset_min": "Minimal",
+      "preset_rec": "Recommended",
+      "preset_strict": "Strict",
+      "simple_title": "Ask participants to confirm:",
+      "show_advanced": "Show Advanced",
+      "hide_advanced": "Hide Advanced",
+      "require_signature": "Require signature",
+      "simple_hint": "These are the common confirmations. Click “Advanced” to add your own items."
+    },
     "consent_settings": "Consent Settings",
     "admin_console": "Admin Console",
     "admin_console_sub": "Publish surveys · Manage items · Export data",

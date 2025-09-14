@@ -110,6 +110,17 @@
     "consent_en": "知情同意（英文）",
     "consent_zh": "知情同意（中文）",
     "consent_hint": "可选，留空则使用默认知情同意文案。换行会保留。",
+    "consent": {
+      "presets_title": "选择一个预设（仍可在下方微调）：",
+      "preset_min": "最简",
+      "preset_rec": "推荐",
+      "preset_strict": "严格",
+      "simple_title": "请让参与者确认：",
+      "show_advanced": "展开高级设置",
+      "hide_advanced": "收起高级设置",
+      "require_signature": "需要签名",
+      "simple_hint": "以上为常见确认项；如需自定义条目，请点“高级设置”。"
+    },
     "consent_settings": "知情同意设置",
     "admin_console": "管理控制台",
     "admin_console_sub": "发布问卷 · 管理题目 · 导出数据",
