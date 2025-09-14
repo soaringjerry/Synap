@@ -133,10 +133,18 @@ export function Survey() {
     setConsented(true)
   }
 
+  function isEmailLike(s?: string) {
+    if (!s) return false
+    return /\S+@\S+\.[\w]+/.test(s)
+  }
   function consentOptionLabel(opt: {key:string; label_i18n?:Record<string,string>}) {
-    if (opt.label_i18n) return opt.label_i18n[lang] || opt.label_i18n['en']
-    // fallback to i18n defaults
-    return t(`survey.consent_opt.${opt.key}`) as string
+    let lbl = ''
+    if (opt.label_i18n) lbl = opt.label_i18n[lang] || opt.label_i18n['en'] || ''
+    if (!lbl || isEmailLike(lbl)) {
+      const fb = t(`survey.consent_opt.${opt.key}`) as string
+      lbl = (fb && !fb.startsWith('survey.consent_opt.')) ? fb : opt.key
+    }
+    return lbl
   }
 
   function openPrintWindow(title: string, bodyHtml: string): boolean {
@@ -294,11 +302,24 @@ export function Survey() {
         {/* Interactive options */}
         <div className="item">
           <div className="label">{t('survey.consent_options')}</div>
-          {(((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
-            { key:'withdrawal', required:true },
-            { key:'data_use', required:true },
-            { key:'recording', required:false },
-          ]).map((opt:any)=> (
+          {(() => {
+            const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
+              { key:'withdrawal', required:true },
+              { key:'data_use', required:true },
+              { key:'recording', required:false },
+            ])
+            // sanitize: drop invalid/duplicate/email-like keys to avoid UI confusion
+            const seen = new Set<string>()
+            const valid = base.filter((o:any)=> {
+              const k = String(o?.key||'').trim()
+              if (!k || /@/.test(k) || !/^[a-z0-9_-]+$/.test(k)) return false
+              if (k === 'email') return false
+              if (seen.has(k)) return false
+              seen.add(k)
+              return true
+            })
+            return valid
+          })().map((opt:any)=> (
             <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
               <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
                 <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
