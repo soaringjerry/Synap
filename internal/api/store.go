@@ -42,12 +42,12 @@ type Scale struct {
 }
 
 type Item struct {
-	ID            string            `json:"id"`
-	ScaleID       string            `json:"scale_id"`
-	ReverseScored bool              `json:"reverse_scored"`
-	StemI18n      map[string]string `json:"stem_i18n"`
-	// Type defines the rendering/answer type (likert|single|multiple|dropdown|rating|short_text|long_text|numeric|date|time|slider)
-	Type string `json:"type,omitempty"`
+    ID            string            `json:"id"`
+    ScaleID       string            `json:"scale_id"`
+    ReverseScored bool              `json:"reverse_scored"`
+    StemI18n      map[string]string `json:"stem_i18n"`
+    // Type defines the rendering/answer type (likert|single|multiple|dropdown|rating|short_text|long_text|numeric|date|time|slider)
+    Type string `json:"type,omitempty"`
 	// OptionsI18n for choice-based items (single/multiple/dropdown)
 	OptionsI18n map[string][]string `json:"options_i18n,omitempty"`
 	// PlaceholderI18n for text inputs
@@ -58,9 +58,11 @@ type Item struct {
 	Step int `json:"step,omitempty"`
 	// Required indicates the question must be answered
 	Required bool `json:"required,omitempty"`
-	// Likert per-item anchors (optional; fallback to scale-level when empty)
-	LikertLabelsI18n  map[string][]string `json:"likert_labels_i18n,omitempty"`
-	LikertShowNumbers bool                `json:"likert_show_numbers,omitempty"`
+    // Likert per-item anchors (optional; fallback to scale-level when empty)
+    LikertLabelsI18n  map[string][]string `json:"likert_labels_i18n,omitempty"`
+    LikertShowNumbers bool                `json:"likert_show_numbers,omitempty"`
+    // Order controls the display order within a scale (ascending). 0 means unset and will be assigned when added.
+    Order int `json:"order,omitempty"`
 }
 
 type Participant struct {
@@ -265,13 +267,23 @@ func (s *memoryStore) deleteScale(id string) bool {
 }
 
 func (s *memoryStore) addItem(it *Item) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.items[it.ID] = it
-	s.itemsByScale[it.ScaleID] = append(s.itemsByScale[it.ScaleID], it)
-	// keep stable order by id
-	sort.Slice(s.itemsByScale[it.ScaleID], func(i, j int) bool { return s.itemsByScale[it.ScaleID][i].ID < s.itemsByScale[it.ScaleID][j].ID })
-	s.saveLocked()
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    s.items[it.ID] = it
+    // Assign default order if not set (append at end)
+    if it.Order <= 0 {
+        it.Order = len(s.itemsByScale[it.ScaleID]) + 1
+    }
+    s.itemsByScale[it.ScaleID] = append(s.itemsByScale[it.ScaleID], it)
+    // keep order by Order then by ID as tiebreaker
+    sort.SliceStable(s.itemsByScale[it.ScaleID], func(i, j int) bool {
+        a, b := s.itemsByScale[it.ScaleID][i], s.itemsByScale[it.ScaleID][j]
+        if a.Order != b.Order {
+            return a.Order < b.Order
+        }
+        return a.ID < b.ID
+    })
+    s.saveLocked()
 }
 
 func (s *memoryStore) updateItem(it *Item) bool {
@@ -292,9 +304,9 @@ func (s *memoryStore) updateItem(it *Item) bool {
 	if it.OptionsI18n != nil {
 		old.OptionsI18n = it.OptionsI18n
 	}
-	if it.PlaceholderI18n != nil {
-		old.PlaceholderI18n = it.PlaceholderI18n
-	}
+    if it.PlaceholderI18n != nil {
+        old.PlaceholderI18n = it.PlaceholderI18n
+    }
 	if it.Min != 0 || it.Max != 0 || it.Step != 0 {
 		// set individually to allow zero values intentionally
 		if it.Min != 0 {
@@ -308,16 +320,27 @@ func (s *memoryStore) updateItem(it *Item) bool {
 		}
 	}
 	old.Required = it.Required
-	if it.LikertLabelsI18n != nil {
-		old.LikertLabelsI18n = it.LikertLabelsI18n
-	}
+    if it.LikertLabelsI18n != nil {
+        old.LikertLabelsI18n = it.LikertLabelsI18n
+    }
 	// LikertShowNumbers is a bool; to allow explicit false we copy when type matches
 	// Note: zero value false is valid; we simply assign
-	if it.Type == "likert" || it.LikertShowNumbers || (!it.LikertShowNumbers && old.LikertShowNumbers) {
-		old.LikertShowNumbers = it.LikertShowNumbers
-	}
-	s.saveLocked()
-	return true
+    if it.Type == "likert" || it.LikertShowNumbers || (!it.LikertShowNumbers && old.LikertShowNumbers) {
+        old.LikertShowNumbers = it.LikertShowNumbers
+    }
+    if it.Order > 0 {
+        old.Order = it.Order
+    }
+    // re-sort this scale's items by order when necessary
+    if list := s.itemsByScale[old.ScaleID]; len(list) > 1 {
+        sort.SliceStable(list, func(i, j int) bool {
+            a, b := list[i], list[j]
+            if a.Order != b.Order { return a.Order < b.Order }
+            return a.ID < b.ID
+        })
+    }
+    s.saveLocked()
+    return true
 }
 
 func (s *memoryStore) deleteItem(id string) bool {
@@ -352,9 +375,47 @@ func (s *memoryStore) deleteItem(id string) bool {
 }
 
 func (s *memoryStore) listItems(scaleID string) []*Item {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return append([]*Item(nil), s.itemsByScale[scaleID]...)
+    s.mu.RLock()
+    defer s.mu.RUnlock()
+    // return a sorted copy by order
+    src := s.itemsByScale[scaleID]
+    out := append([]*Item(nil), src...)
+    sort.SliceStable(out, func(i, j int) bool {
+        if out[i].Order != out[j].Order { return out[i].Order < out[j].Order }
+        return out[i].ID < out[j].ID
+    })
+    return out
+}
+
+// reorderItems sets explicit order for the given list of ids; others keep tail positions preserving relative order
+func (s *memoryStore) reorderItems(scaleID string, order []string) bool {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    list := s.itemsByScale[scaleID]
+    if len(list) == 0 { return false }
+    pos := 1
+    seen := map[string]bool{}
+    for _, id := range order {
+        if it := s.items[id]; it != nil && it.ScaleID == scaleID && !seen[id] {
+            it.Order = pos
+            pos++
+            seen[id] = true
+        }
+    }
+    // remaining items keep after, in current order
+    for _, it := range list {
+        if !seen[it.ID] {
+            it.Order = pos
+            pos++
+        }
+    }
+    sort.SliceStable(list, func(i, j int) bool {
+        a, b := list[i], list[j]
+        if a.Order != b.Order { return a.Order < b.Order }
+        return a.ID < b.ID
+    })
+    s.saveLocked()
+    return true
 }
 
 func (s *memoryStore) getScale(id string) *Scale {

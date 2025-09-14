@@ -1595,7 +1595,20 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 	}
 	parts := strings.Split(rest, "/")
 	id := parts[0]
-	switch r.Method {
+    // Special subroute: reorder items
+    if len(parts) == 3 && parts[1] == "items" && parts[2] == "reorder" && r.Method == http.MethodPut {
+        tid, ok := middleware.TenantIDFromContext(r.Context())
+        if !ok { http.Error(w, "unauthorized", http.StatusUnauthorized); return }
+        sc := rt.store.getScale(id)
+        if sc == nil || sc.TenantID != tid { http.Error(w, "forbidden", http.StatusForbidden); return }
+        var in struct{ Order []string `json:"order"` }
+        if err := json.NewDecoder(r.Body).Decode(&in); err != nil || len(in.Order) == 0 { http.Error(w, "order required", http.StatusBadRequest); return }
+        if ok2 := rt.store.reorderItems(id, in.Order); !ok2 { http.Error(w, "reorder failed", http.StatusBadRequest); return }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "count": len(in.Order)})
+        return
+    }
+    switch r.Method {
 	case http.MethodGet:
 		rt.adminScaleGet(w, id, parts)
 	case http.MethodDelete:

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport, adminPurgeResponses, adminGetAIConfig } from '../api/client'
+import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport, adminPurgeResponses, adminGetAIConfig, adminReorderItems } from '../api/client'
 import { decryptSingleWithX25519 } from '../crypto/e2ee'
 import { useToast } from '../components/Toast'
 
@@ -996,8 +996,22 @@ export function AdminScale() {
         <section className="card span-12">
           <h3 style={{marginTop:0}}>{t('your_items')||'Items'}</h3>
           {items.length===0 && <div className="muted">{t('no_items')||'No items yet.'}</div>}
-          {items.map((it:any)=> (
+          <div className="cta-row" style={{marginBottom:8}}>
+            <button className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); setMsg(t('saved') as string); toast.success(t('save_success')||t('saved')||'Saved') } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('save')||'Save'} order</button>
+          </div>
+          <div className="cta-row" style={{marginBottom:8}}>
+            <button className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); setMsg(t('saved') as string); toast.success(t('save_success')||t('saved')||'Saved') } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('save')||'Save'} order</button>
+          </div>
+          {items.map((it:any, idx:number)=> (
             <div key={it.id} className="item" style={{borderTop:'1px solid var(--border)', paddingTop:12, marginTop:8}}>
+              <div className="cta-row" style={{marginBottom:6}}>
+                <button className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx<=0) return a; const t=a[idx]; a[idx]=a[idx-1]; a[idx-1]=t; return a })} disabled={idx===0}>↑</button>
+                <button className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx>=arr.length-1) return a; const t=a[idx]; a[idx]=a[idx+1]; a[idx+1]=t; return a })} disabled={idx===items.length-1}>↓</button>
+              </div>
+              <div className="cta-row" style={{marginBottom:6}}>
+                <button className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx<=0) return a; const t=a[idx]; a[idx]=a[idx-1]; a[idx-1]=t; return a })} disabled={idx===0}>↑</button>
+                <button className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx>=a.length-1) return a; const t=a[idx]; a[idx]=a[idx+1]; a[idx+1]=t; return a })} disabled={idx===items.length-1}>↓</button>
+              </div>
               <div className="muted">{t('label.id')||'ID'}: <b>{it.id}</b></div>
               <div className="item"><div className="label">{t('stem_en')}</div>
                 <input className="input" value={it.stem_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), en: e.target.value }}:x))} />

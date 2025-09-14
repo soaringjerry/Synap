@@ -63,6 +63,10 @@ export async function adminGetScaleItems(id: string) {
   const res = await fetch(`/api/admin/scales/${encodeURIComponent(id)}/items`, { headers: authHeaders() })
   return j<{ items: any[] }>(res)
 }
+export async function adminReorderItems(scaleId: string, order: string[]) {
+  const res = await fetch(`/api/admin/scales/${encodeURIComponent(scaleId)}/items/reorder`, { method:'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ order }) })
+  return j<{ ok: boolean }>(res)
+}
 export async function adminCreateScale(input: Partial<Scale> & { name_i18n: Record<string,string>, points: number }) {
   const res = await fetch(`/api/scales`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<Scale>(res)
