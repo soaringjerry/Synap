@@ -17,23 +17,23 @@ import (
 )
 
 type Scale struct {
-    ID          string            `json:"id"`
-    TenantID    string            `json:"tenant_id,omitempty"`
-    Points      int               `json:"points"`
-    Randomize   bool              `json:"randomize"`
-    NameI18n    map[string]string `json:"name_i18n,omitempty"`
-    ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
-    // CollectEmail controls whether participant email is collected: off|optional|required
-    CollectEmail string `json:"collect_email,omitempty"`
-    // E2EE and Region mode (project-level controls)
-    E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
-    Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
-    // Consent configuration (version + options)
-    ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
-    // Likert anchors (labels) and display options
-    LikertLabelsI18n map[string][]string `json:"likert_labels_i18n,omitempty"`
-    LikertShowNumbers bool               `json:"likert_show_numbers,omitempty"`
-    LikertPreset      string             `json:"likert_preset,omitempty"`
+	ID          string            `json:"id"`
+	TenantID    string            `json:"tenant_id,omitempty"`
+	Points      int               `json:"points"`
+	Randomize   bool              `json:"randomize"`
+	NameI18n    map[string]string `json:"name_i18n,omitempty"`
+	ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
+	// CollectEmail controls whether participant email is collected: off|optional|required
+	CollectEmail string `json:"collect_email,omitempty"`
+	// E2EE and Region mode (project-level controls)
+	E2EEEnabled bool   `json:"e2ee_enabled,omitempty"`
+	Region      string `json:"region,omitempty"` // auto|gdpr|pipl|pdpa|ccpa
+	// Consent configuration (version + options)
+	ConsentConfig *ConsentConfig `json:"consent_config,omitempty"`
+	// Likert anchors (labels) and display options
+	LikertLabelsI18n  map[string][]string `json:"likert_labels_i18n,omitempty"`
+	LikertShowNumbers bool                `json:"likert_show_numbers,omitempty"`
+	LikertPreset      string              `json:"likert_preset,omitempty"`
 }
 
 type Item struct {
@@ -56,12 +56,12 @@ type Item struct {
 }
 
 type Participant struct {
-    ID    string `json:"id"`
-    Email string `json:"email,omitempty"`
-    // SelfToken is a capability to export/delete own data (GDPR self-service)
-    SelfToken string `json:"self_token,omitempty"`
-    // ConsentID links to a ConsentRecord.ID if provided at submission time
-    ConsentID string `json:"consent_id,omitempty"`
+	ID    string `json:"id"`
+	Email string `json:"email,omitempty"`
+	// SelfToken is a capability to export/delete own data (GDPR self-service)
+	SelfToken string `json:"self_token,omitempty"`
+	// ConsentID links to a ConsentRecord.ID if provided at submission time
+	ConsentID string `json:"consent_id,omitempty"`
 }
 
 type Response struct {
@@ -755,24 +755,24 @@ type ExportJob struct {
 
 // Consent records (evidence without storing signature image)
 type ConsentRecord struct {
-    ID       string          `json:"id"`
-    ScaleID  string          `json:"scale_id"`
-    Version  string          `json:"version"`
-    Choices  map[string]bool `json:"choices"`
-    Locale   string          `json:"locale"`
-    SignedAt time.Time       `json:"signed_at"`
-    Hash     string          `json:"hash"` // sha256 base64 of client evidence JSON
+	ID       string          `json:"id"`
+	ScaleID  string          `json:"scale_id"`
+	Version  string          `json:"version"`
+	Choices  map[string]bool `json:"choices"`
+	Locale   string          `json:"locale"`
+	SignedAt time.Time       `json:"signed_at"`
+	Hash     string          `json:"hash"` // sha256 base64 of client evidence JSON
 }
 
 func (s *memoryStore) getConsentByID(id string) *ConsentRecord {
-    s.mu.RLock()
-    defer s.mu.RUnlock()
-    for _, c := range s.consents {
-        if c.ID == id {
-            return c
-        }
-    }
-    return nil
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, c := range s.consents {
+		if c.ID == id {
+			return c
+		}
+	}
+	return nil
 }
 
 func (s *memoryStore) addConsentRecord(cr *ConsentRecord) {

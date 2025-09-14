@@ -16,11 +16,11 @@ type LongRow struct {
 
 // ExportLongCSV renders rows into a long-format CSV.
 func ExportLongCSV(rows []LongRow) ([]byte, error) {
-    buf := &bytes.Buffer{}
-    // Write UTF-8 BOM so Excel opens Unicode correctly
-    _, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
-    w := csv.NewWriter(buf)
-    _ = w.Write([]string{"participant_id", "item_id", "raw_value", "score_value", "submitted_at"})
+	buf := &bytes.Buffer{}
+	// Write UTF-8 BOM so Excel opens Unicode correctly
+	_, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
+	w := csv.NewWriter(buf)
+	_ = w.Write([]string{"participant_id", "item_id", "raw_value", "score_value", "submitted_at"})
 	for _, r := range rows {
 		rec := []string{
 			r.ParticipantID,
@@ -60,10 +60,10 @@ func ExportWideCSV(inputs map[string]map[string]int) ([]byte, error) {
 	}
 	sort.Strings(pids)
 
-    buf := &bytes.Buffer{}
-    // Write UTF-8 BOM so Excel opens Unicode correctly
-    _, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
-    w := csv.NewWriter(buf)
+	buf := &bytes.Buffer{}
+	// Write UTF-8 BOM so Excel opens Unicode correctly
+	_, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
+	w := csv.NewWriter(buf)
 	header := append([]string{"participant_id"}, items...)
 	_ = w.Write(header)
 	for _, pid := range pids {
@@ -89,10 +89,10 @@ func ExportScoreCSV(inputs map[string][]int) ([]byte, error) {
 	}
 	sort.Strings(pids)
 
-    buf := &bytes.Buffer{}
-    // Write UTF-8 BOM so Excel opens Unicode correctly
-    _, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
-    w := csv.NewWriter(buf)
+	buf := &bytes.Buffer{}
+	// Write UTF-8 BOM so Excel opens Unicode correctly
+	_, _ = buf.Write([]byte{0xEF, 0xBB, 0xBF})
+	w := csv.NewWriter(buf)
 	_ = w.Write([]string{"participant_id", "total_score"})
 	for _, pid := range pids {
 		sum := 0
