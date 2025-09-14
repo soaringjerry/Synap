@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview } from '../api/client'
+import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey } from '../api/client'
 
 export function AdminScale() {
   const { id = '' } = useParams()
@@ -27,6 +27,11 @@ export function AdminScale() {
   const [aiTargets, setAiTargets] = useState('zh')
   const [aiPreview, setAiPreview] = useState<any|null>(null)
   const [aiMsg, setAiMsg] = useState('')
+  const [keys, setKeys] = useState<any[]>([])
+  const [newPub, setNewPub] = useState('')
+  const [newAlg, setNewAlg] = useState<'x25519+xchacha20'|'rsa+aesgcm'>('x25519+xchacha20')
+  const [newKdf] = useState<'hkdf-sha256'>('hkdf-sha256')
+  const [newFp, setNewFp] = useState('')
 
   async function load() {
     setMsg('')
@@ -36,6 +41,7 @@ export function AdminScale() {
       setScale(s)
       setItems(its.items||[])
       try { const a = await adminAnalyticsSummary(id); setAnalytics(a) } catch {}
+      try { const k = await adminListProjectKeys(id); setKeys(k.keys||[]) } catch {}
     } catch (e:any) { setMsg(e.message||String(e)) }
   }
   useEffect(()=>{ load() }, [id])
@@ -218,6 +224,61 @@ export function AdminScale() {
               </div>
             </div>
           )}
+        </section>
+      </div>
+      <div className="row">
+        <section className="card span-12">
+          <h3 style={{marginTop:0}}>E2EE Settings</h3>
+          <div className="row">
+            <div className="card span-6">
+              <div className="item"><div className="label">End‑to‑end Encryption</div>
+                <label><input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> setScale((s:any)=> ({...s, e2ee_enabled: e.target.checked }))} /> Enable (default on)</label>
+              </div>
+              <div className="item"><div className="label">Region</div>
+                <select className="select" value={scale.region||'auto'} onChange={e=> setScale((s:any)=> ({...s, region: e.target.value }))}>
+                  <option value="auto">auto</option>
+                  <option value="gdpr">gdpr</option>
+                  <option value="pipl">pipl</option>
+                  <option value="pdpa">pdpa</option>
+                  <option value="ccpa">ccpa</option>
+                </select>
+              </div>
+              <div className="cta-row" style={{marginTop:12}}>
+                <button className="btn" onClick={saveScale} disabled={saving}>{t('save')}</button>
+              </div>
+            </div>
+            <div className="card span-6">
+              <h4 style={{marginTop:0}}>Project Keys</h4>
+              <div className="muted">Register recipients' public keys（PI/DM/IRB）— platform stores public keys only.</div>
+              <div className="item"><div className="label">Algorithm</div>
+                <select className="select" value={newAlg} onChange={e=> setNewAlg(e.target.value as any)}>
+                  <option value="x25519+xchacha20">X25519 + XChaCha20-Poly1305</option>
+                  <option value="rsa+aesgcm">RSA-OAEP + AES-GCM</option>
+                </select>
+              </div>
+              <div className="item"><div className="label">Public Key</div>
+                <textarea className="input" rows={4} placeholder="Paste base64 (x25519 raw) or PEM SPKI (RSA)" value={newPub} onChange={e=> setNewPub(e.target.value)} />
+              </div>
+              <div className="item"><div className="label">Fingerprint</div>
+                <input className="input" placeholder="client-computed fingerprint" value={newFp} onChange={e=> setNewFp(e.target.value)} />
+              </div>
+              <div className="cta-row">
+                <button className="btn" onClick={async()=>{
+                  try { await adminAddProjectKey(id, { alg: newAlg, kdf: newKdf, public_key: newPub, fingerprint: newFp }); setNewPub(''); setNewFp(''); const k = await adminListProjectKeys(id); setKeys(k.keys||[]); setMsg(t('saved') as string) } catch(e:any){ setMsg(e.message||String(e)) }
+                }}>Add Key</button>
+              </div>
+              <div className="divider" />
+              <div className="item"><div className="label">Registered Keys</div>
+                {keys.length===0 && <div className="muted">No keys</div>}
+                {keys.map((k:any)=> (
+                  <div key={k.fingerprint} className="tile" style={{padding:10, marginTop:8}}>
+                    <div><b>{k.alg}</b> · {k.kdf} · <span className="muted">{k.fingerprint}</span></div>
+                    <div className="muted">{k.created_at ? new Date(k.created_at).toLocaleString() : ''}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
       </div>
       <div className="row">

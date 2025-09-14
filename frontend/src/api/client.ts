@@ -116,6 +116,16 @@ export async function adminAddProjectKey(projectId: string, input: { alg:string;
   return j<{ok:true}>(res)
 }
 
+export async function listProjectKeysPublic(projectId: string) {
+  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/keys`)
+  return j<{ keys: { alg:string; kdf:string; public_key:string; fingerprint:string }[] }>(res)
+}
+
+export async function submitE2EE(input: { scale_id: string; response_id?: string; ciphertext: string; nonce: string; enc_dek: string[]; aad_hash: string; pmk_fingerprint?: string }) {
+  const res = await fetch(`/api/responses/e2ee`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(input) })
+  return j<{ ok: boolean; response_id: string }>(res)
+}
+
 // --- Admin AI config & translation ---
 export type AIConfig = { tenant_id: string; openai_key?: string; openai_base?: string; allow_external: boolean; store_logs: boolean }
 export async function adminGetAIConfig() {

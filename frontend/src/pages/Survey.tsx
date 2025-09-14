@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut } from '../api/client'
+import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut, listProjectKeysPublic, submitE2EE } from '../api/client'
+import { e2eeInit, encryptForProject } from '../crypto/e2ee'
 import { useTranslation } from 'react-i18next'
 
 export function Survey() {
@@ -17,6 +18,7 @@ export function Survey() {
   const [consentCustom, setConsentCustom] = useState('')
   const [points, setPoints] = useState<number>(5)
   const [collectEmail, setCollectEmail] = useState<'off'|'optional'|'required'>('optional')
+  const [e2ee, setE2ee] = useState(false)
 
   async function loadOrSeed() {
     setLoading(true)
@@ -29,6 +31,7 @@ export function Survey() {
         setConsentCustom(c || '')
         setPoints(meta.points || 5)
         setCollectEmail((meta.collect_email as any) || 'optional')
+        setE2ee(!!(meta as any).e2ee_enabled)
       } catch {}
       const d = await listItems(scaleId, lang)
       if (d.items.length === 0 && scaleId.toUpperCase() === 'SAMPLE') {
@@ -182,9 +185,20 @@ export function Survey() {
       <div className="cta-row" style={{marginTop:12}}>
         <button className="btn btn-primary" disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim())} onClick={async()=>{
           try {
-            const arr = Object.entries(answers).map(([item_id, raw])=>({item_id, raw}))
-            const res = await submitBulk(scaleId, email.trim(), arr as any)
-            setMsg(`Submitted ${res.count} answers.`)
+            if (e2ee) {
+              const { keys } = await listProjectKeysPublic(scaleId)
+              if (!keys || !keys.length) throw new Error('No E2EE keys registered for this project')
+              await e2eeInit()
+              const payload: any = { scale_id: scaleId, answers }
+              if (collectEmail !== 'off') payload.email = email.trim()
+              const enc = await encryptForProject(payload, scaleId, keys as any)
+              const res = await submitE2EE({ scale_id: scaleId, ciphertext: enc.ciphertext, nonce: enc.nonce, enc_dek: enc.encDEK, aad_hash: enc.aad_hash, pmk_fingerprint: enc.pmk_fingerprint })
+              setMsg(`Submitted (E2EE) id=${res.response_id}.`)
+            } else {
+              const arr = Object.entries(answers).map(([item_id, raw])=>({item_id, raw}))
+              const res = await submitBulk(scaleId, email.trim(), arr as any)
+              setMsg(`Submitted ${res.count} answers.`)
+            }
             setAnswers({})
           } catch(e:any) { setMsg(e.message||String(e)) }
         }}>Submit</button>

@@ -56,8 +56,8 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	// AI config + translation preview
 	mux.Handle("/api/admin/ai/config", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAIConfig)))
 	mux.Handle("/api/admin/ai/translate/preview", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAITranslatePreview)))
-	// E2EE project keys
-	mux.Handle("/api/projects/", middleware.WithAuth(http.HandlerFunc(rt.handleProjectKeys)))
+	// E2EE project keys: GET (public), POST (auth)
+	mux.HandleFunc("/api/projects/", rt.handleProjectKeys)
 	// E2EE encrypted responses (public submission)
 	mux.HandleFunc("/api/responses/e2ee", rt.handleE2EEResponse)
 }
@@ -478,24 +478,25 @@ func (rt *Router) handleProjectKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := parts[0]
-	// tenant scope check
-	tid, ok := middleware.TenantIDFromContext(r.Context())
-	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	sc := rt.store.getScale(id)
-	if sc == nil || sc.TenantID != tid {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
 	switch r.Method {
 	case http.MethodGet:
+		// Publicly list registered public keys for encryption
 		ks := rt.store.listProjectKeys(id)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"keys": ks})
 		return
 	case http.MethodPost:
+		// POST requires auth and tenant scope
+		tid, ok := middleware.TenantIDFromContext(r.Context())
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		sc := rt.store.getScale(id)
+		if sc == nil || sc.TenantID != tid {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		var in struct {
 			Algorithm   string `json:"alg"`
 			KDF         string `json:"kdf"`
