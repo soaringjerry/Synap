@@ -56,11 +56,11 @@ export async function encryptForProject(payload: any, scaleId: string, keys: Pub
   // Encrypt payload with XChaCha20-Poly1305
   await sodium.ready
   const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
-  const aad = enc.encode(`v1|${scaleId}|${Date.now()}`)
-  const ct = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(plain, aad, null, nonce, dek)
+  // For portability, avoid external AAD (set to null)
+  const ct = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(plain, null, null, nonce, dek)
   const ciphertext = ab2b64(ct)
   const nonceB64 = ab2b64(nonce)
-  const aad_hash = await sha256(aad)
+  const aad_hash = ''
   // Envelope for each recipient key
   const encDEK: string[] = []
   let pmk_fingerprint = keys[0]?.fingerprint || ''
@@ -102,4 +102,31 @@ export async function encryptForProject(payload: any, scaleId: string, keys: Pub
     }
   }
   return { ciphertext, nonce: nonceB64, aad_hash, encDEK, pmk_fingerprint }
+}
+
+export async function decryptSingleWithX25519(privRawB64: string, rec: { ciphertext: string; nonce: string; enc_dek: string[] }) {
+  await sodium.ready
+  const priv = b642ab(privRawB64)
+  let dek: Uint8Array | null = null
+  for (const envStr of rec.enc_dek) {
+    try {
+      const env = JSON.parse(envStr)
+      if (env.alg !== 'x25519+xchacha20') continue
+      const ephPub = b642ab(env.eph_pub)
+      const shared = sodium.crypto_scalarmult(priv, ephPub)
+      const prk = await hkdfExtract(ephPub, shared)
+      const kekBuf = await hkdfExpand(prk, new TextEncoder().encode('synap-e2ee'), 32)
+      const kek = new Uint8Array(kekBuf)
+      const n2 = b642ab(env.nonce)
+      const wrapped = b642ab(env.ct)
+      dek = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, wrapped, null, n2, kek)
+      if (dek) break
+    } catch {}
+  }
+  if (!dek) throw new Error('No matching envelope for provided private key')
+  const nonce = b642ab(rec.nonce)
+  const ct = b642ab(rec.ciphertext)
+  const plain = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ct, null, nonce, dek)
+  const dec = new TextDecoder()
+  return JSON.parse(dec.decode(plain))
 }

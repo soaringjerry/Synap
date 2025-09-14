@@ -108,7 +108,19 @@
       "export_title": "Export Encrypted Bundle",
       "export_desc": "Create a short‑lived link containing ciphertext + signed manifest (Ed25519).",
       "export_button": "Create Export",
-      "export_ready": "Export link prepared (opened in new tab)."
+      "export_ready": "Export link prepared (opened in new tab).",
+      "local_decrypt_hint": "Or decrypt locally and download plaintext (private key never leaves your browser).",
+      "passphrase": "Passphrase (local private key)",
+      "passphrase_placeholder": "Enter passphrase to unlock local key",
+      "local_plain_ready": "Decrypted JSONL downloaded.",
+      "local_decrypt_button": "Decrypt locally and Download JSON",
+      "key_setup": "Key setup",
+      "key_generate": "Generate in browser (recommended)",
+      "key_upload": "I have a public key",
+      "public_key": "Public Key",
+      "pub_will_fill": "Will be filled after generation",
+      "pub_placeholder": "Paste base64 (x25519 raw) or PEM SPKI (RSA)",
+      "key_loss_warning": "Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable."
     },
 
     "cookie": {

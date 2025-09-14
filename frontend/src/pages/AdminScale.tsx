@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport } from '../api/client'
+import { decryptSingleWithX25519 } from '../crypto/e2ee'
 
 export function AdminScale() {
   const { id = '' } = useParams()
@@ -32,6 +33,23 @@ export function AdminScale() {
   const [newAlg, setNewAlg] = useState<'x25519+xchacha20'|'rsa+aesgcm'>('x25519+xchacha20')
   const [newKdf] = useState<'hkdf-sha256'>('hkdf-sha256')
   const [newFp, setNewFp] = useState('')
+  const [pkPass, setPkPass] = useState('')
+  const [decMsg, setDecMsg] = useState('')
+
+  async function unlockLocalPriv(): Promise<Uint8Array> {
+    const blobStr = localStorage.getItem('synap_pmk')
+    if (!blobStr) throw new Error('No local private key found. Go to Keys page to generate.')
+    const blob = JSON.parse(blobStr)
+    if (!pkPass) throw new Error('Enter passphrase to unlock private key')
+    const salt = fromB64(blob.salt)
+    const iv = fromB64(blob.iv)
+    const enc = fromB64(blob.enc_priv)
+    const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(pkPass), 'PBKDF2', false, ['deriveKey'])
+    const key = await crypto.subtle.deriveKey({ name:'PBKDF2', salt: salt.buffer, iterations: 120000, hash: 'SHA-256' }, keyMaterial, { name:'AES-GCM', length:256 }, false, ['decrypt'])
+    const privAb = await crypto.subtle.decrypt({ name:'AES-GCM', iv: iv.buffer }, key, enc.buffer)
+    return new Uint8Array(privAb)
+  }
+  function fromB64(s: string) { const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u }
 
   async function load() {
     setMsg('')
@@ -310,7 +328,42 @@ export function AdminScale() {
                     setMsg(t('e2ee.export_ready')||'Export link opened.')
                   } catch(e:any) { setMsg(e.message||String(e)) }
                 }}>{t('e2ee.export_button')||'Create Export'}</button>
+                <div style={{flex:1}} />
+                <div className="muted">{t('e2ee.local_decrypt_hint')||'Or decrypt locally and download plaintext (private key never leaves your browser).'}</div>
               </div>
+              <div className="row" style={{marginTop:8, alignItems:'flex-end'}}>
+                <div className="item span-4"><div className="label">{t('e2ee.passphrase')||'Passphrase (local private key)'}</div>
+                  <input className="input" type="password" value={pkPass} onChange={e=> setPkPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||'Enter passphrase to unlock local key'} />
+                </div>
+                <div className="item span-4">
+                  <button className="btn" onClick={async()=>{
+                    setDecMsg('')
+                    try {
+                      const priv = await unlockLocalPriv()
+                      const { url } = await adminCreateE2EEExport(id)
+                      const res = await fetch(url)
+                      if (!res.ok) throw new Error(await res.text())
+                      const bundle = await res.json()
+                      const out:any[] = []
+                      const privB64 = btoa(String.fromCharCode(...priv))
+                      for (const r of bundle.responses||[]) {
+                        try {
+                          const plain = await decryptSingleWithX25519(privB64, { ciphertext: r.ciphertext, nonce: r.nonce, enc_dek: r.enc_dek||r.EncDEK||[] })
+                          out.push(plain)
+                        } catch {}
+                      }
+                      if (out.length===0) throw new Error('No entries could be decrypted with the provided key')
+                      const blob = new Blob([out.map(o=> JSON.stringify(o)).join('\n')+"\n"], { type: 'application/jsonl' })
+                      const a = document.createElement('a')
+                      a.href = URL.createObjectURL(blob)
+                      a.download = `e2ee_${id}_plaintext.jsonl`
+                      a.click(); URL.revokeObjectURL(a.href)
+                      setDecMsg(t('e2ee.local_plain_ready')||'Decrypted JSONL downloaded.')
+                    } catch(e:any) { setDecMsg(e.message||String(e)) }
+                  }}>{t('e2ee.local_decrypt_button')||'Decrypt locally and Download JSON'}</button>
+                </div>
+              </div>
+              {decMsg && <div className="muted" style={{marginTop:8}}>{decMsg}</div>}
             </div>
           </div>
         </section>
