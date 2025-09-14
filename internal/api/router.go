@@ -204,20 +204,20 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 		lang = "en"
 	}
 	items := rt.store.listItems(id)
-    type outItem struct {
-        ID            string   `json:"id"`
-        ReverseScored bool     `json:"reverse_scored"`
-        Stem          string   `json:"stem"`
-        Type          string   `json:"type,omitempty"`
-        Options       []string `json:"options,omitempty"`
-        Min           int      `json:"min,omitempty"`
-        Max           int      `json:"max,omitempty"`
-        Step          int      `json:"step,omitempty"`
-        Required      bool     `json:"required,omitempty"`
-        Placeholder   string   `json:"placeholder,omitempty"`
-        LikertLabels  []string `json:"likert_labels,omitempty"`
-        LikertShowNum bool     `json:"likert_show_numbers,omitempty"`
-    }
+	type outItem struct {
+		ID            string   `json:"id"`
+		ReverseScored bool     `json:"reverse_scored"`
+		Stem          string   `json:"stem"`
+		Type          string   `json:"type,omitempty"`
+		Options       []string `json:"options,omitempty"`
+		Min           int      `json:"min,omitempty"`
+		Max           int      `json:"max,omitempty"`
+		Step          int      `json:"step,omitempty"`
+		Required      bool     `json:"required,omitempty"`
+		Placeholder   string   `json:"placeholder,omitempty"`
+		LikertLabels  []string `json:"likert_labels,omitempty"`
+		LikertShowNum bool     `json:"likert_show_numbers,omitempty"`
+	}
 	out := make([]outItem, 0, len(items))
 	for _, it := range items {
 		stem := it.StemI18n[lang]
@@ -239,30 +239,30 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 				ph = it.PlaceholderI18n["en"]
 			}
 		}
-        // Likert labels (per-item, fallback handled client-side using scale meta)
-        var likertLabels []string
-        if it.Type == "likert" && it.LikertLabelsI18n != nil {
-            if v := it.LikertLabelsI18n[lang]; len(v) > 0 {
-                likertLabels = v
-            } else if v := it.LikertLabelsI18n["en"]; len(v) > 0 {
-                likertLabels = v
-            }
-        }
-        out = append(out, outItem{
-            ID:            it.ID,
-            ReverseScored: it.ReverseScored,
-            Stem:          stem,
-            Type:          it.Type,
-            Options:       opts,
-            Min:           it.Min,
-            Max:           it.Max,
-            Step:          it.Step,
-            Required:      it.Required,
-            Placeholder:   ph,
-            LikertLabels:  likertLabels,
-            LikertShowNum: it.LikertShowNumbers,
-        })
-    }
+		// Likert labels (per-item, fallback handled client-side using scale meta)
+		var likertLabels []string
+		if it.Type == "likert" && it.LikertLabelsI18n != nil {
+			if v := it.LikertLabelsI18n[lang]; len(v) > 0 {
+				likertLabels = v
+			} else if v := it.LikertLabelsI18n["en"]; len(v) > 0 {
+				likertLabels = v
+			}
+		}
+		out = append(out, outItem{
+			ID:            it.ID,
+			ReverseScored: it.ReverseScored,
+			Stem:          stem,
+			Type:          it.Type,
+			Options:       opts,
+			Min:           it.Min,
+			Max:           it.Max,
+			Step:          it.Step,
+			Required:      it.Required,
+			Placeholder:   ph,
+			LikertLabels:  likertLabels,
+			LikertShowNum: it.LikertShowNumbers,
+		})
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": id, "items": out})
 }
@@ -454,6 +454,11 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	scaleID := r.URL.Query().Get("scale_id")
 	format := r.URL.Query().Get("format")
+	// consent header naming: key (default) | label_en | label_zh
+	consentHeader := r.URL.Query().Get("consent_header")
+	if consentHeader == "" {
+		consentHeader = "key"
+	}
 	if scaleID == "" {
 		http.Error(w, "scale_id required", http.StatusBadRequest)
 		return
@@ -467,7 +472,7 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	switch format {
 	case "long":
 		rows := rt.buildLongRows(rs)
-		rt.appendConsentLong(&rows, rs, scaleID)
+		rt.appendConsentLongNamed(&rows, rs, scaleID, consentHeader)
 		b, err := services.ExportLongCSV(rows)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -480,7 +485,7 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	case "wide":
 		mp := rt.buildWideMap(rs)
-		rt.mergeConsentWide(mp, rs, scaleID)
+		rt.mergeConsentWideNamed(mp, rs, scaleID, consentHeader)
 		b, err := services.ExportWideCSV(mp)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -540,7 +545,7 @@ func (rt *Router) buildTotals(_ []*Item, rs []*Response) map[string][]int {
 }
 
 // appendConsentLong appends consent choices as pseudo-items to long rows
-func (rt *Router) appendConsentLong(rows *[]services.LongRow, rs []*Response, scaleID string) {
+func (rt *Router) appendConsentLong(rows *[]services.LongRow, rs []*Response, scaleID string) { // legacy; use appendConsentLongNamed
 	pidSet := map[string]struct{}{}
 	for _, r := range rs {
 		pidSet[r.ParticipantID] = struct{}{}
@@ -564,7 +569,7 @@ func (rt *Router) appendConsentLong(rows *[]services.LongRow, rs []*Response, sc
 	}
 }
 
-// mergeConsentWide merges consent choices into the wide map as consent.<key> columns
+// mergeConsentWide merges consent choices into the wide map as consent.<key> columns (legacy)
 func (rt *Router) mergeConsentWide(mp map[string]map[string]int, rs []*Response, scaleID string) {
 	pidSet := map[string]struct{}{}
 	for _, r := range rs {
@@ -587,6 +592,119 @@ func (rt *Router) mergeConsentWide(mp map[string]map[string]int, rs []*Response,
 				mp[pid]["consent."+k] = 1
 			} else {
 				mp[pid]["consent."+k] = 0
+			}
+		}
+	}
+}
+
+// Helper: find label for consent key in a scale for given lang
+func (rt *Router) consentLabel(sc *Scale, key, lang string) string {
+	if sc == nil || sc.ConsentConfig == nil {
+		return ""
+	}
+	for _, o := range sc.ConsentConfig.Options {
+		if o.Key == key {
+			if o.LabelI18n != nil {
+				if s := o.LabelI18n[lang]; s != "" {
+					return s
+				}
+				if s := o.LabelI18n["en"]; s != "" {
+					return s
+				}
+			}
+			break
+		}
+	}
+	return ""
+}
+
+// appendConsentLongNamed appends consent choices with configurable item_id naming: key (default) or label_en/label_zh
+func (rt *Router) appendConsentLongNamed(rows *[]services.LongRow, rs []*Response, scaleID, mode string) {
+	pidSet := map[string]struct{}{}
+	for _, r := range rs {
+		pidSet[r.ParticipantID] = struct{}{}
+	}
+	sc := rt.store.getScale(scaleID)
+	lang := "en"
+	if mode == "label_zh" {
+		lang = "zh"
+	}
+	for pid := range pidSet {
+		p := rt.store.participants[pid]
+		if p == nil || p.ConsentID == "" {
+			continue
+		}
+		c := rt.store.getConsentByID(p.ConsentID)
+		if c == nil || c.ScaleID != scaleID {
+			continue
+		}
+		for k, v := range c.Choices {
+			val := 0
+			if v {
+				val = 1
+			}
+			name := "consent." + k
+			if mode == "label_en" || mode == "label_zh" {
+				if lbl := rt.consentLabel(sc, k, lang); lbl != "" {
+					name = lbl
+				}
+			}
+			*rows = append(*rows, services.LongRow{ParticipantID: pid, ItemID: name, RawValue: val, ScoreValue: val, SubmittedAt: c.SignedAt.Format(time.RFC3339)})
+		}
+	}
+}
+
+// mergeConsentWideNamed merges consent with configurable column naming: key (default) or label_en/label_zh
+func (rt *Router) mergeConsentWideNamed(mp map[string]map[string]int, rs []*Response, scaleID, mode string) {
+	pidSet := map[string]struct{}{}
+	for _, r := range rs {
+		pidSet[r.ParticipantID] = struct{}{}
+	}
+	sc := rt.store.getScale(scaleID)
+	lang := "en"
+	if mode == "label_zh" {
+		lang = "zh"
+	}
+	// helper to ensure unique column names
+	colName := func(existing map[string]int, base string) string {
+		name := base
+		if _, ok := existing[name]; !ok {
+			return name
+		}
+		// If duplicate, suffix with (n)
+		for i := 2; ; i++ {
+			cand := fmt.Sprintf("%s (%d)", base, i)
+			if _, ok := existing[cand]; !ok {
+				return cand
+			}
+		}
+	}
+	// Build participant-wise
+	for pid := range pidSet {
+		p := rt.store.participants[pid]
+		if p == nil || p.ConsentID == "" {
+			continue
+		}
+		c := rt.store.getConsentByID(p.ConsentID)
+		if c == nil || c.ScaleID != scaleID {
+			continue
+		}
+		if mp[pid] == nil {
+			mp[pid] = map[string]int{}
+		}
+		for k, v := range c.Choices {
+			name := "consent." + k
+			if mode == "label_en" || mode == "label_zh" {
+				if lbl := rt.consentLabel(sc, k, lang); lbl != "" {
+					name = lbl
+				}
+				// ensure uniqueness per participant row map
+				name = colName(mp[pid], name)
+			}
+			if v {
+				mp[pid][name] = 1
+			} else {
+				mp[pid][name] = 0
 			}
 		}
 	}
