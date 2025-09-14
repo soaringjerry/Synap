@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { adminListScales, adminCreateScale, adminAddProjectKey } from '../api/client'
+import { adminListScales, adminCreateScale, adminAddProjectKey, adminDeleteScale } from '../api/client'
 import * as sodium from 'libsodium-wrappers'
 
 export function Admin() {
@@ -168,6 +168,10 @@ export function Admin() {
                 <button className="btn" onClick={()=>copyLink(s.id)}>{t('share')}</button>
                 <a className="btn btn-ghost" href={shareLink(s.id)} target="_blank" rel="noreferrer">{t('open')}</a>
                 <Link className="btn btn-primary" to={`/admin/scale/${encodeURIComponent(s.id)}`}>{t('manage')||'Manage'}</Link>
+                <button className="btn btn-ghost" onClick={async()=>{
+                  if (!confirm(t('confirm_delete_scale')||'Delete this scale and all its items/responses?')) return
+                  try { await adminDeleteScale(s.id); setMsg(t('deleted') as string); loadScales() } catch(e:any) { setMsg(e.message||String(e)) }
+                }}>{t('delete')||'Delete'}</button>
               </div>
             </div>
           ))}

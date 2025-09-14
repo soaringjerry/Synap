@@ -73,6 +73,10 @@ export async function adminDeleteScale(id: string) {
   const res = await fetch(`/api/admin/scales/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders() })
   return j<{ok:true}>(res)
 }
+export async function adminPurgeResponses(scaleId: string) {
+  const res = await fetch(`/api/admin/scales/${encodeURIComponent(scaleId)}/responses`, { method: 'DELETE', headers: authHeaders() })
+  return j<{ok:true; removed:number}>(res)
+}
 export async function adminCreateItem(input: { scale_id: string, reverse_scored?: boolean, stem_i18n: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string> }) {
   const res = await fetch(`/api/items`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<any>(res)

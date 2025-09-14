@@ -399,6 +399,36 @@ func (s *memoryStore) listResponsesByScale(scaleID string) []*Response {
 	return out
 }
 
+// deleteResponsesByScale removes all responses (plain and E2EE) for a scale. Returns removed count.
+func (s *memoryStore) deleteResponsesByScale(scaleID string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	removed := 0
+	// plain responses: filter by item scale
+	nr := make([]*Response, 0, len(s.responses))
+	for _, r := range s.responses {
+		it := s.items[r.ItemID]
+		if it != nil && it.ScaleID == scaleID {
+			removed++
+			continue
+		}
+		nr = append(nr, r)
+	}
+	s.responses = nr
+	// E2EE responses by scale
+	ne := make([]*E2EEResponse, 0, len(s.e2ee))
+	for _, e := range s.e2ee {
+		if e.ScaleID == scaleID {
+			removed++
+			continue
+		}
+		ne = append(ne, e)
+	}
+	s.e2ee = ne
+	s.saveLocked()
+	return removed
+}
+
 // cleanup responses before cutoff time, return removed count
 func (s *memoryStore) cleanupBefore(cutoff time.Time) int {
 	s.mu.Lock()

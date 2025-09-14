@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport } from '../api/client'
+import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport, adminPurgeResponses } from '../api/client'
 import { decryptSingleWithX25519 } from '../crypto/e2ee'
 
 export function AdminScale() {
@@ -373,6 +373,18 @@ export function AdminScale() {
                 {' '}<a className="btn btn-ghost" href="/docs/e2ee" target="_blank" rel="noreferrer">{t('learn_more')||'Learn more'}</a>
               </div>
             </div>
+          </div>
+        </section>
+      </div>
+      <div className="row">
+        <section className="card span-12">
+          <h3 style={{marginTop:0, color:'#b3261e'}}>{t('danger_zone')||'Danger Zone'}</h3>
+          <div className="item" style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
+            <button className="btn" style={{borderColor:'#b3261e', color:'#b3261e'}} onClick={async()=>{
+              if (!confirm(t('confirm_delete_responses')||'Delete ALL responses for this scale? This cannot be undone.')) return
+              try { const r = await adminPurgeResponses(id); setMsg(`${t('deleted')||'Deleted'} ${r.removed}`) } catch(e:any) { setMsg(e.message||String(e)) }
+            }}>{t('delete_all_responses')||'Delete all responses'}</button>
+            <button className="btn btn-ghost" onClick={removeScale}>{t('delete')||'Delete scale'}</button>
           </div>
         </section>
       </div>

@@ -11,6 +11,9 @@
     "deleted": "Deleted",
     "confirm_delete_scale": "Delete this scale and all its items/responses?",
     "confirm_delete_item": "Delete this item and its responses?",
+    "confirm_delete_responses": "Delete ALL responses for this scale? This cannot be undone.",
+    "delete_all_responses": "Delete all responses",
+    "danger_zone": "Danger Zone",
 
     "create_scale": "Create Scale",
     "name_en": "Name (EN)",

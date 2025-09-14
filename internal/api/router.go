@@ -1321,6 +1321,34 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(sc)
 		return
+	case http.MethodDelete:
+		// DELETE /api/admin/scales/{id}/responses -> purge responses only
+		if len(parts) == 2 && parts[1] == "responses" {
+			tid, ok := middleware.TenantIDFromContext(r.Context())
+			if !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			sc := rt.store.getScale(id)
+			if sc == nil || sc.TenantID != tid {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			n := rt.store.deleteResponsesByScale(id)
+			rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "purge_responses", Target: id, Note: strconv.Itoa(n)})
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "removed": n})
+			return
+		}
+		// DELETE /api/admin/scales/{id} -> delete scale (and its items/responses)
+		if ok := rt.store.deleteScale(id); !ok {
+			http.NotFound(w, r)
+			return
+		}
+		rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "delete_scale", Target: id})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		return
 	case http.MethodPut:
 		// decode into map to detect presence of fields like e2ee_enabled (bool)
 		var raw map[string]any
@@ -1384,14 +1412,6 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 			if in.Region != "" && in.Region != old.Region {
 				rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
 			}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-		return
-	case http.MethodDelete:
-		if ok := rt.store.deleteScale(id); !ok {
-			http.NotFound(w, r)
-			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})

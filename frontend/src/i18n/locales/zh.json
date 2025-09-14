@@ -11,6 +11,9 @@
     "deleted": "已删除",
     "confirm_delete_scale": "删除该量表及其所有题目与作答？",
     "confirm_delete_item": "删除该题目及其作答？",
+    "confirm_delete_responses": "删除该量表的所有作答？此操作不可撤销。",
+    "delete_all_responses": "删除所有作答",
+    "danger_zone": "危险操作",
 
     "create_scale": "创建量表",
     "name_en": "名称（英文）",
