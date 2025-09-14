@@ -34,6 +34,21 @@ export function Survey() {
   const [likertShowNumbers, setLikertShowNumbers] = useState<boolean>(true)
   const toast = useToast()
 
+  // Allow inline insertion of interactive consent via a placeholder in custom Markdown
+  function splitConsentByMarker(src: string): { before: string; after: string; has: boolean } {
+    if (!src) return { before: '', after: '', has: false }
+    const markers = ['<interactive-consent/>','<interactive-consent>','<context/>','<context>','[[CONSENT]]','[[consent]]']
+    for (const m of markers) {
+      const idx = src.indexOf(m)
+      if (idx >= 0) {
+        const before = src.slice(0, idx)
+        const after = src.slice(idx + m.length)
+        return { before, after, has: true }
+      }
+    }
+    return { before: src, after: '', has: false }
+  }
+
   async function loadMeta() {
     try {
       setMetaReady(false)
@@ -257,13 +272,73 @@ export function Survey() {
     return (
       <div className="card span-12">
         <h3 style={{marginTop:0}}>{t('survey.consent_title')}</h3>
-        {/* If custom consent text is provided, use it exclusively; else show default structured sections */}
-        {consentCustom ? (
-          <div className="item">
-            <div className="label">{t('consent_custom')}</div>
-            <div className="tile" style={{padding:12}} dangerouslySetInnerHTML={{ __html: mdToHtml(consentCustom) }} />
-          </div>
-        ) : (
+        {/* If custom consent text is provided, allow inline insertion marker */}
+        {consentCustom ? (() => {
+          const parts = splitConsentByMarker(consentCustom)
+          if (parts.has) {
+            return (
+              <div className="item">
+                <div className="label">{t('consent_custom')}</div>
+                <div className="tile" style={{padding:12}}>
+                  {parts.before && <div dangerouslySetInnerHTML={{ __html: mdToHtml(parts.before) }} />}
+                  {/* Inline interactive options */}
+                  <div className="item">
+                    <div className="label">{t('survey.consent_options')}</div>
+                    {(() => {
+                      const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
+                        { key:'withdrawal', required:true },
+                        { key:'data_use', required:true },
+                        { key:'recording', required:false },
+                      ])
+                      const seen = new Set<string>()
+                      const valid = base.filter((o:any)=> {
+                        const k = String(o?.key||'').trim()
+                        if (!k || !/^[a-z0-9_-]+$/.test(k)) return false
+                        if (seen.has(k)) return false
+                        seen.add(k)
+                        return true
+                      })
+                      return valid
+                    })().map((opt:any)=> (
+                      <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
+                        <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
+                          <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
+                          <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: true}))} /> {t('survey.yes')||'Yes'}</label>
+                          <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: false}))} /> {t('survey.no')||'No'}</label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Inline signature if required */}
+                  {consentConfig?.signature_required === true && (
+                    <div className="item">
+                      <div className="label">{t('survey.signature_title')||'Signature'}</div>
+                      <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
+                      <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
+                      <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.style.width='100%'; el.style.maxWidth='100%'; el.height=150; el.style.border='1px solid var(--border)';
+                        const resize=()=>{ const rect = el.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; el.width = Math.floor(rect.width * dpr); }
+                        resize(); new ResizeObserver(resize).observe(el.parentElement||el); drawSigInit(el)
+                      } }} />
+                      <div className="cta-row" style={{marginTop:8}}>
+                        <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
+                        <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
+                      </div>
+                    </div>
+                  )}
+                  {parts.after && <div dangerouslySetInnerHTML={{ __html: mdToHtml(parts.after) }} />}
+                </div>
+              </div>
+            )
+          }
+          return (
+            <>
+              <div className="item">
+                <div className="label">{t('consent_custom')}</div>
+                <div className="tile" style={{padding:12}} dangerouslySetInnerHTML={{ __html: mdToHtml(consentCustom) }} />
+              </div>
+            </>
+          )
+        })() : (
           <>
             <div className="item">
               <div className="label">{t('survey.sec_purpose_title')}</div>
@@ -291,7 +366,8 @@ export function Survey() {
             </div>
           </>
         )}
-        {/* Interactive options */}
+        {/* Interactive options (skipped if already inserted inline in custom content) */}
+        {!consentCustom?.includes('[[CONSENT]]') && !consentCustom?.includes('<interactive-consent') && !consentCustom?.includes('<context') && (
         <div className="item">
           <div className="label">{t('survey.consent_options')}</div>
           {(() => {
@@ -320,8 +396,9 @@ export function Survey() {
             </div>
           ))}
         </div>
-        {/* Signature (shown only when explicitly required) */}
-        {consentConfig?.signature_required === true && (
+        )}
+        {/* Signature (shown only when explicitly required and not inserted inline) */}
+        {consentConfig?.signature_required === true && !consentCustom?.includes('[[CONSENT]]') && !consentCustom?.includes('<interactive-consent') && !consentCustom?.includes('<context') && (
           <div className="item">
             <div className="label">{t('survey.signature_title')||'Signature'}</div>
             <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
