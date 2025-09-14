@@ -288,7 +288,7 @@ export function Survey() {
       return (fb && !String(fb).startsWith('survey.consent_opt.')) ? fb : key
     }
     const opts = Object.entries(ev.options||{})
-      .map(([k, v])=> `<tr><td>${labelOf(k)}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`)
+      .map(([k, v])=> `<tr><td>${mdToHtml(labelOf(k))}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`)
       .join('')
     const sigBlock = ev.signature?.image ? `<img alt="signature" src="${ev.signature.image}" style="max-width:100%; max-height:120px; border:1px solid #ddd;"/>` : `<div class="sig">${lang==='zh'?'（无手写签名）':'(No drawn signature)'} · ${ev.signature?.kind||'none'}</div>`
     const body = `
@@ -396,7 +396,10 @@ export function Survey() {
             return list.map((opt:any)=> (
               <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
                 <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
-                  <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
+                  <div style={{minWidth:220}}>
+                    <div dangerouslySetInnerHTML={{ __html: mdToHtml(consentOptionLabel(opt)) }} />
+                    {opt.required? ' *':''}
+                  </div>
                   <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: true}))} /> {t('survey.yes')||'Yes'}</label>
                   <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: false}))} /> {t('survey.no')||'No'}</label>
                 </div>
@@ -493,7 +496,10 @@ export function Survey() {
               })().map((opt:any)=> (
                 <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
                   <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
-                    <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
+                    <div style={{minWidth:220}}>
+                      <div dangerouslySetInnerHTML={{ __html: mdToHtml(consentOptionLabel(opt)) }} />
+                      {opt.required? ' *':''}
+                    </div>
                     <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: true}))} /> {t('survey.yes')||'Yes'}</label>
                     <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: false}))} /> {t('survey.no')||'No'}</label>
                   </div>
