@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign } from '../api/client'
+import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign, participantSelfDelete, e2eeSelfDelete } from '../api/client'
 import { e2eeInit, encryptForProject } from '../crypto/e2ee'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../components/Toast'
@@ -173,6 +173,32 @@ export function Survey() {
         <table><thead><tr><th>${lang==='zh'?'题目':'Question'}</th><th>${lang==='zh'?'作答':'Answer'}</th></tr></thead><tbody>${rows}</tbody></table>
       `
       openPrintWindow(title, body)
+    } catch(e:any) {
+      setMsg(e.message||String(e))
+    }
+  }
+
+  async function handleSelfDelete() {
+    try {
+      if (!selfManage?.deleteUrl && !(selfManage?.rid && selfManage?.token)) return
+      if (!confirm(t('self_delete_confirm') || 'Delete my submission? This cannot be undone.')) return
+      // Prefer explicit fields (E2EE submit provided rid/token)
+      if (selfManage?.rid && selfManage?.token) {
+        await e2eeSelfDelete(selfManage.rid, selfManage.token)
+        setMsg(t('delete_success')||'Deleted successfully')
+        setSelfManage(null)
+        return
+      }
+      // Fallback: parse from URL (non‑E2EE)
+      if (selfManage?.deleteUrl) {
+        const u = new URL(selfManage.deleteUrl, window.location.origin)
+        const pid = u.searchParams.get('pid') || ''
+        const token = u.searchParams.get('token') || ''
+        if (!pid || !token) throw new Error('Invalid self‑delete link')
+        await participantSelfDelete(pid, token)
+        setMsg(t('delete_success')||'Deleted successfully')
+        setSelfManage(null)
+      }
     } catch(e:any) {
       setMsg(e.message||String(e))
     }
@@ -416,7 +442,7 @@ export function Survey() {
                 <a className="btn btn-ghost" href={selfManage.exportUrl} target="_blank" rel="noreferrer">{t('survey.self_export')||'Export my data'}</a>
               </>
             )}
-            {selfManage.deleteUrl && <a className="btn btn-ghost" href={selfManage.deleteUrl} target="_blank" rel="noreferrer">{t('survey.self_delete')||'Delete my data'}</a>}
+            {selfManage.deleteUrl && <button className="btn btn-ghost" onClick={handleSelfDelete}>{t('survey.self_delete')||'Delete my data'}</button>}
           </div>
         </div>
       )}

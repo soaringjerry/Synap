@@ -14,6 +14,7 @@
     "delete_success": "Deleted successfully",
     "create_success": "Created successfully",
     "confirm_reset": "Reset to recommended?",
+    "self_delete_confirm": "Delete my submission? This cannot be undone.",
     "confirm_delete_scale": "Delete this scale and all its items/responses?",
     "confirm_delete_item": "Delete this item and its responses?",
     "confirm_delete_responses": "Delete ALL responses for this scale? This cannot be undone.",

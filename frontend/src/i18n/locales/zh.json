@@ -14,6 +14,7 @@
     "delete_success": "删除成功",
     "create_success": "创建成功",
     "confirm_reset": "确认重置为推荐？",
+    "self_delete_confirm": "确认删除我的作答？此操作不可恢复。",
     "confirm_delete_scale": "删除该量表及其所有题目与作答？",
     "confirm_delete_item": "删除该题目及其作答？",
     "confirm_delete_responses": "删除该量表的所有作答？此操作不可撤销。",
