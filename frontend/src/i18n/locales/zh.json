@@ -12,9 +12,10 @@
     "save_success": "保存成功",
     "submit_success": "提交成功",
     "delete_success": "删除成功",
+    "self_delete_confirm": "确认删除我的作答？此操作不可恢复。",
     "create_success": "创建成功",
     "confirm_reset": "确认重置为推荐？",
-    "self_delete_confirm": "确认删除我的作答？此操作不可恢复。",
+    
     "confirm_delete_scale": "删除该量表及其所有题目与作答？",
     "confirm_delete_item": "删除该题目及其作答？",
     "confirm_delete_responses": "删除该量表的所有作答？此操作不可撤销。",
@@ -215,6 +216,15 @@
     "open": "打开",
     "participant_link": "参与者链接",
     "share_desc": "将此链接发送给参与者即可直接填写问卷。",
+    "self": {
+      "title": "管理我的数据",
+      "desc": "在此页面导出或删除本次提交。",
+      "link": "链接",
+      "export": "下载（JSON）",
+      "delete": "删除我的数据",
+      "invalid": "参数缺失或无效。",
+      "manage_link": "打开管理页面"
+    },
 
     "e2ee": {
       "title": "端到端加密",

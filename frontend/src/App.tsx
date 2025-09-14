@@ -11,6 +11,7 @@ import { Survey } from './pages/Survey'
 import { AdminScale } from './pages/AdminScale'
 import { AdminKeys } from './pages/AdminKeys'
 import { AdminAI } from './pages/AdminAI'
+import { SelfManage } from './pages/SelfManage'
 
 import React from 'react'
 import { ToastProvider } from './components/Toast'
@@ -99,6 +100,7 @@ const router = createBrowserRouter([
     { path: '/survey/:scaleId', element: <Survey/> },
     { path: '/legal/privacy', element: <Privacy/> },
     { path: '/legal/terms', element: <Terms/> },
+    { path: '/self', element: <SelfManage/> },
   ]}
 ])
 

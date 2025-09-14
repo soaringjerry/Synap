@@ -9,12 +9,14 @@
     "loading": "Loading",
     "saved": "Saved",
     "deleted": "Deleted",
+    "copied": "Copied",
     "save_success": "Saved successfully",
     "submit_success": "Submitted successfully",
     "delete_success": "Deleted successfully",
+    "self_delete_confirm": "Delete my submission? This cannot be undone.",
     "create_success": "Created successfully",
     "confirm_reset": "Reset to recommended?",
-    "self_delete_confirm": "Delete my submission? This cannot be undone.",
+    
     "confirm_delete_scale": "Delete this scale and all its items/responses?",
     "confirm_delete_item": "Delete this item and its responses?",
     "confirm_delete_responses": "Delete ALL responses for this scale? This cannot be undone.",
@@ -181,10 +183,19 @@
     "collect_email_required": "Required",
     "share": "Share",
     "copy": "Copy",
-    "copied": "Copied",
+    
     "open": "Open",
     "participant_link": "Participant Link",
     "share_desc": "Share this URL with participants to answer the survey directly.",
+    "self": {
+      "title": "Manage My Data",
+      "desc": "Use this page to export or delete your submission.",
+      "link": "Link",
+      "export": "Download (JSON)",
+      "delete": "Delete my data",
+      "invalid": "Invalid or missing parameters.",
+      "manage_link": "Open management page"
+    },
 
     "e2ee": {
       "title": "End‑to‑end Encryption",

@@ -201,22 +201,27 @@ export function Survey() {
   function openPrintWindow(title: string, bodyHtml: string): boolean {
     const html = `<!doctype html><html><head><meta charset="utf-8"/><title>${title}</title>
       <style>
+        @page { margin: 16mm; }
         body{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif; color:#111; }
         .wrap{ max-width: 820px; margin: 24px auto; padding: 0 16px; }
         h1{ font-size: 20px; margin: 0 0 8px; }
         h2{ font-size: 16px; margin: 18px 0 8px; }
         .meta{ color:#555; font-size: 12px; margin-bottom: 8px; }
         table{ width:100%; border-collapse: collapse; }
-        th, td{ border:1px solid #ddd; padding:8px; font-size: 13px; vertical-align: top; }
+        th, td{ border:1px solid #ddd; padding:8px; font-size: 13px; vertical-align: top; page-break-inside: avoid; }
         th{ background:#f7f7f7; text-align:left; }
         .sig{ border:1px dashed #ccc; width: 100%; height: 120px; display: grid; place-items:center; margin-top:6px }
         .muted{ color:#666; font-size: 12px; }
-      </style></head><body><div class="wrap">${bodyHtml}</div></body></html>`
-    const w = window.open('', '_blank', 'noopener,noreferrer')
-    if (!w) return false
+      </style>
+      <script>window.onload = function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 200); };</script>
+      </head><body><div class="wrap">${bodyHtml}</div></body></html>`
     try {
-      w.document.open(); w.document.write(html); w.document.close()
-      w.focus(); setTimeout(()=> { try { w.print() } catch {} }, 200)
+      const blob = new Blob([html], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const w = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!w) { URL.revokeObjectURL(url); return false }
+      // Revoke later to keep the document available during print
+      setTimeout(()=> URL.revokeObjectURL(url), 60_000)
       return true
     } catch {
       return false
@@ -227,7 +232,19 @@ export function Survey() {
     if (!consentEvidence) return
     const ev = consentEvidence
     const title = (lang==='zh' ? '知情同意凭证' : 'Consent Receipt') + ` · ${ev.scale_id}`
-    const opts = Object.entries(ev.options||{}).map(([k, v])=> `<tr><td>${k}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`).join('')
+    // Map key -> human label based on current consentConfig
+    const labelOf = (key: string) => {
+      const list = (consentConfig?.options||[]) as any[]
+      const found = list.find(o => o.key === key)
+      if (found && found.label_i18n) {
+        return found.label_i18n[lang] || found.label_i18n['en'] || key
+      }
+      const fb = t(`survey.consent_opt.${key}`) as string
+      return (fb && !String(fb).startsWith('survey.consent_opt.')) ? fb : key
+    }
+    const opts = Object.entries(ev.options||{})
+      .map(([k, v])=> `<tr><td>${labelOf(k)}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`)
+      .join('')
     const sigBlock = ev.signature?.image ? `<img alt="signature" src="${ev.signature.image}" style="max-width:100%; max-height:120px; border:1px solid #ddd;"/>` : `<div class="sig">${lang==='zh'?'（无手写签名）':'(No drawn signature)'} · ${ev.signature?.kind||'none'}</div>`
     const body = `
       <h1>${title}</h1>
@@ -408,52 +425,52 @@ export function Survey() {
             </div>
           </>
         )}
-        {/* Interactive options (skipped if already inserted inline in custom content) */}
-        {!consentCustom?.includes('[[CONSENT]]') && !consentCustom?.includes('<interactive-consent') && !consentCustom?.includes('<context') && (
-        <div className="item">
-          <div className="label">{t('survey.consent_options')}</div>
-          {(() => {
-            const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
-              { key:'withdrawal', required:true },
-              { key:'data_use', required:true },
-              { key:'recording', required:false },
-            ])
-            // sanitize: drop invalid/duplicate/email-like keys to avoid UI confusion
-            const seen = new Set<string>()
-            const valid = base.filter((o:any)=> {
-              const k = String(o?.key||'').trim()
-              if (!k || !/^[a-z0-9_-]+$/.test(k)) return false
-              if (seen.has(k)) return false
-              seen.add(k)
-              return true
-            })
-            return valid
-          })().map((opt:any)=> (
-            <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
-              <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
-                <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
-                <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: true}))} /> {t('survey.yes')||'Yes'}</label>
-                <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: false}))} /> {t('survey.no')||'No'}</label>
+        {/* Default interactive options/signature only when no custom consent is provided */}
+        {!consentCustom && (
+          <>
+            <div className="item">
+              <div className="label">{t('survey.consent_options')}</div>
+              {(() => {
+                const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
+                  { key:'withdrawal', required:true },
+                  { key:'data_use', required:true },
+                  { key:'recording', required:false },
+                ])
+                const seen = new Set<string>()
+                const valid = base.filter((o:any)=> {
+                  const k = String(o?.key||'').trim()
+                  if (!k || !/^[a-z0-9_-]+$/.test(k)) return false
+                  if (seen.has(k)) return false
+                  seen.add(k)
+                  return true
+                })
+                return valid
+              })().map((opt:any)=> (
+                <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
+                  <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>
+                    <div style={{minWidth:220}}><b>{consentOptionLabel(opt)}</b>{opt.required? ' *':''}</div>
+                    <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: true}))} /> {t('survey.yes')||'Yes'}</label>
+                    <label><input className="radio" type="radio" name={`opt_${opt.key}`} checked={!consentChoices[opt.key]} onChange={()=> setConsentChoices(c=> ({...c, [opt.key]: false}))} /> {t('survey.no')||'No'}</label>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {consentConfig?.signature_required === true && (
+              <div className="item">
+                <div className="label">{t('survey.signature_title')||'Signature'}</div>
+                <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
+                <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
+                <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.style.width='100%'; el.style.maxWidth='100%'; el.height=150; el.style.border='1px solid var(--border)';
+                  const resize=()=>{ const rect = el.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; el.width = Math.floor(rect.width * dpr); }
+                  resize(); new ResizeObserver(resize).observe(el.parentElement||el); drawSigInit(el)
+                } }} />
+                <div className="cta-row" style={{marginTop:8}}>
+                  <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
+                  <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-        )}
-        {/* Signature (shown only when explicitly required and not inserted inline) */}
-        {consentConfig?.signature_required === true && !consentCustom?.includes('[[CONSENT]]') && !consentCustom?.includes('<interactive-consent') && !consentCustom?.includes('<context') && (
-          <div className="item">
-            <div className="label">{t('survey.signature_title')||'Signature'}</div>
-            <label style={{display:'inline-flex',gap:8,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={sigChecked} onChange={e=> setSigChecked(e.target.checked)} />{t('survey.signature_click')||'I agree (click to sign)'}</label>
-            <div className="muted" style={{margin:'8px 0'}}>{t('survey.signature_or')||'or draw your signature below'}</div>
-            <canvas ref={el=> { if (el && !sigCanvasRef.current) { sigCanvasRef.current = el; el.style.width='100%'; el.style.maxWidth='100%'; el.height=150; el.style.border='1px solid var(--border)';
-              const resize=()=>{ const rect = el.getBoundingClientRect(); const dpr = window.devicePixelRatio||1; el.width = Math.floor(rect.width * dpr); }
-              resize(); new ResizeObserver(resize).observe(el.parentElement||el); drawSigInit(el)
-            } }} />
-            <div className="cta-row" style={{marginTop:8}}>
-              <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const ctx = sigCanvasRef.current.getContext('2d')!; ctx.clearRect(0,0,sigCanvasRef.current.width, sigCanvasRef.current.height); setSigImage('') } }}>{t('survey.clear')||'Clear'}</button>
-              <button className="btn" onClick={()=> { if (sigCanvasRef.current) { const url = sigCanvasRef.current.toDataURL('image/png'); setSigImage(url) } }}>{t('survey.save_signature')||'Save signature'}</button>
-            </div>
-          </div>
+            )}
+          </>
         )}
         <div className="muted" style={{marginTop:8}}>{t('survey.security_badges')||'Security: encrypted at rest, end‑to‑end encryption supported; designed for GDPR/PDPA compliance.'}</div>
         <div className="cta-row" style={{marginTop:12}}>
@@ -611,7 +628,7 @@ export function Survey() {
               const res = await submitBulk(scaleId, email.trim(), arr as any, { consent_id: consentId || undefined })
               setMsg(`Submitted ${res.count} answers.`)
               toast.success(t('submit_success')||'Submitted successfully')
-              setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete })
+              setSelfManage({ exportUrl: res.self_export, deleteUrl: res.self_delete, pid: (res as any).participant_id, token: (res as any).self_token })
             }
             setAnswers({})
           } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
@@ -649,6 +666,19 @@ export function Survey() {
               </>
             )}
             {selfManage.deleteUrl && <button className="btn btn-ghost" onClick={handleSelfDelete}>{t('survey.self_delete')||'Delete my data'}</button>}
+            {/* Unified self-manage link */}
+            {(() => {
+              let manage = ''
+              if (selfManage?.rid && selfManage?.token) manage = `${window.location.origin}/self?response_id=${encodeURIComponent(selfManage.rid)}&token=${encodeURIComponent(selfManage.token||'')}`
+              else if (selfManage?.pid && selfManage?.token) manage = `${window.location.origin}/self?pid=${encodeURIComponent(selfManage.pid)}&token=${encodeURIComponent(selfManage.token||'')}`
+              if (!manage) return null
+              return (
+                <>
+                  <a className="btn" href={manage} target="_blank" rel="noreferrer">{t('self.manage_link')||'Open management page'}</a>
+                  <button className="btn btn-ghost" onClick={async()=>{ try { await navigator.clipboard.writeText(manage); toast.success(t('copied')||'Copied') } catch{} }}>{t('copy')||'Copy'}</button>
+                </>
+              )
+            })()}
           </div>
         </div>
       )}
