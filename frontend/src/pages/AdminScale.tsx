@@ -335,7 +335,7 @@ export function AdminScale() {
               {decMsg && <div className="muted" style={{marginTop:8}}>{decMsg}</div>}
               <div className="muted" style={{marginTop:8}}>
                 {t('e2ee.csv_notice')||'Note: Server-side CSV exports (long/wide/score) are available only when E2EE is OFF. When E2EE is ON, plaintext stays local; you may convert JSONL to CSV using your analysis tools.'}
-                {' '}<a className="btn btn-ghost" href="/docs/e2ee" target="_blank" rel="noreferrer">{t('learn_more')||'Learn more'}</a>
+                {' '}<a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap/blob/main/docs/e2ee.md" target="_blank" rel="noreferrer">{t('learn_more')||'Learn more'}</a>
               </div>
             </div>
           </div>
