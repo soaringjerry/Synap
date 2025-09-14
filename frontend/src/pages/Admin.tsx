@@ -119,9 +119,9 @@ export function Admin() {
           {e2ee && (
             <div className="item" style={{borderTop:'1px dashed var(--border)', paddingTop:8, marginTop:8}}>
               <div className="label">{t('e2ee.key_setup')||'Key setup'}</div>
-              <div className="row">
+              <div className="cta-row" style={{marginTop:6}}>
                 <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="radio" type="radio" name="key_method" checked={keyMethod==='generate'} onChange={()=> setKeyMethod('generate')} /> {t('e2ee.key_generate')||'Generate in browser (recommended)'}</label>
-                <label style={{display:'inline-flex',gap:6,alignItems:'center', marginLeft:12}}><input className="radio" type="radio" name="key_method" checked={keyMethod==='upload'} onChange={()=> setKeyMethod('upload')} /> {t('e2ee.key_upload')||'I have a public key'}</label>
+                <label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="radio" type="radio" name="key_method" checked={keyMethod==='upload'} onChange={()=> setKeyMethod('upload')} /> {t('e2ee.key_upload')||'I have a public key'}</label>
               </div>
               {keyMethod==='generate' && (
                 <div className="row" style={{marginTop:8}}>
