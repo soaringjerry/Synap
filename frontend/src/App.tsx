@@ -9,6 +9,7 @@ import { Admin } from './pages/Admin'
 import { Auth } from './pages/Auth'
 import { Survey } from './pages/Survey'
 import { AdminScale } from './pages/AdminScale'
+import { AdminKeys } from './pages/AdminKeys'
 import { AdminAI } from './pages/AdminAI'
 
 import React from 'react'
@@ -90,6 +91,7 @@ const router = createBrowserRouter([
   { element: <RootLayout/>, children: [
     { path: '/', element: <Home/> },
     { path: '/admin', element: <Protected><Admin/></Protected> },
+    { path: '/admin/keys', element: <Protected><AdminKeys/></Protected> },
     { path: '/admin/ai', element: <Protected><AdminAI/></Protected> },
     { path: '/admin/scale/:id', element: <Protected><AdminScale/></Protected> },
     { path: '/auth', element: <Auth/> },
