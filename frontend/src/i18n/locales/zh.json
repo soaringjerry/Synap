@@ -73,6 +73,7 @@
       "title": "问卷",
       "scale": "量表：",
       "email_optional": "邮箱（可选）",
+      "email_required": "邮箱（必填）",
       "loading": "正在加载题目……",
       "reload": "重新加载题目",
       "reset": "重置",

@@ -73,6 +73,7 @@
       "title": "Survey",
       "scale": "Scale:",
       "email_optional": "Email (optional)",
+      "email_required": "Email (required)",
       "loading": "Loading items…",
       "reload": "Reload items",
       "reset": "Reset",

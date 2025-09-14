@@ -558,7 +558,7 @@ export function Survey() {
       )}
       {collectEmail!=='off' && (
         <div className="item">
-          <div className="label">{t('survey.email_optional')}{collectEmail==='required'?' *':''}</div>
+          <div className="label">{collectEmail==='required' ? (t('survey.email_required')||'Email (required)') : (t('survey.email_optional')||'Email (optional)')}{collectEmail==='required'?' *':''}</div>
           <input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required={collectEmail==='required'} />
         </div>
       )}
