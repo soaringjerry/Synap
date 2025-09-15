@@ -348,7 +348,7 @@ a:hover, a:focus { text-decoration: none; }
 
 /* Tiles (alternative to heavy bubbles) */
 .tile { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 6px 18px rgba(0,0,0,0.22); }
-.tile-ghost { background: rgba(255,255,255,0.03); }
+.tile-ghost { background: rgba(255,255,255,0.03); border:1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4); }
 .tile-accent { border-color: rgba(125,211,252,0.45); box-shadow: 0 10px 26px rgba(125,211,252,0.18); }
 .tile .title { font-weight: 700; margin-bottom: 6px; }
 
@@ -451,7 +451,7 @@ a:hover, a:focus { text-decoration: none; }
 .item-editor-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 .item-editor-grid .item { gap: var(--space-2); }
 .item-editor-grid .span-12 { grid-column: span 12; }
