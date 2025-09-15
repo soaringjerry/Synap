@@ -548,9 +548,7 @@ export function Survey() {
   const startIdx = itemsPerPage && itemsPerPage > 0 ? (page-1) * itemsPerPage : 0
   const endIdx = itemsPerPage && itemsPerPage > 0 ? Math.min(totalItems, startIdx + itemsPerPage) : totalItems
   const visible = items.slice(startIdx, endIdx)
-  const pageHasUnansweredRequired = React.useMemo(()=>{
-    return visible.some(it => it.required && (answers[it.id]===undefined || answers[it.id]===null || String(answers[it.id]).length===0))
-  }, [visible, answers])
+  const pageHasUnansweredRequired = visible.some(it => it.required && (answers[it.id]===undefined || answers[it.id]===null || String(answers[it.id]).length===0))
 
   return (
     <div className="card span-12">
