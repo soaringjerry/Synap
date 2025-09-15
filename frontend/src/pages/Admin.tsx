@@ -305,7 +305,7 @@ export function Admin() {
                 <button className="btn" onClick={()=>copyLink(s.id)}>{t('share')}</button>
                 <a className="btn btn-ghost" href={shareLink(s.id)} target="_blank" rel="noreferrer">{t('open')}</a>
                 <Link className="btn btn-primary" to={`/admin/scale/${encodeURIComponent(s.id)}`}>{t('manage')||'Manage'}</Link>
-                <Link className="btn" to={`/admin/scale/${encodeURIComponent(s.id)}/edit`}>{t('new_editor')||'新版编辑'}</Link>
+                <Link className="btn" to={`/admin/scale/${encodeURIComponent(s.id)}/legacy`}>{t('editor.legacy_view')||'旧版视图'}</Link>
                 <button className="btn btn-ghost" onClick={async()=>{
                   if (!confirm(t('confirm_delete_scale')||'Delete this scale and all its items/responses?')) return
                   try { await adminDeleteScale(s.id); setMsg(t('deleted') as string); toast.success(t('delete_success')||t('deleted')||'Deleted'); loadScales() } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }

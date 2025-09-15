@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../components/Toast'
 import {
@@ -13,8 +13,10 @@ import {
   adminReorderItems,
   adminGetAIConfig,
   adminAITranslatePreview,
+  adminCreateE2EEExport,
   adminPurgeResponses,
 } from '../api/client'
+import { decryptSingleWithX25519 } from '../crypto/e2ee'
 
 type View = 'editor' | 'settings' | 'share'
 
@@ -69,6 +71,8 @@ export function ScaleEditor() {
   const [aiMsg, setAiMsg] = useState('')
   const [aiReady, setAiReady] = useState(false)
   const [aiWorking, setAiWorking] = useState(false)
+  const [aiInclude, setAiInclude] = useState<Record<string, boolean>>({})
+  const [aiApplying, setAiApplying] = useState(false)
 
   useEffect(() => { load() }, [id])
 
@@ -151,27 +155,60 @@ export function ScaleEditor() {
 
   function AdvancedConsent() {
     const [open, setOpen] = useState(false)
+    const moveRow = (idx: number, delta: number) => {
+      if (!delta) return
+      setConsentOptions(list => {
+        const next = [...list]
+        const target = idx + delta
+        if (target < 0 || target >= next.length) return next
+        const tmp = next[idx]
+        next[idx] = next[target]
+        next[target] = tmp
+        return next
+      })
+    }
+    const removeRow = (idx: number) => setConsentOptions(list => list.filter((_, i) => i !== idx))
     return (
       <>
         <button className="btn btn-ghost" onClick={()=> setOpen(o=> !o)}>{open? t('consent.hide_advanced') : t('consent.show_advanced')}</button>
         {open && (
-          <div className="tile" style={{padding:10, marginTop:8}}>
-            {(consentOptions||[]).map((o, idx)=> (
-              <div key={idx} className="row" style={{marginTop:8}}>
-                <div className="card span-3"><div className="label">{t('consent.advanced.key')}</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
-                <div className="card span-3"><div className="label">{t('consent.advanced.required')}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> {t('required')}</label></div>
-                <div className="card span-3"><div className="label">{t('consent.advanced.label_en')}</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder={t('optional')}/></div>
-                <div className="card span-3"><div className="label">{t('consent.advanced.label_zh')}</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder={t('optional')}/></div>
-                <div className="cta-row" style={{marginTop:6}}>
-                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>{t('delete')}</button>
-                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const j=Math.max(0, idx-1); const t=a[idx]; a[idx]=a[j]; a[j]=t; return a })}>↑</button>
-                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const j=Math.min(list.length-1, idx+1); const t=a[idx]; a[idx]=a[j]; a[j]=t; return a })}>↓</button>
-                </div>
-              </div>
-            ))}
-            <div className="cta-row" style={{marginTop:8}}>
-              <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>{t('consent.advanced.add_option')}</button>
-              <button className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
+          <div className="tile" style={{padding:16, marginTop:8}}>
+            <table className="consent-table">
+              <thead>
+                <tr>
+                  <th>{t('consent.advanced.key')}</th>
+                  <th>{t('consent.advanced.label_en')}</th>
+                  <th>{t('consent.advanced.label_zh')}</th>
+                  <th>{t('consent.advanced.required')}</th>
+                  <th>{t('actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {consentOptions.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="muted">{t('consent.advanced.empty')}</td>
+                  </tr>
+                )}
+                {consentOptions.map((o, idx) => (
+                  <tr key={idx}>
+                    <td data-label={t('consent.advanced.key')}><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></td>
+                    <td data-label={t('consent.advanced.label_en')}><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder={t('optional')} /></td>
+                    <td data-label={t('consent.advanced.label_zh')}><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder={t('optional')} /></td>
+                    <td data-label={t('consent.advanced.required')}><label style={{display:'inline-flex',alignItems:'center',gap:6}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} />{t('required')}</label></td>
+                    <td data-label={t('actions')}>
+                      <div className="consent-table-actions">
+                        <button type="button" className="btn btn-ghost" onClick={()=> removeRow(idx)}>{t('delete')}</button>
+                        <button type="button" className="btn btn-ghost" disabled={idx===0} onClick={()=> moveRow(idx, -1)}>↑</button>
+                        <button type="button" className="btn btn-ghost" disabled={idx===consentOptions.length-1} onClick={()=> moveRow(idx, 1)}>↓</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="cta-row" style={{marginTop:12, justifyContent:'flex-end'}}>
+              <button className="btn" type="button" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>{t('consent.advanced.add_option')}</button>
+              <button className="btn btn-primary" type="button" onClick={saveConsentConfig}>{t('save')}</button>
             </div>
           </div>
         )}
@@ -484,18 +521,81 @@ export function ScaleEditor() {
                   const langs = aiTargets.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean)
                   const res = await adminAITranslatePreview(id, langs)
                   setAiPreview(res)
+                  const defaults: Record<string, boolean> = {}
+                  for (const it of items) defaults[it.id] = true
+                  setAiInclude(defaults)
                 } catch(e:any){ setAiMsg(e.message||String(e)); toast.error(e.message||String(e)) } finally { setAiWorking(false) }
               }}>{aiWorking? t('working') : t('preview')}</button>
             </div>
             {aiPreview && (
               <div className="tile" style={{padding:10, marginTop:8}}>
-                <div className="muted">{t('preview')} · {Object.keys(aiPreview.items||{}).length} {t('your_items')}</div>
+                <div className="muted" style={{marginBottom:8}}>{t('ai.review')}</div>
+                {items.map(it => {
+                  const previewForItem = (aiPreview.items||{})[it.id] || {}
+                  if (!previewForItem || Object.keys(previewForItem).length===0) return null
+                  return (
+                    <div key={it.id} style={{borderTop:'1px solid var(--border)', paddingTop:12, marginTop:12}}>
+                      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                        <label style={{display:'inline-flex',alignItems:'center',gap:6}}>
+                          <input className="checkbox" type="checkbox" checked={!!aiInclude[it.id]} onChange={e=> setAiInclude(prev=> ({...prev, [it.id]: e.target.checked}))} />
+                          <span>{t('ai.include_label')}</span>
+                        </label>
+                        <div><b>{it.id}</b> · {it.stem_i18n?.en || it.stem || it.id}</div>
+                      </div>
+                      <div className="row" style={{marginTop:8}}>
+                        {Object.entries(previewForItem).map(([lang, value]) => (
+                          <div key={lang} className="card span-6" style={{minWidth:260}}>
+                            <div className="label">{lang}</div>
+                            <textarea className="input" rows={3} defaultValue={value as string} onChange={e=> {
+                              const next = e.target.value
+                              setAiPreview((prev: any) => ({
+                                ...prev,
+                                items: {
+                                  ...(prev?.items || {}),
+                                  [it.id]: { ...(prev?.items?.[it.id] || {}), [lang]: next }
+                                }
+                              }))
+                            }} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div className="cta-row" style={{marginTop:12}}>
+                  <button className="btn btn-primary" disabled={aiApplying} onClick={async()=>{
+                    setAiApplying(true)
+                    try {
+                      for (const it of items) {
+                        if (!aiInclude[it.id]) continue
+                        const additions = (aiPreview.items||{})[it.id] || {}
+                        if (Object.keys(additions).length === 0) continue
+                        await adminUpdateItem(it.id, { stem_i18n: { ...(it.stem_i18n||{}), ...(additions as any) } })
+                      }
+                      const scaleUpdates:any = {}
+                      if (aiPreview.name_i18n) scaleUpdates.name_i18n = { ...(scale.name_i18n||{}), ...aiPreview.name_i18n }
+                      if (aiPreview.consent_i18n) scaleUpdates.consent_i18n = { ...(scale.consent_i18n||{}), ...aiPreview.consent_i18n }
+                      if (Object.keys(scaleUpdates).length > 0) {
+                        await adminUpdateScale(id, scaleUpdates)
+                      }
+                      toast.success(t('save_success'))
+                      setAiPreview(null)
+                      load()
+                    } catch(e:any) {
+                      setAiMsg(e.message||String(e))
+                      toast.error(e.message||String(e))
+                    } finally {
+                      setAiApplying(false)
+                    }
+                  }}>{aiApplying ? t('working') : t('apply')}</button>
+                  <button className="btn btn-ghost" onClick={()=> setAiPreview(null)}>{t('cancel')}</button>
+                </div>
               </div>
             )}
             {aiMsg && <div className="muted" style={{marginTop:6}}>{aiMsg}</div>}
           </div>
           <div className="card span-6">
-            <ExportPanel/>
+            <ExportPanel scale={scale} items={items}/>
           </div>
         </div>
         <DangerZone scaleId={scale.id} />
@@ -550,6 +650,10 @@ export function ScaleEditor() {
         <div className="muted">{t('editor.flow_hint')}</div>
       </div>
 
+      <div className="cta-row" style={{justifyContent:'flex-end', marginBottom:12}}>
+        <Link className="btn btn-ghost" to={`/admin/scale/${encodeURIComponent(id)}/legacy`}>{t('editor.legacy_view')}</Link>
+      </div>
+
       <div className="tabs-nav" style={{marginBottom:12}}>
         <button className="tab" onClick={()=> setActiveView('editor')} style={{borderColor: activeView==='editor'?'rgba(125,211,252,0.65)':''}}>{t('editor.items_tab')}</button>
         <button className="tab" onClick={()=> setActiveView('settings')} style={{borderColor: activeView==='settings'?'rgba(125,211,252,0.65)':''}}>{t('editor.settings_tab')}</button>
@@ -578,29 +682,206 @@ export function ScaleEditor() {
 
 export default ScaleEditor
 
-function ExportPanel() {
+function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
   const { t } = useTranslation()
   const { id='' } = useParams()
+  const isE2EE = !!scale?.e2ee_enabled
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [consentHeader, setConsentHeader] = useState<'key'|'label_en'|'label_zh'>('key')
-  // We cannot read scale.e2ee_enabled here reliably; provide links regardless and hint
+  const [pkPass, setPkPass] = useState('')
+  const [status, setStatus] = useState('')
+  const fileInputRef = useRef<HTMLInputElement|null>(null)
+
+  function fromB64(s: string) {
+    const bin = atob(s)
+    const out = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+    return out
+  }
+  function csvEsc(v: any): string {
+    const s = v === null || v === undefined ? '' : (Array.isArray(v) ? v.join(', ') : (typeof v === 'object' ? JSON.stringify(v) : String(v)))
+    return '"' + s.replace(/"/g, '""') + '"'
+  }
+  async function unlockLocalPriv(): Promise<Uint8Array> {
+    const blobStr = localStorage.getItem('synap_pmk')
+    if (!blobStr) throw new Error(t('e2ee.import_required'))
+    if (!pkPass) throw new Error(t('e2ee.passphrase_needed'))
+    const blob = JSON.parse(blobStr)
+    const salt = fromB64(blob.salt)
+    const iv = fromB64(blob.iv)
+    const enc = fromB64(blob.enc_priv)
+    const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(pkPass), 'PBKDF2', false, ['deriveKey'])
+    const key = await crypto.subtle.deriveKey({ name:'PBKDF2', salt: salt.buffer, iterations: 120000, hash: 'SHA-256' }, keyMaterial, { name:'AES-GCM', length:256 }, false, ['decrypt'])
+    const privAb = await crypto.subtle.decrypt({ name:'AES-GCM', iv: iv.buffer }, key, enc.buffer)
+    return new Uint8Array(privAb)
+  }
+  async function decryptCurrentBundle(): Promise<{ out:any[]; enMap: Record<string,string>; zhMap: Record<string,string> }> {
+    const priv = await unlockLocalPriv()
+    const { url } = await adminCreateE2EEExport(id)
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(await res.text())
+    const bundle = await res.json()
+    const privB64 = btoa(String.fromCharCode(...priv))
+    const out:any[] = []
+    for (const entry of bundle.responses || []) {
+      try {
+        const plain = await decryptSingleWithX25519(privB64, { ciphertext: entry.ciphertext, nonce: entry.nonce, enc_dek: entry.enc_dek || entry.EncDEK || [] })
+        out.push(plain)
+      } catch {
+        // skip
+      }
+    }
+    if (out.length === 0) throw new Error(t('e2ee.no_decrypted'))
+    const enMap: Record<string,string> = {}
+    const zhMap: Record<string,string> = {}
+    for (const it of items) {
+      enMap[it.id] = it.stem_i18n?.en || it.stem || it.id
+      zhMap[it.id] = it.stem_i18n?.zh || it.stem_i18n?.en || it.stem || it.id
+    }
+    return { out, enMap, zhMap }
+  }
+
+  if (isE2EE) {
+    return (
+      <>
+        <h4 className="section-title" style={{marginTop:0}}>{t('export')}</h4>
+        <div className="muted" style={{marginBottom:8}}>{t('e2ee.csv_disabled_title')}</div>
+        <div className="row" style={{gap:12}}>
+          <div className="item span-6">
+            <div className="label">{t('e2ee.passphrase')}</div>
+            <input className="input" type="password" value={pkPass} onChange={e=> setPkPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')} />
+            <div className="muted" style={{marginTop:6}}>{t('e2ee.passphrase_help')}</div>
+          </div>
+          <div className="item span-6">
+            <div className="label">{t('e2ee.import_priv_title')}</div>
+            <div className="cta-row" style={{marginTop:6}}>
+              <button className="btn" type="button" onClick={()=> fileInputRef.current?.click()}>{t('e2ee.import_button')}</button>
+              <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={async(e)=>{
+                try {
+                  setStatus('')
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  const text = await f.text()
+                  const obj = JSON.parse(text)
+                  if (!obj || !obj.enc_priv || !obj.iv || !obj.salt || !obj.pub) throw new Error(t('e2ee.invalid_key_file'))
+                  localStorage.setItem('synap_pmk', JSON.stringify(obj))
+                  setStatus(t('e2ee.import_ok'))
+                  e.currentTarget.value = ''
+                } catch(err:any) {
+                  setStatus(err.message||String(err))
+                }
+              }} />
+            </div>
+            <div className="muted" style={{marginTop:6}}>{t('e2ee.import_priv_desc')}</div>
+          </div>
+        </div>
+        <div className="tile" style={{padding:12, marginTop:12, display:'grid', gap:8}}>
+          <button className="btn" type="button" onClick={async()=>{
+            try {
+              setStatus('')
+              const { out, enMap, zhMap } = await decryptCurrentBundle()
+              const augmented = out.map((entry:any)=>{
+                const answers = entry.answers || {}
+                const readableEn: Record<string, any> = {}
+                const readableZh: Record<string, any> = {}
+                for (const [k, v] of Object.entries(answers)) {
+                  readableEn[enMap[k] || k] = v
+                  readableZh[zhMap[k] || k] = v
+                }
+                return { ...entry, answers_readable_en: readableEn, answers_readable_zh: readableZh }
+              })
+              const blob = new Blob([augmented.map(o=> JSON.stringify(o)).join('\n') + '\n'], { type:'application/jsonl' })
+              const anchor = document.createElement('a')
+              anchor.href = URL.createObjectURL(blob)
+              anchor.download = `e2ee_${id}_plaintext.jsonl`
+              anchor.click(); URL.revokeObjectURL(anchor.href)
+              setStatus(t('e2ee.local_plain_ready'))
+            } catch(err:any) { setStatus(err.message||String(err)) }
+          }}>{t('e2ee.local_decrypt_button')}</button>
+          <button className="btn" type="button" onClick={async()=>{
+            try {
+              setStatus('')
+              const { out, enMap, zhMap } = await decryptCurrentBundle()
+              const header = ['response_index','email','item_id','stem_en','stem_zh','value']
+              const lines = [header.map(csvEsc).join(',')]
+              out.forEach((entry:any, idx:number)=>{
+                const answers = entry.answers || {}
+                const email = entry.email || ''
+                for (const [k, v] of Object.entries(answers)) {
+                  lines.push([
+                    csvEsc(idx+1),
+                    csvEsc(email),
+                    csvEsc(k),
+                    csvEsc(enMap[k] || k),
+                    csvEsc(zhMap[k] || k),
+                    csvEsc(v)
+                  ].join(','))
+                }
+              })
+              const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'
+              const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' })
+              const anchor = document.createElement('a')
+              anchor.href = URL.createObjectURL(blob)
+              anchor.download = `e2ee_${id}_long.csv`
+              anchor.click(); URL.revokeObjectURL(anchor.href)
+              setStatus(t('e2ee.local_csv_long_ready'))
+            } catch(err:any) { setStatus(err.message||String(err)) }
+          }}>{t('e2ee.local_decrypt_csv_long')}</button>
+          <button className="btn" type="button" onClick={async()=>{
+            try {
+              setStatus('')
+              const { out, enMap } = await decryptCurrentBundle()
+              const order = items.map((it:any)=> it.id)
+              const header = ['response_index','email', ...order.map(key=> enMap[key] || key)]
+              const lines = [header.map(csvEsc).join(',')]
+              out.forEach((entry:any, idx:number)=>{
+                const answers = entry.answers || {}
+                const email = entry.email || ''
+                const row = [csvEsc(idx+1), csvEsc(email)]
+                for (const key of order) row.push(csvEsc((answers as any)[key]))
+                lines.push(row.join(','))
+              })
+              const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'
+              const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' })
+              const anchor = document.createElement('a')
+              anchor.href = URL.createObjectURL(blob)
+              anchor.download = `e2ee_${id}_wide_en.csv`
+              anchor.click(); URL.revokeObjectURL(anchor.href)
+              setStatus(t('e2ee.local_csv_wide_ready'))
+            } catch(err:any) { setStatus(err.message||String(err)) }
+          }}>{t('e2ee.local_decrypt_csv_wide')}</button>
+        </div>
+        {status && <div className="muted" style={{marginTop:8}}>{status}</div>}
+        <div className="muted" style={{marginTop:8}}>
+          {t('e2ee.csv_notice')} <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap/blob/main/docs/e2ee.md" target="_blank" rel="noreferrer">{t('learn_more')}</a>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <h4 className="section-title" style={{marginTop:0}}>{t('export')}</h4>
-      <div className="item" style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginBottom:8}}>
-        <div className="label">{t('export.consent_header')}</div>
-        <select className="select" value={consentHeader} onChange={e=> setConsentHeader(e.target.value as any)}>
-          <option value="key">{t('export.consent_header_key')}</option>
-          <option value="label_en">{t('export.consent_header_label_en')}</option>
-          <option value="label_zh">{t('export.consent_header_label_zh')}</option>
-        </select>
-        <span className="muted">{t('export.csv_bom_hint')}</span>
-      </div>
-      <div className="cta-row">
+      <div className="muted" style={{marginBottom:8}}>{t('export.csv_bom_hint')}</div>
+      <button className="btn btn-ghost" type="button" onClick={()=> setAdvancedOpen(o=> !o)}>{advancedOpen ? t('hide_advanced') : t('show_advanced')}</button>
+      {advancedOpen && (
+        <div className="tile" style={{padding:12, marginTop:8}}>
+          <div className="item" style={{display:'grid', gap:6}}>
+            <div className="label">{t('export.consent_header')}</div>
+            <select className="select" value={consentHeader} onChange={e=> setConsentHeader(e.target.value as any)}>
+              <option value="key">{t('export.consent_header_key')}</option>
+              <option value="label_en">{t('export.consent_header_label_en')}</option>
+              <option value="label_zh">{t('export.consent_header_label_zh')}</option>
+            </select>
+            <div className="muted">{t('export.consent_header_help')}</div>
+          </div>
+        </div>
+      )}
+      <div className="cta-row" style={{marginTop:12}}>
         <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank" rel="noreferrer">{t('export_long_csv')}</a>
         <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank" rel="noreferrer">{t('export_wide_csv')}</a>
         <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_score_csv')}</a>
       </div>
-      <div className="muted" style={{marginTop:6}}>{t('e2ee.csv_disabled')}</div>
     </>
   )
 }

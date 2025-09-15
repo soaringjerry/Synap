@@ -194,6 +194,7 @@
       "steps": "Steps: 1) Configure provider, 2) Pick target languages, 3) Preview, 4) Apply.",
       "targets": "Target languages (comma)",
       "provider": "Provider Settings",
+      "include_label": "Include",
       "review": "Review translations and click Apply to save into item stems.",
       "not_ready": "Provider not configured or external AI disabled. Set API key and enable external AI in Provider Settings."
     },
@@ -243,6 +244,7 @@
       "passphrase": "Local private‑key passphrase",
       "passphrase_placeholder": "Enter passphrase (local only; never uploaded)",
       "passphrase_help": "Used to encrypt/unlock your private key in the browser. Never sent to the server. Use a strong passphrase and store it safely.",
+      "passphrase_needed": "Enter passphrase to unlock private key.",
       "pub_auto_note": "Public key is generated and uploaded automatically when you click Create.",
       "local_plain_ready": "Decrypted JSONL downloaded.",
       "local_decrypt_button": "Decrypt locally and Download JSON",
@@ -250,6 +252,9 @@
       "local_decrypt_csv_wide": "Decrypt locally and Download CSV (Wide)",
       "local_csv_long_ready": "Long CSV downloaded.",
       "local_csv_wide_ready": "Wide CSV downloaded.",
+      "import_required": "No local private key found. Go to Keys page to generate.",
+      "invalid_key_file": "Invalid key file.",
+      "no_decrypted": "No entries could be decrypted with the provided key.",
       "key_setup": "Key setup",
       "key_generate": "Generate in browser (recommended)",
       "key_upload": "I have a public key",
@@ -273,6 +278,7 @@
       "items_tab": "Items Editor",
       "settings_tab": "Settings",
       "share_tab": "Share & Results",
+      "legacy_view": "Legacy view",
       "save_order": "Save order",
       "edit_item": "Edit item",
       "select_item_to_edit": "Select an item from the left to edit, or click \"Add item\".",
@@ -310,7 +316,8 @@
         "save_first_error": "Please fix highlighted fields",
         "no_order_needed": "Order is automatic; no manual up/down needed.",
         "key_help_export": "Used in exports as CSV column consent.<key>. Keep simple, lowercase.",
-        "already_added": "Already added"
+        "already_added": "Already added",
+        "empty": "No advanced consent items yet."
       }
     },
 
@@ -327,10 +334,11 @@
     },
 
     "export": {
-      "consent_header": "Consent column header",
-      "consent_header_key": "key (consent.<key>)",
-      "consent_header_label_en": "label_en",
-      "consent_header_label_zh": "label_zh",
+      "consent_header": "CSV consent column header format",
+      "consent_header_key": "Key (consent.data_use)",
+      "consent_header_label_en": "English label",
+      "consent_header_label_zh": "Chinese label",
+      "consent_header_help": "Choose how consent columns are named in exported CSV files.",
       "csv_bom_hint": "CSV is UTF‑8 with BOM (Excel‑friendly)"
     },
 
