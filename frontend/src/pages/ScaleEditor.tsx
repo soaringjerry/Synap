@@ -757,7 +757,11 @@ const [aiTargets, setAiTargets] = useState('zh')
             {!analytics && <div className="muted">{t('editor.no_data')}</div>}
             {analytics && (
               <div>
-                <div className="item stat-row"><div className="label">{t('label.n')}</div><div>{analytics.total_responses||0}</div></div>
+                {scale?.e2ee_enabled ? (
+                  <div className="item stat-row"><div className="label">{t('total_responses')}</div><div className="muted">{t('e2ee.analytics_total_unavailable')}</div></div>
+                ) : (
+                  <div className="item stat-row"><div className="label">{t('total_responses')}</div><div>{analytics.total_responses || 0}</div></div>
+                )}
                 {scale?.e2ee_enabled ? (
                   <div className="tile" style={{padding:8, marginTop:8}}>
                     <div className="muted">{t('e2ee.analytics_notice')}</div>
