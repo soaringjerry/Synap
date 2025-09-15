@@ -354,75 +354,70 @@ const [aiTargets, setAiTargets] = useState('zh')
       const it = selectedItem
       return (
         <div className="card span-8">
-          <h4 style={{marginTop:0}}>{t('editor.edit_item')}</h4>
-          <div className="muted">{t('label.id')}: <b>{it.id}</b></div>
-          <div className="item"><div className="label">{t('stem_en')}</div>
-            <input className="input" value={it.stem_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), en: e.target.value }}:x))} />
-          </div>
-          <div className="item"><div className="label">{t('stem_zh')}</div>
-            <input className="input" value={it.stem_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), zh: e.target.value }}:x))} />
-          </div>
-          <div className="muted">{t('label.type')}: <b>{it.type||'likert'}</b></div>
-          {(it.type===undefined || it.type==='likert') && (
-            <>
-              <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
-              <div className="item">
-                <div className="label">{t('label.likert_anchors_item')}</div>
-                <div className="muted" style={{marginBottom:6}}>{t('likert.presets.title') || 'Anchor presets'}</div>
-                <select className="select" value="" onChange={e=> {
-                  const key = e.target.value
-                  if (!key) {
-                    setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: { en: [], zh: [] }}:x))
-                    return
-                  }
-                  const preset = LIKERT_PRESETS[key]
-                  if (!preset) return
-                  setItems(arr=> arr.map(x=> x.id===it.id? {
-                    ...x,
-                    likert_labels_i18n: {
-                      en: [...preset.en],
-                      zh: [...preset.zh],
-                    },
-                  }:x))
-                }}>
-                  <option value="">{t('likert.presets.custom') || 'Custom'}</option>
-                  {Object.keys(LIKERT_PRESETS).map(key=> (
-                    <option key={key} value={key}>{t(`likert.presets.${key}`)}</option>
-                  ))}
-                </select>
-                <div className="row">
-                  <div className="card span-6"><div className="label">{t('lang_en')}</div><input className="input" value={((it as any).likert_labels_i18n?.en && (it as any).likert_labels_i18n.en.length>0) ? (it as any).likert_labels_i18n.en.join(', ') : likertLabelsEn} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_en')} /></div>
-                  <div className="card span-6"><div className="label">{t('lang_zh')}</div><input className="input" value={((it as any).likert_labels_i18n?.zh && (it as any).likert_labels_i18n.zh.length>0) ? (it as any).likert_labels_i18n.zh.join('，') : likertLabelsZh} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_zh')} /></div>
+          <div className="item-editor-grid">
+            <div className="item span-12"><h4 style={{margin:0}}>{t('editor.edit_item')}</h4></div>
+            <div className="item span-12 muted">{t('label.id')}: <b>{it.id}</b></div>
+            <div className="item span-6"><div className="label">{t('stem_en')}</div><input className="input" value={it.stem_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), en: e.target.value }}:x))} /></div>
+            <div className="item span-6"><div className="label">{t('stem_zh')}</div><input className="input" value={it.stem_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), zh: e.target.value }}:x))} /></div>
+            <div className="item span-12 muted">{t('label.type')}: <b>{it.type||'likert'}</b></div>
+            {(it.type===undefined || it.type==='likert') && (
+              <>
+                <div className="item span-4"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
+                <div className="item span-12">
+                  <div className="label">{t('label.likert_anchors_item')}</div>
+                  <div className="muted" style={{marginBottom:6}}>{t('likert.presets.title')}</div>
+                  <select className="select" value="" onChange={e=> {
+                    const key = e.target.value
+                    if (!key) {
+                      setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: { en: [], zh: [] }}:x))
+                      return
+                    }
+                    const preset = LIKERT_PRESETS[key]
+                    if (!preset) return
+                    setItems(arr=> arr.map(x=> x.id===it.id? {
+                      ...x,
+                      likert_labels_i18n: {
+                        en: [...preset.en],
+                        zh: [...preset.zh],
+                      },
+                    }:x))
+                  }}>
+                    <option value="">{t('likert.presets.custom')}</option>
+                    {Object.keys(LIKERT_PRESETS).map(key=> (
+                      <option key={key} value={key}>{t(`likert.presets.${key}`)}</option>
+                    ))}
+                  </select>
                 </div>
-                <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={!!(it as any).likert_show_numbers} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_show_numbers: e.target.checked }:x))} /> {t('likert.show_numbers')}</label>
-              </div>
-            </>
-          )}
-          {(it.type==='single' || it.type==='multiple' || it.type==='dropdown') && (
-            <div className="item">
-              <div className="label">{t('label.options_en')}</div>
-              <textarea className="input" rows={3} value={(it as any).options_i18n?.en?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), en: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.options_en_placeholder') as string} />
-              <div className="label">{t('label.options_zh')}</div>
-              <textarea className="input" rows={3} value={(it as any).options_i18n?.zh?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), zh: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.options_zh_placeholder') as string} />
+                <div className="item span-6"><div className="label">{t('lang_en')}</div><input className="input" value={((it as any).likert_labels_i18n?.en && (it as any).likert_labels_i18n.en.length>0) ? (it as any).likert_labels_i18n.en.join(', ') : likertLabelsEn} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_en')} /></div>
+                <div className="item span-6"><div className="label">{t('lang_zh')}</div><input className="input" value={((it as any).likert_labels_i18n?.zh && (it as any).likert_labels_i18n.zh.length>0) ? (it as any).likert_labels_i18n.zh.join('，') : likertLabelsZh} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_zh')} /></div>
+                <div className="item span-12"><label style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={!!(it as any).likert_show_numbers} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_show_numbers: e.target.checked }:x))} /> {t('likert.show_numbers')}</label></div>
+              </>
+            )}
+            {(it.type==='single' || it.type==='multiple' || it.type==='dropdown') && (
+              <>
+                <div className="item span-6"><div className="label">{t('label.options_en')}</div><textarea className="input" rows={3} value={(it as any).options_i18n?.en?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), en: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.options_en_placeholder') as string} /></div>
+                <div className="item span-6"><div className="label">{t('label.options_zh')}</div><textarea className="input" rows={3} value={(it as any).options_i18n?.zh?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), zh: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.options_zh_placeholder') as string} /></div>
+              </>
+            )}
+            {(it.type==='rating' || it.type==='numeric' || it.type==='slider') && (
+              <>
+                <div className="item span-4"><div className="label">{t('label.min')}</div><input className="input" type="number" value={(it.min??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, min: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+                <div className="item span-4"><div className="label">{t('label.max')}</div><input className="input" type="number" value={(it.max??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, max: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+                <div className="item span-4"><div className="label">{t('label.step')}</div><input className="input" type="number" value={(it.step??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, step: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+              </>
+            )}
+            {(it.type==='short_text' || it.type==='long_text') && (
+              <>
+                <div className="item span-6"><div className="label">{t('label.placeholder_en')}</div><input className="input" value={(it as any).placeholder_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), en: e.target.value }}:x))} /></div>
+                <div className="item span-6"><div className="label">{t('label.placeholder_zh')}</div><input className="input" value={(it as any).placeholder_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), zh: e.target.value }}:x))} /></div>
+              </>
+            )}
+            <div className="item span-4"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> {t('required')}</label></div>
+            <div className="item span-8"></div>
+            <div className="item span-12" style={{display:'flex', justifyContent:'flex-end', gap:12}}>
+              <button className="btn btn-ghost" onClick={()=> removeItem(it.id)}>{t('delete')}</button>
+              <button className="btn btn-primary" onClick={()=> saveItem(it)}>{t('save')}</button>
             </div>
-          )}
-          {(it.type==='rating' || it.type==='numeric' || it.type==='slider') && (
-            <div className="row">
-              <div className="card span-4"><div className="label">{t('label.min')}</div><input className="input" type="number" value={(it.min??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, min: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
-              <div className="card span-4"><div className="label">{t('label.max')}</div><input className="input" type="number" value={(it.max??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, max: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
-              <div className="card span-4"><div className="label">{t('label.step')}</div><input className="input" type="number" value={(it.step??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, step: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
-            </div>
-          )}
-          {(it.type==='short_text' || it.type==='long_text') && (
-            <div className="row">
-              <div className="card span-6"><div className="label">{t('label.placeholder_en')}</div><input className="input" value={(it as any).placeholder_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), en: e.target.value }}:x))} /></div>
-              <div className="card span-6"><div className="label">{t('label.placeholder_zh')}</div><input className="input" value={(it as any).placeholder_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), zh: e.target.value }}:x))} /></div>
-            </div>
-          )}
-          <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> {t('required')}</label></div>
-          <div className="cta-row" style={{marginTop:8}}>
-            <button className="btn btn-primary" onClick={()=> saveItem(it)}>{t('save')}</button>
-            <button className="btn btn-ghost" onClick={()=> removeItem(it.id)}>{t('delete')}</button>
           </div>
         </div>
       )
@@ -430,72 +425,66 @@ const [aiTargets, setAiTargets] = useState('zh')
     if (newOpen) {
       return (
         <div className="card span-8">
-          <h4 style={{marginTop:0}}>{t('add_item')}</h4>
-          <div className="row">
-            <div className="card span-12">
-              <div className="row">
-                <div className="card span-6"><div className="label">{t('stem_en')}</div><input className="input" value={newStemEn} onChange={e=> setNewStemEn(e.target.value)} /></div>
-                <div className="card span-6"><div className="label">{t('stem_zh')}</div><input className="input" value={newStemZh} onChange={e=> setNewStemZh(e.target.value)} /></div>
-              </div>
-              <div className="row">
-                <div className="card span-4"><div className="label">{t('label.type')}</div>
-                  <select className="select" value={newType} onChange={e=> setNewType(e.target.value as any)}>
-                    {['likert','single','multiple','dropdown','rating','short_text','long_text','numeric','date','time','slider'].map(x=> <option key={x} value={x}>{x}</option>)}
+          <div className="item-editor-grid">
+            <div className="item span-12"><h4 style={{margin:0}}>{t('add_item')}</h4></div>
+            <div className="item span-6"><div className="label">{t('stem_en')}</div><input className="input" value={newStemEn} onChange={e=> setNewStemEn(e.target.value)} /></div>
+            <div className="item span-6"><div className="label">{t('stem_zh')}</div><input className="input" value={newStemZh} onChange={e=> setNewStemZh(e.target.value)} /></div>
+            <div className="item span-4"><div className="label">{t('label.type')}</div>
+              <select className="select" value={newType} onChange={e=> setNewType(e.target.value as any)}>
+                {['likert','single','multiple','dropdown','rating','short_text','long_text','numeric','date','time','slider'].map(x=> <option key={x} value={x}>{x}</option>)}
+              </select>
+            </div>
+            <div className="item span-4"><div className="label">{t('required')}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={newRequired} onChange={e=> setNewRequired(e.target.checked)} /> required</label></div>
+            <div className="item span-4"><div className="label">{t('reverse_scored')}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={newReverse} onChange={e=> setNewReverse(e.target.checked)} /> reverse</label></div>
+            {newType==='likert' && (
+              <>
+                <div className="item span-12">
+                  <div className="label">{t('likert.presets.title')}</div>
+                  <select className="select" value="" onChange={e=> {
+                    const key = e.target.value
+                    if (!key) {
+                      setLikertLabelsEn('')
+                      setLikertLabelsZh('')
+                      return
+                    }
+                    const preset = LIKERT_PRESETS[key]
+                    if (!preset) return
+                    setLikertLabelsEn(preset.en.join(', '))
+                    setLikertLabelsZh(preset.zh.join('，'))
+                  }}>
+                    <option value="">{t('likert.presets.custom')}</option>
+                    {Object.keys(LIKERT_PRESETS).map(key=> (
+                      <option key={key} value={key}>{t(`likert.presets.${key}`)}</option>
+                    ))}
                   </select>
                 </div>
-                <div className="card span-4"><div className="label">{t('required')}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={newRequired} onChange={e=> setNewRequired(e.target.checked)} /> required</label></div>
-                <div className="card span-4"><div className="label">{t('reverse_scored')}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={newReverse} onChange={e=> setNewReverse(e.target.checked)} /> reverse</label></div>
-              </div>
-              {newType==='likert' && (
-                <div className="row">
-                  <div className="card span-12">
-                    <div className="label">{t('likert.presets.title') || 'Anchor presets'}</div>
-                    <select className="select" value="" onChange={e=> {
-                      const key = e.target.value
-                      if (!key) {
-                        setLikertLabelsEn('')
-                        setLikertLabelsZh('')
-                        return
-                      }
-                      const preset = LIKERT_PRESETS[key]
-                      if (!preset) return
-                      setLikertLabelsEn(preset.en.join(', '))
-                      setLikertLabelsZh(preset.zh.join('，'))
-                    }}>
-                      <option value="">{t('likert.presets.custom') || 'Custom'}</option>
-                      {Object.keys(LIKERT_PRESETS).map(key=> (
-                        <option key={key} value={key}>{t(`likert.presets.${key}`)}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="card span-6"><div className="label">{t('label.likert_anchors_item')} (EN)</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder={t('hint.likert_anchors_en')}/></div>
-                  <div className="card span-6"><div className="label">{t('label.likert_anchors_item')} (ZH)</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder={t('hint.likert_anchors_zh')}/></div>
-                  <div className="card span-12"><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> {t('likert.show_numbers')}</label></div>
-                </div>
-              )}
-              {(newType==='single' || newType==='multiple' || newType==='dropdown') && (
-                <div className="row">
-                  <div className="card span-6"><div className="label">{t('label.options_en')}</div><textarea className="input" rows={3} value={newOptsEn} onChange={e=> setNewOptsEn(e.target.value)} placeholder={t('hint.options_en_placeholder') as string} /></div>
-                  <div className="card span-6"><div className="label">{t('label.options_zh')}</div><textarea className="input" rows={3} value={newOptsZh} onChange={e=> setNewOptsZh(e.target.value)} placeholder={t('hint.options_zh_placeholder') as string} /></div>
-                </div>
-              )}
-              {(newType==='rating' || newType==='numeric' || newType==='slider') && (
-                <div className="row">
-                  <div className="card span-4"><div className="label">{t('label.min')}</div><input className="input" type="number" value={newMin} onChange={e=> setNewMin(e.target.value)} /></div>
-                  <div className="card span-4"><div className="label">{t('label.max')}</div><input className="input" type="number" value={newMax} onChange={e=> setNewMax(e.target.value)} /></div>
-                  <div className="card span-4"><div className="label">{t('label.step')}</div><input className="input" type="number" value={newStep} onChange={e=> setNewStep(e.target.value)} /></div>
-                </div>
-              )}
-              {(newType==='short_text' || newType==='long_text') && (
-                <div className="row">
-                  <div className="card span-6"><div className="label">{t('label.placeholder_en')}</div><input className="input" value={newPhEn} onChange={e=> setNewPhEn(e.target.value)} /></div>
-                  <div className="card span-6"><div className="label">{t('label.placeholder_zh')}</div><input className="input" value={newPhZh} onChange={e=> setNewPhZh(e.target.value)} /></div>
-                </div>
-              )}
-              <div className="cta-row" style={{marginTop:8}}>
-                <button className="btn" onClick={()=> setNewOpen(false)}>{t('cancel')}</button>
-                <button className="btn btn-primary" onClick={addItem}>{t('create')}</button>
-              </div>
+                <div className="item span-6"><div className="label">{t('label.likert_anchors_item')} (EN)</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder={t('hint.likert_anchors_en')}/></div>
+                <div className="item span-6"><div className="label">{t('label.likert_anchors_item')} (ZH)</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder={t('hint.likert_anchors_zh')}/></div>
+                <div className="item span-12"><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> {t('likert.show_numbers')}</label></div>
+              </>
+            )}
+            {(newType==='single' || newType==='multiple' || newType==='dropdown') && (
+              <>
+                <div className="item span-6"><div className="label">{t('label.options_en')}</div><textarea className="input" rows={3} value={newOptsEn} onChange={e=> setNewOptsEn(e.target.value)} placeholder={t('hint.options_en_placeholder') as string} /></div>
+                <div className="item span-6"><div className="label">{t('label.options_zh')}</div><textarea className="input" rows={3} value={newOptsZh} onChange={e=> setNewOptsZh(e.target.value)} placeholder={t('hint.options_zh_placeholder') as string} /></div>
+              </>
+            )}
+            {(newType==='rating' || newType==='numeric' || newType==='slider') && (
+              <>
+                <div className="item span-4"><div className="label">{t('label.min')}</div><input className="input" type="number" value={newMin} onChange={e=> setNewMin(e.target.value)} /></div>
+                <div className="item span-4"><div className="label">{t('label.max')}</div><input className="input" type="number" value={newMax} onChange={e=> setNewMax(e.target.value)} /></div>
+                <div className="item span-4"><div className="label">{t('label.step')}</div><input className="input" type="number" value={newStep} onChange={e=> setNewStep(e.target.value)} /></div>
+              </>
+            )}
+            {(newType==='short_text' || newType==='long_text') && (
+              <>
+                <div className="item span-6"><div className="label">{t('label.placeholder_en')}</div><input className="input" value={newPhEn} onChange={e=> setNewPhEn(e.target.value)} /></div>
+                <div className="item span-6"><div className="label">{t('label.placeholder_zh')}</div><input className="input" value={newPhZh} onChange={e=> setNewPhZh(e.target.value)} /></div>
+              </>
+            )}
+            <div className="item span-12" style={{display:'flex', justifyContent:'flex-end', gap:12}}>
+              <button className="btn" onClick={()=> setNewOpen(false)}>{t('cancel')}</button>
+              <button className="btn btn-primary" onClick={addItem}>{t('create')}</button>
             </div>
           </div>
         </div>
@@ -503,7 +492,9 @@ const [aiTargets, setAiTargets] = useState('zh')
     }
     return (
       <div className="card span-8">
-        <div className="muted">{t('editor.select_item_to_edit')}</div>
+        <div className="item-editor-grid" style={{minHeight:200, placeItems:'center'}}>
+          <div className="muted">{t('editor.select_item_to_edit')}</div>
+        </div>
       </div>
     )
   }
