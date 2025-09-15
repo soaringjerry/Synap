@@ -177,6 +177,8 @@
     },
     "likert": {
       "show_numbers": "Show numbers with labels",
+      "defaults": "Default Likert anchors",
+      "apply_hint": "Applies to new items; existing items can override individually.",
       "presets": {
         "title": "Anchor presets",
         "custom": "Custom",
@@ -197,6 +199,7 @@
       "steps": "Steps: 1) Configure provider, 2) Pick target languages, 3) Preview, 4) Apply.",
       "targets": "Target languages (comma)",
       "provider": "Provider Settings",
+      "not_ready_link": "Go to provider settings",
       "include_label": "Include",
       "review": "Review translations and click Apply to save into item stems.",
       "not_ready": "Provider not configured or external AI disabled. Set API key and enable external AI in Provider Settings."

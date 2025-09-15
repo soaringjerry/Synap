@@ -391,8 +391,8 @@ const [aiTargets, setAiTargets] = useState('zh')
                   ))}
                 </select>
                 <div className="row">
-                  <div className="card span-6"><div className="label">{t('lang_en')}</div><input className="input" value={(it as any).likert_labels_i18n?.en?.join(', ')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_en')} /></div>
-                  <div className="card span-6"><div className="label">{t('lang_zh')}</div><input className="input" value={(it as any).likert_labels_i18n?.zh?.join('，')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_zh')} /></div>
+                  <div className="card span-6"><div className="label">{t('lang_en')}</div><input className="input" value={((it as any).likert_labels_i18n?.en && (it as any).likert_labels_i18n.en.length>0) ? (it as any).likert_labels_i18n.en.join(', ') : likertLabelsEn} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_en')} /></div>
+                  <div className="card span-6"><div className="label">{t('lang_zh')}</div><input className="input" value={((it as any).likert_labels_i18n?.zh && (it as any).likert_labels_i18n.zh.length>0) ? (it as any).likert_labels_i18n.zh.join('，') : likertLabelsZh} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_zh')} /></div>
                 </div>
                 <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={!!(it as any).likert_show_numbers} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_show_numbers: e.target.checked }:x))} /> {t('likert.show_numbers')}</label>
               </div>
@@ -518,6 +518,32 @@ const [aiTargets, setAiTargets] = useState('zh')
             <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={scale.name_i18n?.en||''} onChange={e=> setScale((s:any)=> ({...s, name_i18n: {...(s.name_i18n||{}), en: e.target.value }}))} /></div>
             <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={scale.name_i18n?.zh||''} onChange={e=> setScale((s:any)=> ({...s, name_i18n: {...(s.name_i18n||{}), zh: e.target.value }}))} /></div>
             <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" value={scale.points||5} onChange={e=> setScale((s:any)=> ({...s, points: Number(e.target.value||5) }))} /></div>
+            <div className="item">
+              <div className="label">{t('likert.defaults')}</div>
+              <div className="muted" style={{marginBottom:6}}>{t('likert.presets.title')}</div>
+              <select className="select" value={likertPreset} onChange={e=> {
+                const value = e.target.value
+                setLikertPreset(value)
+                if (!value) return
+                const preset = LIKERT_PRESETS[value]
+                if (!preset) return
+                setLikertLabelsEn(preset.en.join(', '))
+                setLikertLabelsZh(preset.zh.join('，'))
+              }}>
+                <option value="">{t('likert.presets.custom')}</option>
+                {Object.keys(LIKERT_PRESETS).map(key => (
+                  <option key={key} value={key}>{t(`likert.presets.${key}`)}</option>
+                ))}
+              </select>
+              <div className="row" style={{marginTop:8}}>
+                <div className="card span-6"><div className="label">{t('lang_en')}</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder={t('hint.likert_anchors_en')} /></div>
+                <div className="card span-6"><div className="label">{t('lang_zh')}</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder={t('hint.likert_anchors_zh')} /></div>
+              </div>
+              <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8, marginTop:6}}>
+                <input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> {t('likert.show_numbers')}
+              </label>
+              <div className="muted" style={{marginTop:6}}>{t('likert.apply_hint')}</div>
+            </div>
             <div className="cta-row" style={{marginTop:8}}>
               <button className="btn btn-primary" onClick={saveScale}>{t('save')}</button>
             </div>
@@ -624,8 +650,11 @@ const [aiTargets, setAiTargets] = useState('zh')
               }}>{aiWorking? t('working') : t('preview')}</button>
             </div>
             {!aiReady && (
-              <div className="tile" style={{padding:10, border:'1px solid rgba(255,191,71,0.45)', background:'rgba(255,240,200,0.15)', color:'var(--muted)', marginTop:8}}>
-                {t('ai.not_ready')}
+              <div className="tile" style={{padding:10, border:'1px solid rgba(255,191,71,0.45)', background:'rgba(255,240,200,0.15)', color:'var(--muted)', marginTop:8, display:'grid', gap:8}}>
+                <div>{t('ai.not_ready')}</div>
+                <div className="cta-row" style={{justifyContent:'flex-start'}}>
+                  <Link className="btn btn-ghost" to="/admin/ai">{t('ai.not_ready_link')}</Link>
+                </div>
               </div>
             )}
             {aiPreview && (

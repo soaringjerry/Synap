@@ -177,6 +177,8 @@
     },
     "likert": {
       "show_numbers": "显示数字与标签",
+      "defaults": "默认 Likert 锚点",
+      "apply_hint": "应用于新建题目，可在题目中覆盖。",
       "presets": {
         "title": "锚点预设",
         "custom": "自定义",
@@ -227,6 +229,7 @@
       "steps": "使用步骤：1）配置供应商，2）选择目标语言，3）预览，4）应用",
       "targets": "目标语言（逗号分隔）",
       "provider": "供应商设置",
+      "not_ready_link": "前往供应商设置",
       "include_label": "包含",
       "review": "请检查翻译，点击“应用”写入题干。",
       "not_ready": "未配置 API Key 或未开启外部 AI。请在“供应商设置”中配置并开启。"
