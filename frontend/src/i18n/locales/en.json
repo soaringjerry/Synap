@@ -39,6 +39,9 @@
     "create": "Create",
     "add": "Add",
     "new_editor": "New Editor",
+    "optional": "Optional",
+    "order": "Order",
+    "required": "Required",
     "your_scales": "Your Scales",
     "no_scales": "No scales yet.",
     "your_items": "Items",
@@ -155,7 +158,9 @@
       "likert_anchors_item": "Likert Anchors (this item)",
       "group": "Group",
       "placeholder_en": "Placeholder (EN)",
-      "placeholder_zh": "Placeholder (ZH)"
+      "placeholder_zh": "Placeholder (ZH)",
+      "url": "URL",
+      "n": "N"
     },
     "action": {
       "apply": "Apply",
@@ -262,6 +267,7 @@
       "import_button": "Import key file",
       "import_ok": "Key imported and stored locally. Not uploaded."
     },
+    "region": "Region",
     "editor": {
       "flow_hint": "New streamlined editor: edit items on the left, details on the right.",
       "items_tab": "Items Editor",
@@ -318,6 +324,14 @@
       "save": "Save",
       "all": "Accept all",
       "learn": "Learn more"
+    },
+
+    "export": {
+      "consent_header": "Consent column header",
+      "consent_header_key": "key (consent.<key>)",
+      "consent_header_label_en": "label_en",
+      "consent_header_label_zh": "label_zh",
+      "csv_bom_hint": "CSV is UTF‑8 with BOM (Excel‑friendly)"
     },
 
     "home": {

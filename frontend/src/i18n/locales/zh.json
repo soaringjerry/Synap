@@ -38,6 +38,9 @@
     "create": "创建",
     "add": "添加",
     "new_editor": "新版编辑",
+    "optional": "可选",
+    "order": "顺序",
+    "required": "必填",
     "your_scales": "我的量表",
     "no_scales": "暂无量表。",
     "your_items": "题目",
@@ -155,7 +158,9 @@
       "likert_anchors_item": "本题 Likert 锚点",
       "group": "分组",
       "placeholder_en": "占位文案（英文）",
-      "placeholder_zh": "占位文案（中文）"
+      "placeholder_zh": "占位文案（中文）",
+      "url": "URL",
+      "n": "N"
     },
     "action": {
       "apply": "应用",
@@ -291,6 +296,7 @@
       "import_button": "导入密钥文件",
       "import_ok": "已导入并保存在本地（未上传）。"
     },
+    "region": "区域",
     "editor": {
       "flow_hint": "全新简化编辑器：左侧编辑题目，右侧编辑详情。",
       "items_tab": "题目编辑器",
@@ -317,6 +323,14 @@
       "save": "保存",
       "all": "全部同意",
       "learn": "了解更多"
+    },
+
+    "export": {
+      "consent_header": "同意列标题",
+      "consent_header_key": "key（consent.<键>）",
+      "consent_header_label_en": "label_en",
+      "consent_header_label_zh": "label_zh",
+      "csv_bom_hint": "CSV 为 UTF‑8（含 BOM），兼容 Excel"
     },
 
     "home": {

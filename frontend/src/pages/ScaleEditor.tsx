@@ -121,7 +121,7 @@ export function ScaleEditor() {
         likert_show_numbers: !!likertShowNumbers,
         likert_preset: likertPreset
       } as any)
-      toast.success(t('save_success')||t('saved')||'Saved')
+      toast.success(t('save_success'))
     } catch (e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
 
@@ -140,12 +140,12 @@ export function ScaleEditor() {
       const hasEmpty = keys.some(k=> !k)
       const dup = keys.find((k, i)=> k && keys.indexOf(k) !== i)
       if (hasEmpty || dup) {
-        toast.error(t('consent.advanced.save_first_error')||'Please fix highlighted fields')
+        toast.error(t('consent.advanced.save_first_error'))
         return
       }
       const options = consentOptions.map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
       await adminUpdateScale(id, { consent_config: { version: consentVersion||'v1', options, signature_required: !!signatureRequired } } as any)
-      toast.success(t('save_success')||t('saved')||'Saved')
+      toast.success(t('save_success'))
     } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
 
@@ -153,24 +153,24 @@ export function ScaleEditor() {
     const [open, setOpen] = useState(false)
     return (
       <>
-        <button className="btn btn-ghost" onClick={()=> setOpen(o=> !o)}>{open? (t('consent.hide_advanced')||'Hide Advanced') : (t('consent.show_advanced')||'Show Advanced')}</button>
+        <button className="btn btn-ghost" onClick={()=> setOpen(o=> !o)}>{open? t('consent.hide_advanced') : t('consent.show_advanced')}</button>
         {open && (
           <div className="tile" style={{padding:10, marginTop:8}}>
             {(consentOptions||[]).map((o, idx)=> (
               <div key={idx} className="row" style={{marginTop:8}}>
-                <div className="card span-3"><div className="label">{t('consent.advanced.key')||'Key'}</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
-                <div className="card span-3"><div className="label">{t('consent.advanced.required')||'Required'}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> {t('required')}</label></div>
-                <div className="card span-3"><div className="label">{t('consent.advanced.label_en')||'Label (EN)'}</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder="Optional"/></div>
-                <div className="card span-3"><div className="label">{t('consent.advanced.label_zh')||'Label (ZH)'}</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder="可选"/></div>
+                <div className="card span-3"><div className="label">{t('consent.advanced.key')}</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
+                <div className="card span-3"><div className="label">{t('consent.advanced.required')}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> {t('required')}</label></div>
+                <div className="card span-3"><div className="label">{t('consent.advanced.label_en')}</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder={t('optional')}/></div>
+                <div className="card span-3"><div className="label">{t('consent.advanced.label_zh')}</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder={t('optional')}/></div>
                 <div className="cta-row" style={{marginTop:6}}>
-                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>{t('delete')||'Delete'}</button>
+                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>{t('delete')}</button>
                   <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const j=Math.max(0, idx-1); const t=a[idx]; a[idx]=a[j]; a[j]=t; return a })}>↑</button>
                   <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const j=Math.min(list.length-1, idx+1); const t=a[idx]; a[idx]=a[j]; a[j]=t; return a })}>↓</button>
                 </div>
               </div>
             ))}
             <div className="cta-row" style={{marginTop:8}}>
-              <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>{t('consent.advanced.add_option')||'Add option'}</button>
+              <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>{t('consent.advanced.add_option')}</button>
               <button className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
             </div>
           </div>
@@ -191,13 +191,13 @@ export function ScaleEditor() {
       if (it.type==='rating' || it.type==='numeric' || it.type==='slider') { upd.min = it.min; upd.max = it.max; upd.step = it.step }
       if (it.type==='short_text' || it.type==='long_text') upd.placeholder_i18n = it.placeholder_i18n
       await adminUpdateItem(it.id, upd)
-      toast.success(t('save_success')||t('saved')||'Saved')
+      toast.success(t('save_success'))
       setItems(arr=> arr.map(x=> x.id===it.id? { ...x, ...upd }: x))
     } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
   async function removeItem(itemId:string) {
-    if (!confirm(t('confirm_delete_item')||'Delete this item?')) return
-    try { await adminDeleteItem(itemId); setItems(items.filter(x=>x.id!==itemId)); toast.success(t('delete_success')||t('deleted')||'Deleted'); if (selectedItemId===itemId) setSelectedItemId(null) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
+    if (!confirm(t('confirm_delete_item'))) return
+    try { await adminDeleteItem(itemId); setItems(items.filter(x=>x.id!==itemId)); toast.success(t('delete_success')); if (selectedItemId===itemId) setSelectedItemId(null) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
   async function addItem() {
     try {
@@ -226,7 +226,7 @@ export function ScaleEditor() {
       setItems([...items, res])
       setNewStemEn(''); setNewStemZh(''); setNewReverse(false); setNewType('likert'); setNewRequired(false); setNewOptsEn(''); setNewOptsZh(''); setNewMin(''); setNewMax(''); setNewStep(''); setNewPhEn(''); setNewPhZh('')
       setNewOpen(false)
-      toast.success(t('create_success')||'Created')
+      toast.success(t('create_success'))
     } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
 
@@ -239,7 +239,7 @@ export function ScaleEditor() {
       const url = shareLink(scaleId)
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url)
-        toast.success(t('copied')||'Copied')
+        toast.success(t('copied'))
       } else { setMsg(url) }
     } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
@@ -249,13 +249,13 @@ export function ScaleEditor() {
     return (
       <div className="card span-4">
           <div className="cta-row" style={{justifyContent:'space-between'}}>
-          <div className="section-title">{t('your_items')||'Items'}</div>
+          <div className="section-title">{t('your_items')}</div>
           <div className="cta-row">
-            <button className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); toast.success(t('save_success')||t('saved')||'Saved') } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('editor.save_order')||`${t('save')} ${t('order')||'order'}`}</button>
-            <button className="btn btn-primary" onClick={()=> { setNewOpen(true); setSelectedItemId(null) }}>{t('add_item')||'Add item'}</button>
+            <button className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); toast.success(t('save_success')) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('editor.save_order')}</button>
+            <button className="btn btn-primary" onClick={()=> { setNewOpen(true); setSelectedItemId(null) }}>{t('add_item')}</button>
           </div>
         </div>
-        {items.length===0 && <div className="muted">{t('no_items')||'No items yet.'}</div>}
+        {items.length===0 && <div className="muted">{t('no_items')}</div>}
         <div style={{marginTop:8}}>
           {items.map((it:any, idx:number)=> (
             <div key={it.id} className="tile" style={{padding:10, marginTop:8, border: selectedItemId===it.id? '1px solid var(--accent)' : '1px solid var(--border)', borderRadius:12}}>
@@ -283,47 +283,47 @@ export function ScaleEditor() {
       const it = selectedItem
       return (
         <div className="card span-8">
-          <h4 style={{marginTop:0}}>{t('editor.edit_item')||'Edit item'}</h4>
-          <div className="muted">{t('label.id')||'ID'}: <b>{it.id}</b></div>
+          <h4 style={{marginTop:0}}>{t('editor.edit_item')}</h4>
+          <div className="muted">{t('label.id')}: <b>{it.id}</b></div>
           <div className="item"><div className="label">{t('stem_en')}</div>
             <input className="input" value={it.stem_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), en: e.target.value }}:x))} />
           </div>
           <div className="item"><div className="label">{t('stem_zh')}</div>
             <input className="input" value={it.stem_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), zh: e.target.value }}:x))} />
           </div>
-          <div className="muted">{t('label.type')||'Type'}: <b>{it.type||'likert'}</b></div>
+          <div className="muted">{t('label.type')}: <b>{it.type||'likert'}</b></div>
           {(it.type===undefined || it.type==='likert') && (
             <>
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
               <div className="item">
-                <div className="label">{t('label.likert_anchors_item')||'Likert Anchors (this item)'}</div>
+                <div className="label">{t('label.likert_anchors_item')}</div>
                 <div className="row">
-                  <div className="card span-6"><div className="label">EN</div><input className="input" value={(it as any).likert_labels_i18n?.en?.join(', ')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_en')||'Strongly disagree, Disagree, …'} /></div>
-                  <div className="card span-6"><div className="label">中文</div><input className="input" value={(it as any).likert_labels_i18n?.zh?.join('，')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_zh')||'非常不同意，…'} /></div>
+                  <div className="card span-6"><div className="label">{t('lang_en')}</div><input className="input" value={(it as any).likert_labels_i18n?.en?.join(', ')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_en')} /></div>
+                  <div className="card span-6"><div className="label">{t('lang_zh')}</div><input className="input" value={(it as any).likert_labels_i18n?.zh?.join('，')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_zh')} /></div>
                 </div>
-                <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={!!(it as any).likert_show_numbers} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_show_numbers: e.target.checked }:x))} /> {t('likert.show_numbers')||'Show numbers with labels'}</label>
+                <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={!!(it as any).likert_show_numbers} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_show_numbers: e.target.checked }:x))} /> {t('likert.show_numbers')}</label>
               </div>
             </>
           )}
           {(it.type==='single' || it.type==='multiple' || it.type==='dropdown') && (
             <div className="item">
-              <div className="label">{t('label.options_en')||'Options (EN)'}</div>
-              <textarea className="input" rows={3} value={(it as any).options_i18n?.en?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), en: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={(t('hint.options_en_placeholder') as string) || 'Option A\nOption B'} />
-              <div className="label">{t('label.options_zh')||'Options (ZH)'}</div>
-              <textarea className="input" rows={3} value={(it as any).options_i18n?.zh?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), zh: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={(t('hint.options_zh_placeholder') as string) || '选项一\n选项二'} />
+              <div className="label">{t('label.options_en')}</div>
+              <textarea className="input" rows={3} value={(it as any).options_i18n?.en?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), en: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.options_en_placeholder') as string} />
+              <div className="label">{t('label.options_zh')}</div>
+              <textarea className="input" rows={3} value={(it as any).options_i18n?.zh?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), zh: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.options_zh_placeholder') as string} />
             </div>
           )}
           {(it.type==='rating' || it.type==='numeric' || it.type==='slider') && (
             <div className="row">
-              <div className="card span-4"><div className="label">{t('label.min')||'Min'}</div><input className="input" type="number" value={(it.min??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, min: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
-              <div className="card span-4"><div className="label">{t('label.max')||'Max'}</div><input className="input" type="number" value={(it.max??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, max: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
-              <div className="card span-4"><div className="label">{t('label.step')||'Step'}</div><input className="input" type="number" value={(it.step??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, step: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+              <div className="card span-4"><div className="label">{t('label.min')}</div><input className="input" type="number" value={(it.min??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, min: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+              <div className="card span-4"><div className="label">{t('label.max')}</div><input className="input" type="number" value={(it.max??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, max: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+              <div className="card span-4"><div className="label">{t('label.step')}</div><input className="input" type="number" value={(it.step??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, step: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
             </div>
           )}
           {(it.type==='short_text' || it.type==='long_text') && (
             <div className="row">
-              <div className="card span-6"><div className="label">{t('label.placeholder_en')||'Placeholder (EN)'}</div><input className="input" value={(it as any).placeholder_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), en: e.target.value }}:x))} /></div>
-              <div className="card span-6"><div className="label">{t('label.placeholder_zh')||'Placeholder (ZH)'}</div><input className="input" value={(it as any).placeholder_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), zh: e.target.value }}:x))} /></div>
+              <div className="card span-6"><div className="label">{t('label.placeholder_en')}</div><input className="input" value={(it as any).placeholder_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), en: e.target.value }}:x))} /></div>
+              <div className="card span-6"><div className="label">{t('label.placeholder_zh')}</div><input className="input" value={(it as any).placeholder_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), zh: e.target.value }}:x))} /></div>
             </div>
           )}
           <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> {t('required')}</label></div>
@@ -337,7 +337,7 @@ export function ScaleEditor() {
     if (newOpen) {
       return (
         <div className="card span-8">
-          <h4 style={{marginTop:0}}>{t('add_item')||'Add item'}</h4>
+          <h4 style={{marginTop:0}}>{t('add_item')}</h4>
           <div className="row">
             <div className="card span-12">
               <div className="row">
@@ -345,7 +345,7 @@ export function ScaleEditor() {
                 <div className="card span-6"><div className="label">{t('stem_zh')}</div><input className="input" value={newStemZh} onChange={e=> setNewStemZh(e.target.value)} /></div>
               </div>
               <div className="row">
-                <div className="card span-4"><div className="label">{t('label.type')||'Type'}</div>
+                <div className="card span-4"><div className="label">{t('label.type')}</div>
                   <select className="select" value={newType} onChange={e=> setNewType(e.target.value as any)}>
                     {['likert','single','multiple','dropdown','rating','short_text','long_text','numeric','date','time','slider'].map(x=> <option key={x} value={x}>{x}</option>)}
                   </select>
@@ -355,32 +355,32 @@ export function ScaleEditor() {
               </div>
               {newType==='likert' && (
                 <div className="row">
-                  <div className="card span-6"><div className="label">{t('label.likert_anchors_item')||'Likert Anchors (this item)'} (EN)</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder={t('hint.likert_anchors_en')||'Strongly disagree, …'}/></div>
-                  <div className="card span-6"><div className="label">{t('label.likert_anchors_item')||'Likert Anchors (this item)'} (ZH)</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder={t('hint.likert_anchors_zh')||'非常不同意，…'}/></div>
-                  <div className="card span-12"><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> {t('likert.show_numbers')||'Show numbers with labels'}</label></div>
+                  <div className="card span-6"><div className="label">{t('label.likert_anchors_item')} (EN)</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder={t('hint.likert_anchors_en')}/></div>
+                  <div className="card span-6"><div className="label">{t('label.likert_anchors_item')} (ZH)</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder={t('hint.likert_anchors_zh')}/></div>
+                  <div className="card span-12"><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> {t('likert.show_numbers')}</label></div>
                 </div>
               )}
               {(newType==='single' || newType==='multiple' || newType==='dropdown') && (
                 <div className="row">
-                  <div className="card span-6"><div className="label">{t('options_en')}</div><textarea className="input" rows={3} value={newOptsEn} onChange={e=> setNewOptsEn(e.target.value)} placeholder={'Option A\nOption B'} /></div>
-                  <div className="card span-6"><div className="label">{t('options_zh')}</div><textarea className="input" rows={3} value={newOptsZh} onChange={e=> setNewOptsZh(e.target.value)} placeholder={'选项一\n选项二'} /></div>
+                  <div className="card span-6"><div className="label">{t('label.options_en')}</div><textarea className="input" rows={3} value={newOptsEn} onChange={e=> setNewOptsEn(e.target.value)} placeholder={t('hint.options_en_placeholder') as string} /></div>
+                  <div className="card span-6"><div className="label">{t('label.options_zh')}</div><textarea className="input" rows={3} value={newOptsZh} onChange={e=> setNewOptsZh(e.target.value)} placeholder={t('hint.options_zh_placeholder') as string} /></div>
                 </div>
               )}
               {(newType==='rating' || newType==='numeric' || newType==='slider') && (
                 <div className="row">
-                  <div className="card span-4"><div className="label">Min</div><input className="input" type="number" value={newMin} onChange={e=> setNewMin(e.target.value)} /></div>
-                  <div className="card span-4"><div className="label">Max</div><input className="input" type="number" value={newMax} onChange={e=> setNewMax(e.target.value)} /></div>
-                  <div className="card span-4"><div className="label">Step</div><input className="input" type="number" value={newStep} onChange={e=> setNewStep(e.target.value)} /></div>
+                  <div className="card span-4"><div className="label">{t('label.min')}</div><input className="input" type="number" value={newMin} onChange={e=> setNewMin(e.target.value)} /></div>
+                  <div className="card span-4"><div className="label">{t('label.max')}</div><input className="input" type="number" value={newMax} onChange={e=> setNewMax(e.target.value)} /></div>
+                  <div className="card span-4"><div className="label">{t('label.step')}</div><input className="input" type="number" value={newStep} onChange={e=> setNewStep(e.target.value)} /></div>
                 </div>
               )}
               {(newType==='short_text' || newType==='long_text') && (
                 <div className="row">
-                  <div className="card span-6"><div className="label">Placeholder (EN)</div><input className="input" value={newPhEn} onChange={e=> setNewPhEn(e.target.value)} /></div>
-                  <div className="card span-6"><div className="label">Placeholder (ZH)</div><input className="input" value={newPhZh} onChange={e=> setNewPhZh(e.target.value)} /></div>
+                  <div className="card span-6"><div className="label">{t('label.placeholder_en')}</div><input className="input" value={newPhEn} onChange={e=> setNewPhEn(e.target.value)} /></div>
+                  <div className="card span-6"><div className="label">{t('label.placeholder_zh')}</div><input className="input" value={newPhZh} onChange={e=> setNewPhZh(e.target.value)} /></div>
                 </div>
               )}
               <div className="cta-row" style={{marginTop:8}}>
-                <button className="btn" onClick={()=> setNewOpen(false)}>{t('cancel')||'Cancel'}</button>
+                <button className="btn" onClick={()=> setNewOpen(false)}>{t('cancel')}</button>
                 <button className="btn btn-primary" onClick={addItem}>{t('create')}</button>
               </div>
             </div>
@@ -390,7 +390,7 @@ export function ScaleEditor() {
     }
     return (
       <div className="card span-8">
-        <div className="muted">{t('select_item_to_edit')||'Select an item from the left to edit, or click “Add item”.'}</div>
+        <div className="muted">{t('editor.select_item_to_edit')}</div>
       </div>
     )
   }
@@ -401,7 +401,7 @@ export function ScaleEditor() {
       <>
         <div className="row">
           <div className="card span-6">
-            <h4 className="section-title" style={{marginTop:0}}>{t('editor.basic_info')||'Basic Info'}</h4>
+            <h4 className="section-title" style={{marginTop:0}}>{t('editor.basic_info')}</h4>
             <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={scale.name_i18n?.en||''} onChange={e=> setScale((s:any)=> ({...s, name_i18n: {...(s.name_i18n||{}), en: e.target.value }}))} /></div>
             <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={scale.name_i18n?.zh||''} onChange={e=> setScale((s:any)=> ({...s, name_i18n: {...(s.name_i18n||{}), zh: e.target.value }}))} /></div>
             <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" value={scale.points||5} onChange={e=> setScale((s:any)=> ({...s, points: Number(e.target.value||5) }))} /></div>
@@ -410,26 +410,26 @@ export function ScaleEditor() {
             </div>
           </div>
           <div className="card span-6">
-            <h4 className="section-title" style={{marginTop:0}}>{t('editor.security')||'Security'}</h4>
+            <h4 className="section-title" style={{marginTop:0}}>{t('editor.security')}</h4>
             <div className="item"><div className="label">{t('collect_email')}</div>
               <select className="select" value={scale.collect_email||'off'} onChange={e=> setScale((s:any)=> ({...s, collect_email: e.target.value }))}>
-                <option value="off">{t('collect_email_off')||'Off'}</option>
-                <option value="optional">{t('collect_email_optional')||'Optional'}</option>
-                <option value="required">{t('collect_email_required')||'Required'}</option>
+                <option value="off">{t('collect_email_off')}</option>
+                <option value="optional">{t('collect_email_optional')}</option>
+                <option value="required">{t('collect_email_required')}</option>
               </select>
             </div>
             <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-              <input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> setScale((s:any)=> ({...s, e2ee_enabled: e.target.checked }))} /> {t('e2ee.title')||'End‑to‑end Encryption'}
+              <input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> setScale((s:any)=> ({...s, e2ee_enabled: e.target.checked }))} /> {t('e2ee.title')}
             </label>
-            <div className="item"><div className="label">{t('region')||'Region'}</div>
+            <div className="item"><div className="label">{t('region')}</div>
               <select className="select" value={scale.region||'auto'} onChange={e=> setScale((s:any)=> ({...s, region: e.target.value }))}>
                 {['auto','gdpr','pipl','pdpa','ccpa'].map(r=> <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-              <input className="checkbox" type="checkbox" checked={!!turnstile} onChange={e=> setTurnstile(e.target.checked)} /> {t('turnstile.enable_label')||'Enable Cloudflare Turnstile'}
+              <input className="checkbox" type="checkbox" checked={!!turnstile} onChange={e=> setTurnstile(e.target.checked)} /> {t('turnstile.enable_label')}
             </label>
-            <div className="item"><div className="label">{t('editor.items_per_page')||'Items per page'}</div><input className="input" type="number" value={itemsPerPage} onChange={e=> setItemsPerPage(e.target.value)} /></div>
+            <div className="item"><div className="label">{t('editor.items_per_page')}</div><input className="input" type="number" value={itemsPerPage} onChange={e=> setItemsPerPage(e.target.value)} /></div>
             <div className="cta-row" style={{marginTop:8}}>
               <button className="btn btn-primary" onClick={saveScale}>{t('save')}</button>
             </div>
@@ -438,29 +438,29 @@ export function ScaleEditor() {
 
         <div className="row">
           <div className="card span-12">
-            <h4 className="section-title" style={{marginTop:0}}>{t('consent_settings')||'Consent Settings'}</h4>
+            <h4 className="section-title" style={{marginTop:0}}>{t('consent_settings')}</h4>
             <div className="row">
-              <div className="card span-3"><div className="label">Version</div><input className="input" value={consentVersion} onChange={e=> setConsentVersion(e.target.value)} /></div>
-              <div className="card span-3"><div className="label">Signature</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> {t('consent.require_signature')||'Require signature'}</label></div>
+              <div className="card span-3"><div className="label">{t('label.version')}</div><input className="input" value={consentVersion} onChange={e=> setConsentVersion(e.target.value)} /></div>
+              <div className="card span-3"><div className="label">{t('label.signature')}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> {t('consent.require_signature')}</label></div>
             </div>
             <div className="tile" style={{padding:10, marginBottom:8}}>
-              <div className="muted" style={{marginBottom:6}}>{t('consent.presets_title')||'Pick a preset (you can still tweak below):'}</div>
+              <div className="muted" style={{marginBottom:6}}>{t('consent.presets_title')}</div>
               <div className="cta-row">
-                <button className="btn" onClick={()=> setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}])}>{t('consent.preset_min')||'Minimal'}</button>
-                <button className="btn" onClick={()=> { setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}]); setSignatureRequired(true) }}>{t('consent.preset_rec')||'Recommended'}</button>
-                <button className="btn" onClick={()=> { setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:true}]); setSignatureRequired(true) }}>{t('consent.preset_strict')||'Strict'}</button>
+                <button className="btn" onClick={()=> setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}])}>{t('consent.preset_min')}</button>
+                <button className="btn" onClick={()=> { setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}]); setSignatureRequired(true) }}>{t('consent.preset_rec')}</button>
+                <button className="btn" onClick={()=> { setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:true}]); setSignatureRequired(true) }}>{t('consent.preset_strict')}</button>
               </div>
             </div>
             <div className="tile" style={{padding:10}}>
-              <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')||'Ask participants to confirm:'}</div>
+              <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')}</div>
               <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                <input className="checkbox" type="checkbox" checked={!!getOpt('withdrawal')?.required} onChange={e=> setOptRequired('withdrawal', e.target.checked)} /> {t('survey.consent_opt.withdrawal')||'I understand I can withdraw at any time.'}
+                <input className="checkbox" type="checkbox" checked={!!getOpt('withdrawal')?.required} onChange={e=> setOptRequired('withdrawal', e.target.checked)} /> {t('survey.consent_opt.withdrawal')}
               </label>
               <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                <input className="checkbox" type="checkbox" checked={!!getOpt('data_use')?.required} onChange={e=> setOptRequired('data_use', e.target.checked)} /> {t('survey.consent_opt.data_use')||'I understand my data is for academic/aggregate use only.'}
+                <input className="checkbox" type="checkbox" checked={!!getOpt('data_use')?.required} onChange={e=> setOptRequired('data_use', e.target.checked)} /> {t('survey.consent_opt.data_use')}
               </label>
               <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                <input className="checkbox" type="checkbox" checked={!!getOpt('recording')?.required} onChange={e=> setOptRequired('recording', e.target.checked)} /> {t('survey.consent_opt.recording')||'I consent to audio/video recording where applicable.'}
+                <input className="checkbox" type="checkbox" checked={!!getOpt('recording')?.required} onChange={e=> setOptRequired('recording', e.target.checked)} /> {t('survey.consent_opt.recording')}
               </label>
               <div className="cta-row" style={{marginTop:8}}>
                 <button className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
@@ -472,9 +472,9 @@ export function ScaleEditor() {
 
         <div className="row">
           <div className="card span-6">
-            <h4 className="section-title" style={{marginTop:0}}>{t('ai.title')||'AI Translation'}</h4>
-            {!aiReady && <div className="muted">{t('ai.not_ready')||'Provider not configured or external AI disabled.'}</div>}
-            <div className="item"><div className="label">{t('ai.targets')||'Target languages (comma)'}</div>
+            <h4 className="section-title" style={{marginTop:0}}>{t('ai.title')}</h4>
+            {!aiReady && <div className="muted">{t('ai.not_ready')}</div>}
+            <div className="item"><div className="label">{t('ai.targets')}</div>
               <input className="input" value={aiTargets} onChange={e=> setAiTargets(e.target.value)} placeholder={'zh, en'} />
             </div>
             <div className="cta-row">
@@ -485,11 +485,11 @@ export function ScaleEditor() {
                   const res = await adminAITranslatePreview(id, langs)
                   setAiPreview(res)
                 } catch(e:any){ setAiMsg(e.message||String(e)); toast.error(e.message||String(e)) } finally { setAiWorking(false) }
-              }}>{aiWorking? (t('working')||'Working…') : (t('preview')||'Preview')}</button>
+              }}>{aiWorking? t('working') : t('preview')}</button>
             </div>
             {aiPreview && (
               <div className="tile" style={{padding:10, marginTop:8}}>
-                <div className="muted">{t('preview')} · {Object.keys(aiPreview.items||{}).length} {t('your_items')||'items'}</div>
+                <div className="muted">{t('preview')} · {Object.keys(aiPreview.items||{}).length} {t('your_items')}</div>
               </div>
             )}
             {aiMsg && <div className="muted" style={{marginTop:6}}>{aiMsg}</div>}
@@ -509,18 +509,18 @@ export function ScaleEditor() {
         <div className="row">
           <div className="card span-6">
             <h4 className="section-title" style={{marginTop:0}}>{t('share')}</h4>
-            <div className="item"><div className="label">URL</div><input className="input" value={shareLink(id)} readOnly /></div>
-            <div className="cta-row"><button className="btn" onClick={()=>copyLink(id)}>{t('editor.copy_link')||t('copy')||'Copy'}</button></div>
+            <div className="item"><div className="label">{t('label.url')}</div><input className="input" value={shareLink(id)} readOnly /></div>
+            <div className="cta-row"><button className="btn" onClick={()=>copyLink(id)}>{t('editor.copy_link')}</button></div>
           </div>
           <div className="card span-6">
-            <h4 className="section-title" style={{marginTop:0}}>{t('analytics')||'Analytics'}</h4>
-            {!analytics && <div className="muted">{t('editor.no_data')||'No data yet.'}</div>}
+            <h4 className="section-title" style={{marginTop:0}}>{t('analytics')}</h4>
+            {!analytics && <div className="muted">{t('editor.no_data')}</div>}
             {analytics && (
               <div>
-                <div className="item"><div className="label">N</div><div>{analytics.total_responses||0}</div></div>
+                <div className="item"><div className="label">{t('label.n')}</div><div>{analytics.total_responses||0}</div></div>
                 {analytics.items && analytics.items.length>0 && (
                   <div className="tile" style={{padding:8, marginTop:8}}>
-                    <div className="muted" style={{marginBottom:6}}>{t('item_distributions')||'Item distributions'}</div>
+                    <div className="muted" style={{marginBottom:6}}>{t('editor.item_distributions')}</div>
                     <div style={{display:'grid', gridTemplateColumns: `240px repeat(${Math.min(10, (analytics.items?.[0]?.histogram?.length||5))}, 1fr)`, gap:6, alignItems:'center'}}>
                       <div></div>
                       {Array.from({length: Math.min(10, (analytics.items?.[0]?.histogram?.length||5))}, (_,i)=> i+1).map(i=> <div key={i} className="muted" style={{textAlign:'center'}}>{i}</div>)}
@@ -547,13 +547,13 @@ export function ScaleEditor() {
     <div className="container">
       <div className="hero">
         <div className="glitch" data-text={t('manage')}>{t('manage')}</div>
-        <div className="muted">{t('editor.flow_hint')||'New streamlined editor: edit items on the left, details on the right.'}</div>
+        <div className="muted">{t('editor.flow_hint')}</div>
       </div>
 
       <div className="tabs-nav" style={{marginBottom:12}}>
-        <button className="tab" onClick={()=> setActiveView('editor')} style={{borderColor: activeView==='editor'?'rgba(125,211,252,0.65)':''}}>{t('editor.items_tab')||'Items Editor'}</button>
-        <button className="tab" onClick={()=> setActiveView('settings')} style={{borderColor: activeView==='settings'?'rgba(125,211,252,0.65)':''}}>{t('editor.settings_tab')||'Settings'}</button>
-        <button className="tab" onClick={()=> setActiveView('share')} style={{borderColor: activeView==='share'?'rgba(125,211,252,0.65)':''}}>{t('editor.share_tab')||'Share & Results'}</button>
+        <button className="tab" onClick={()=> setActiveView('editor')} style={{borderColor: activeView==='editor'?'rgba(125,211,252,0.65)':''}}>{t('editor.items_tab')}</button>
+        <button className="tab" onClick={()=> setActiveView('settings')} style={{borderColor: activeView==='settings'?'rgba(125,211,252,0.65)':''}}>{t('editor.settings_tab')}</button>
+        <button className="tab" onClick={()=> setActiveView('share')} style={{borderColor: activeView==='share'?'rgba(125,211,252,0.65)':''}}>{t('editor.share_tab')}</button>
       </div>
 
       {activeView==='editor' && (
@@ -585,22 +585,22 @@ function ExportPanel() {
   // We cannot read scale.e2ee_enabled here reliably; provide links regardless and hint
   return (
     <>
-      <h4 className="section-title" style={{marginTop:0}}>{t('export')||'Export'}</h4>
+      <h4 className="section-title" style={{marginTop:0}}>{t('export')}</h4>
       <div className="item" style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginBottom:8}}>
-        <div className="label">Consent column header</div>
+        <div className="label">{t('export.consent_header')}</div>
         <select className="select" value={consentHeader} onChange={e=> setConsentHeader(e.target.value as any)}>
-          <option value="key">key (consent.&lt;key&gt;)</option>
-          <option value="label_en">label_en</option>
-          <option value="label_zh">label_zh</option>
+          <option value="key">{t('export.consent_header_key')}</option>
+          <option value="label_en">{t('export.consent_header_label_en')}</option>
+          <option value="label_zh">{t('export.consent_header_label_zh')}</option>
         </select>
-        <span className="muted">CSV is UTF‑8 with BOM (Excel‑friendly)</span>
+        <span className="muted">{t('export.csv_bom_hint')}</span>
       </div>
       <div className="cta-row">
-        <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank" rel="noreferrer">{t('export_long_csv')||'Export long CSV'}</a>
-        <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank" rel="noreferrer">{t('export_wide_csv')||'Export wide CSV'}</a>
-        <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_score_csv')||'Export score CSV'}</a>
+        <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank" rel="noreferrer">{t('export_long_csv')}</a>
+        <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank" rel="noreferrer">{t('export_wide_csv')}</a>
+        <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_score_csv')}</a>
       </div>
-      <div className="muted" style={{marginTop:6}}>{t('e2ee.csv_disabled')||'CSV disabled (end‑to‑end encryption)'}</div>
+      <div className="muted" style={{marginTop:6}}>{t('e2ee.csv_disabled')}</div>
     </>
   )
 }
@@ -615,7 +615,7 @@ function DangerZone({ scaleId }: { scaleId: string }) {
       const input = window.prompt(promptMsg)
       if (!input || input.trim() !== scaleId) return
       await adminPurgeResponses(scaleId)
-      toast.success(t('delete_success')||'Deleted successfully')
+      toast.success(t('delete_success'))
     } catch (e:any) {
       toast.error(e.message||String(e))
     }
@@ -623,9 +623,9 @@ function DangerZone({ scaleId }: { scaleId: string }) {
   return (
     <div className="row" style={{marginTop:16}}>
       <div className="card span-12" style={{borderColor:'rgba(248,113,113,0.45)'}}>
-        <h4 className="section-title" style={{marginTop:0}}>{t('danger_zone')||'Danger Zone'}</h4>
-        <div className="muted" style={{marginBottom:8}}>{t('confirm_delete_responses')||'Delete ALL responses for this scale? This cannot be undone.'}</div>
-        <button className="btn" onClick={onPurge}>{t('delete_all_responses')||'Delete all responses'}</button>
+        <h4 className="section-title" style={{marginTop:0}}>{t('danger_zone')}</h4>
+        <div className="muted" style={{marginBottom:8}}>{t('confirm_delete_responses')}</div>
+        <button className="btn" onClick={onPurge}>{t('delete_all_responses')}</button>
       </div>
     </div>
   )
