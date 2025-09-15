@@ -138,6 +138,20 @@ const [aiTargets, setAiTargets] = useState('zh')
       const a=[...list]; a[idx] = { ...a[idx], required: v }; return a
     })
   }
+  function setOptMode(key: string, mode: 'off'|'optional'|'required') {
+    setConsentOptions(list => {
+      if (mode === 'off') {
+        return list.filter(o => o.key !== key)
+      }
+      const idx = list.findIndex(o=> o.key===key)
+      if (idx === -1) {
+        return [...list, { key, required: mode === 'required' }]
+      }
+      const next = [...list]
+      next[idx] = { ...next[idx], required: mode === 'required' }
+      return next
+    })
+  }
   async function saveConsentConfig() {
     try {
       const keys = consentOptions.map(o=> o.key.trim())
@@ -160,8 +174,9 @@ const [aiTargets, setAiTargets] = useState('zh')
     } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
 
-  function AdvancedConsent() {
-    const [open, setOpen] = useState(false)
+  const [advancedConsentOpen, setAdvancedConsentOpen] = useState(false)
+
+  function AdvancedConsent({ open }: { open: boolean }) {
     if (!scale) return null
     const moveRow = (idx: number, delta: number) => {
       if (!delta) return
@@ -178,7 +193,7 @@ const [aiTargets, setAiTargets] = useState('zh')
     const removeRow = (idx: number) => setConsentOptions(list => list.filter((_, i) => i !== idx))
     return (
       <>
-        <button className="btn btn-ghost" onClick={()=> setOpen(o=> !o)}>{open? t('consent.hide_advanced') : t('consent.show_advanced')}</button>
+        <button className="btn btn-ghost" onClick={()=> setAdvancedConsentOpen(o=> !o)}>{open? t('consent.hide_advanced') : t('consent.show_advanced')}</button>
         {open && (
           <div className="tile" style={{padding:16, marginTop:8}}>
             <div className="row">
@@ -551,18 +566,34 @@ const [aiTargets, setAiTargets] = useState('zh')
             </div>
             <div className="tile" style={{padding:10}}>
               <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')}</div>
-              <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                <input className="checkbox" type="checkbox" checked={!!getOpt('withdrawal')?.required} onChange={e=> setOptRequired('withdrawal', e.target.checked)} /> {t('survey.consent_opt.withdrawal')}
-              </label>
-              <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                <input className="checkbox" type="checkbox" checked={!!getOpt('data_use')?.required} onChange={e=> setOptRequired('data_use', e.target.checked)} /> {t('survey.consent_opt.data_use')}
-              </label>
-              <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                <input className="checkbox" type="checkbox" checked={!!getOpt('recording')?.required} onChange={e=> setOptRequired('recording', e.target.checked)} /> {t('survey.consent_opt.recording')}
-              </label>
+              {[{key:'withdrawal', label: t('survey.consent_opt.withdrawal')},
+                {key:'data_use', label: t('survey.consent_opt.data_use')},
+                {key:'recording', label: t('survey.consent_opt.recording')}
+              ].map(row => {
+                const current = getOpt(row.key)
+                const mode: 'off'|'optional'|'required' = !current ? 'off' : (current.required ? 'required' : 'optional')
+                const mkBtn = (value:'off'|'optional'|'required', text:string) => (
+                  <button
+                    key={value}
+                    className={`btn ${mode===value ? 'btn-primary' : 'btn-ghost'}`}
+                    type="button"
+                    onClick={()=> setOptMode(row.key, value)}
+                  >{text}</button>
+                )
+                return (
+                  <div key={row.key} className="item" style={{display:'grid', gap:6}}>
+                    <div className="label">{row.label}</div>
+                    <div className="cta-row" style={{gap:8}}>
+                      {mkBtn('off', t('collect_email_off') as string)}
+                      {mkBtn('optional', t('collect_email_optional') as string)}
+                      {mkBtn('required', t('collect_email_required') as string)}
+                    </div>
+                  </div>
+                )
+              })}
               <div className="cta-row" style={{marginTop:8}}>
                 <button className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
-                <AdvancedConsent/>
+                <AdvancedConsent open={advancedConsentOpen}/>
               </div>
             </div>
           </div>
