@@ -492,8 +492,8 @@ const [aiTargets, setAiTargets] = useState('zh')
     }
     return (
       <div className="card span-8">
-        <div className="item-editor-grid" style={{minHeight:200, placeItems:'center'}}>
-          <div className="muted">{t('editor.select_item_to_edit')}</div>
+        <div style={{minHeight:200, display:'grid', placeItems:'center', padding:24}}>
+          <div className="muted" style={{textAlign:'center'}}>{t('editor.select_item_to_edit')}</div>
         </div>
       </div>
     )
