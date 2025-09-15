@@ -95,13 +95,13 @@ type TenantAIConfig struct {
 
 // Consent configuration (per scale)
 type ConsentOptionConf struct {
-    Key       string            `json:"key"`
-    LabelI18n map[string]string `json:"label_i18n,omitempty"`
-    Required  bool              `json:"required"`
-    Group     int               `json:"group,omitempty"`
-    // Order defines a stable position for inline placement markers (e.g., [[CONSENT1]]).
-    // When set, deletions do not renumber existing options; missing numbers are allowed.
-    Order     int               `json:"order,omitempty"`
+	Key       string            `json:"key"`
+	LabelI18n map[string]string `json:"label_i18n,omitempty"`
+	Required  bool              `json:"required"`
+	Group     int               `json:"group,omitempty"`
+	// Order defines a stable position for inline placement markers (e.g., [[CONSENT1]]).
+	// When set, deletions do not renumber existing options; missing numbers are allowed.
+	Order int `json:"order,omitempty"`
 }
 type ConsentConfig struct {
 	Version           string              `json:"version"`
