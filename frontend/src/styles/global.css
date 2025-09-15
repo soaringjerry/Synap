@@ -473,3 +473,5 @@ a:hover, a:focus { text-decoration: none; }
   .item-editor-grid .span-2,
   .item-editor-grid .span-1 { grid-column: span 1; }
 }
+.item.stat-row { display:flex; justify-content:space-between; align-items:center; }
+.item.stat-row .label { margin: 0; }
