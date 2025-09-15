@@ -193,7 +193,7 @@ const [aiTargets, setAiTargets] = useState('zh')
     const removeRow = (idx: number) => setConsentOptions(list => list.filter((_, i) => i !== idx))
     return (
       <>
-        <button className="btn btn-ghost" onClick={()=> setAdvancedConsentOpen(o=> !o)}>{open? t('consent.hide_advanced') : t('consent.show_advanced')}</button>
+        <button type="button" className="btn btn-ghost" onClick={()=> setAdvancedConsentOpen(o=> !o)}>{open? t('consent.hide_advanced') : t('consent.show_advanced')}</button>
         {open && (
           <div className="tile" style={{padding:16, marginTop:8}}>
             <div className="row">
@@ -322,8 +322,8 @@ const [aiTargets, setAiTargets] = useState('zh')
           <div className="cta-row" style={{justifyContent:'space-between'}}>
           <div className="section-title">{t('your_items')}</div>
           <div className="cta-row">
-            <button className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); toast.success(t('save_success')) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('editor.save_order')}</button>
-            <button className="btn btn-primary" onClick={()=> { setNewOpen(true); setSelectedItemId(null) }}>{t('add_item')}</button>
+            <button type="button" className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); toast.success(t('save_success')) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('editor.save_order')}</button>
+            <button type="button" className="btn btn-primary" onClick={()=> { setNewOpen(true); setSelectedItemId(null) }}>{t('add_item')}</button>
           </div>
         </div>
         {items.length===0 && <div className="muted">{t('no_items')}</div>}
@@ -331,15 +331,15 @@ const [aiTargets, setAiTargets] = useState('zh')
           {items.map((it:any, idx:number)=> (
             <div key={it.id} className="tile" style={{padding:10, marginTop:8, border: selectedItemId===it.id? '1px solid var(--accent)' : '1px solid var(--border)', borderRadius:12}}>
               <div className="cta-row" style={{justifyContent:'space-between'}}>
-                <button className="btn btn-ghost" onClick={()=> setSelectedItemId(it.id)} style={{flex:1, justifyContent:'flex-start'}}>
+                <button type="button" className="btn btn-ghost" onClick={()=> setSelectedItemId(it.id)} style={{flex:1, justifyContent:'flex-start'}}>
                   <div style={{textAlign:'left'}}>
                     <div className="muted" style={{fontSize:12}}>{it.type||'likert'}</div>
                     <div style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{it.stem_i18n?.[i18n.language as 'en'|'zh'] || it.stem_i18n?.en || it.stem_i18n?.zh || it.id}</div>
                   </div>
                 </button>
                 <div className="cta-row">
-                  <button className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx<=0) return a; const t=a[idx]; a[idx]=a[idx-1]; a[idx-1]=t; return a })} disabled={idx===0}>↑</button>
-                  <button className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx>=arr.length-1) return a; const t=a[idx]; a[idx]=a[idx+1]; a[idx+1]=t; return a })} disabled={idx===items.length-1}>↓</button>
+                  <button type="button" className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx<=0) return a; const t=a[idx]; a[idx]=a[idx-1]; a[idx-1]=t; return a })} disabled={idx===0}>↑</button>
+                  <button type="button" className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx>=arr.length-1) return a; const t=a[idx]; a[idx]=a[idx+1]; a[idx+1]=t; return a })} disabled={idx===items.length-1}>↓</button>
                 </div>
               </div>
             </div>
@@ -415,8 +415,8 @@ const [aiTargets, setAiTargets] = useState('zh')
             <div className="item span-4"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> {t('required')}</label></div>
             <div className="item span-8"></div>
             <div className="item span-12" style={{display:'flex', justifyContent:'flex-end', gap:12}}>
-              <button className="btn btn-ghost" onClick={()=> removeItem(it.id)}>{t('delete')}</button>
-              <button className="btn btn-primary" onClick={()=> saveItem(it)}>{t('save')}</button>
+              <button type="button" className="btn btn-ghost" onClick={()=> removeItem(it.id)}>{t('delete')}</button>
+              <button type="button" className="btn btn-primary" onClick={()=> saveItem(it)}>{t('save')}</button>
             </div>
           </div>
         </div>
@@ -483,8 +483,8 @@ const [aiTargets, setAiTargets] = useState('zh')
               </>
             )}
             <div className="item span-12" style={{display:'flex', justifyContent:'flex-end', gap:12}}>
-              <button className="btn" onClick={()=> setNewOpen(false)}>{t('cancel')}</button>
-              <button className="btn btn-primary" onClick={addItem}>{t('create')}</button>
+              <button type="button" className="btn" onClick={()=> setNewOpen(false)}>{t('cancel')}</button>
+              <button type="button" className="btn btn-primary" onClick={addItem}>{t('create')}</button>
             </div>
           </div>
         </div>
@@ -536,7 +536,7 @@ const [aiTargets, setAiTargets] = useState('zh')
               <div className="muted" style={{marginTop:6}}>{t('likert.apply_hint')}</div>
             </div>
             <div className="cta-row" style={{marginTop:8}}>
-              <button className="btn btn-primary" onClick={saveScale}>{t('save')}</button>
+              <button type="button" className="btn btn-primary" onClick={saveScale}>{t('save')}</button>
             </div>
           </div>
           <div className="card span-6">
@@ -561,7 +561,7 @@ const [aiTargets, setAiTargets] = useState('zh')
             </label>
             <div className="item"><div className="label">{t('editor.items_per_page')}</div><input className="input" type="number" value={itemsPerPage} onChange={e=> setItemsPerPage(e.target.value)} /></div>
             <div className="cta-row" style={{marginTop:8}}>
-              <button className="btn btn-primary" onClick={saveScale}>{t('save')}</button>
+              <button type="button" className="btn btn-primary" onClick={saveScale}>{t('save')}</button>
             </div>
           </div>
         </div>
@@ -576,9 +576,9 @@ const [aiTargets, setAiTargets] = useState('zh')
             <div className="tile" style={{padding:10, marginBottom:8}}>
               <div className="muted" style={{marginBottom:6}}>{t('consent.presets_title')}</div>
               <div className="cta-row">
-                <button className="btn" onClick={()=> setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}])}>{t('consent.preset_min')}</button>
-                <button className="btn" onClick={()=> { setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}]); setSignatureRequired(true) }}>{t('consent.preset_rec')}</button>
-                <button className="btn" onClick={()=> { setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:true}]); setSignatureRequired(true) }}>{t('consent.preset_strict')}</button>
+                <button type="button" className="btn" onClick={()=> setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}])}>{t('consent.preset_min')}</button>
+                <button type="button" className="btn" onClick={()=> { setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}]); setSignatureRequired(true) }}>{t('consent.preset_rec')}</button>
+                <button type="button" className="btn" onClick={()=> { setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:true}]); setSignatureRequired(true) }}>{t('consent.preset_strict')}</button>
               </div>
             </div>
             <div className="tile" style={{padding:10}}>
@@ -589,11 +589,11 @@ const [aiTargets, setAiTargets] = useState('zh')
               ].map(row => {
                 const current = getOpt(row.key)
                 const mode: 'off'|'optional'|'required' = !current ? 'off' : (current.required ? 'required' : 'optional')
-                const mkBtn = (value:'off'|'optional'|'required', text:string) => (
+                    const mkBtn = (value:'off'|'optional'|'required', text:string) => (
                   <button
                     key={value}
-                    className={`btn ${mode===value ? 'btn-primary' : 'btn-ghost'}`}
                     type="button"
+                    className={`btn ${mode===value ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={()=> setOptMode(row.key, value)}
                   >{text}</button>
                 )
@@ -609,7 +609,7 @@ const [aiTargets, setAiTargets] = useState('zh')
                 )
               })}
               <div className="cta-row" style={{marginTop:8}}>
-                <button className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
+                <button type="button" className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
                 <AdvancedConsent open={advancedConsentOpen}/>
               </div>
             </div>
@@ -628,7 +628,7 @@ const [aiTargets, setAiTargets] = useState('zh')
               <button className="btn btn-ghost" type="button" onClick={()=> setAiTargets('en')}>ZH→EN</button>
               <button className="btn btn-ghost" type="button" onClick={()=> setAiTargets('zh,en,fr,de')}>+Common</button>
               <a className="btn btn-ghost" href="/admin/ai" target="_blank" rel="noreferrer">{t('ai.provider')}</a>
-              <button className="btn" disabled={!aiReady || aiWorking} onClick={async()=>{
+              <button type="button" className="btn" disabled={!aiReady || aiWorking} onClick={async()=>{
                 setAiMsg(''); setAiPreview(null); setAiWorking(true)
                 try {
                   const langs = aiTargets.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean)
@@ -684,7 +684,7 @@ const [aiTargets, setAiTargets] = useState('zh')
                   )
                 })}
                 <div className="cta-row" style={{marginTop:12}}>
-                  <button className="btn btn-primary" disabled={aiApplying} onClick={async()=>{
+                  <button type="button" className="btn btn-primary" disabled={aiApplying} onClick={async()=>{
                     setAiApplying(true)
                     try {
                       for (const it of items) {
@@ -709,7 +709,7 @@ const [aiTargets, setAiTargets] = useState('zh')
                       setAiApplying(false)
                     }
                   }}>{aiApplying ? t('working') : t('apply')}</button>
-                  <button className="btn btn-ghost" onClick={()=> setAiPreview(null)}>{t('cancel')}</button>
+                  <button type="button" className="btn btn-ghost" onClick={()=> setAiPreview(null)}>{t('cancel')}</button>
                 </div>
               </div>
             )}
@@ -731,7 +731,7 @@ const [aiTargets, setAiTargets] = useState('zh')
           <div className="card span-6">
             <h4 className="section-title" style={{marginTop:0}}>{t('share')}</h4>
             <div className="item"><div className="label">{t('label.url')}</div><input className="input" value={shareLink(id)} readOnly /></div>
-            <div className="cta-row"><button className="btn" onClick={()=>copyLink(id)}>{t('editor.copy_link')}</button></div>
+            <div className="cta-row"><button type="button" className="btn" onClick={()=>copyLink(id)}>{t('editor.copy_link')}</button></div>
           </div>
           <div className="card span-6">
             <h4 className="section-title" style={{marginTop:0}}>{t('analytics')}</h4>
@@ -1033,7 +1033,7 @@ function DangerZone({ scaleId }: { scaleId: string }) {
       <div className="card span-12" style={{borderColor:'rgba(248,113,113,0.45)'}}>
         <h4 className="section-title" style={{marginTop:0}}>{t('danger_zone')}</h4>
         <div className="muted" style={{marginBottom:8}}>{t('confirm_delete_responses')}</div>
-        <button className="btn" onClick={onPurge}>{t('delete_all_responses')}</button>
+        <button type="button" className="btn" onClick={onPurge}>{t('delete_all_responses')}</button>
       </div>
     </div>
   )
