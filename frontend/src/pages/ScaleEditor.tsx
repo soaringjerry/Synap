@@ -66,7 +66,7 @@ export function ScaleEditor() {
   // Share & analytics
   const [analytics, setAnalytics] = useState<any | null>(null)
   // AI translate
-  const [aiTargets, setAiTargets] = useState('zh')
+const [aiTargets, setAiTargets] = useState('zh')
   const [aiPreview, setAiPreview] = useState<any|null>(null)
   const [aiMsg, setAiMsg] = useState('')
   const [aiReady, setAiReady] = useState(false)
@@ -334,6 +334,28 @@ export function ScaleEditor() {
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
               <div className="item">
                 <div className="label">{t('label.likert_anchors_item')}</div>
+                <div className="muted" style={{marginBottom:6}}>{t('likert.presets.title') || 'Anchor presets'}</div>
+                <select className="select" value="" onChange={e=> {
+                  const key = e.target.value
+                  if (!key) {
+                    setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: { en: [], zh: [] }}:x))
+                    return
+                  }
+                  const preset = LIKERT_PRESETS[key]
+                  if (!preset) return
+                  setItems(arr=> arr.map(x=> x.id===it.id? {
+                    ...x,
+                    likert_labels_i18n: {
+                      en: [...preset.en],
+                      zh: [...preset.zh],
+                    },
+                  }:x))
+                }}>
+                  <option value="">{t('likert.presets.custom') || 'Custom'}</option>
+                  {Object.keys(LIKERT_PRESETS).map(key=> (
+                    <option key={key} value={key}>{t(`likert.presets.${key}`)}</option>
+                  ))}
+                </select>
                 <div className="row">
                   <div className="card span-6"><div className="label">{t('lang_en')}</div><input className="input" value={(it as any).likert_labels_i18n?.en?.join(', ')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_en')} /></div>
                   <div className="card span-6"><div className="label">{t('lang_zh')}</div><input className="input" value={(it as any).likert_labels_i18n?.zh?.join('，')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_zh')} /></div>
@@ -392,6 +414,26 @@ export function ScaleEditor() {
               </div>
               {newType==='likert' && (
                 <div className="row">
+                  <div className="card span-12">
+                    <div className="label">{t('likert.presets.title') || 'Anchor presets'}</div>
+                    <select className="select" value="" onChange={e=> {
+                      const key = e.target.value
+                      if (!key) {
+                        setLikertLabelsEn('')
+                        setLikertLabelsZh('')
+                        return
+                      }
+                      const preset = LIKERT_PRESETS[key]
+                      if (!preset) return
+                      setLikertLabelsEn(preset.en.join(', '))
+                      setLikertLabelsZh(preset.zh.join('，'))
+                    }}>
+                      <option value="">{t('likert.presets.custom') || 'Custom'}</option>
+                      {Object.keys(LIKERT_PRESETS).map(key=> (
+                        <option key={key} value={key}>{t(`likert.presets.${key}`)}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="card span-6"><div className="label">{t('label.likert_anchors_item')} (EN)</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder={t('hint.likert_anchors_en')}/></div>
                   <div className="card span-6"><div className="label">{t('label.likert_anchors_item')} (ZH)</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder={t('hint.likert_anchors_zh')}/></div>
                   <div className="card span-12"><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> {t('likert.show_numbers')}</label></div>
@@ -916,4 +958,12 @@ function DangerZone({ scaleId }: { scaleId: string }) {
       </div>
     </div>
   )
+}
+const LIKERT_PRESETS: Record<string, { en: string[]; zh: string[] }> = {
+  numeric: { en: ['1','2','3','4','5'], zh: ['1','2','3','4','5'] },
+  agree5: { en: ['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'], zh: ['非常不同意','不同意','中立','同意','非常同意'] },
+  freq5: { en: ['Never','Rarely','Sometimes','Often','Always'], zh: ['从不','很少','有时','经常','总是'] },
+  agree7: { en: ['Strongly disagree','Disagree','Somewhat disagree','Neutral','Somewhat agree','Agree','Strongly agree'], zh: ['非常不同意','不同意','有点不同意','中立','有点同意','同意','非常同意'] },
+  bipolar7: { en: ['Extremely negative','Very negative','Slightly negative','Neutral','Slightly positive','Very positive','Extremely positive'], zh: ['非常负向','很负向','略为负向','中立','略为正向','很正向','非常正向'] },
+  mono5: { en: ['Not at all','Slightly','Moderately','Very','Extremely'], zh: ['完全没有','稍微','中等','非常','极其'] },
 }
