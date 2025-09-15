@@ -737,9 +737,6 @@ const [aiTargets, setAiTargets] = useState('zh')
             )}
             {aiMsg && <div className="muted" style={{marginTop:6}}>{aiMsg}</div>}
           </div>
-          <div className="card span-6">
-            <ExportPanel scale={scale} items={items}/>
-          </div>
         </div>
         <DangerZone scaleId={scale.id} />
       </>
@@ -786,6 +783,11 @@ const [aiTargets, setAiTargets] = useState('zh')
                 )}
               </div>
             )}
+          </div>
+        </div>
+        <div className="row">
+          <div className="card span-12">
+            <ExportPanel scale={scale} items={items}/>
           </div>
         </div>
       </>
