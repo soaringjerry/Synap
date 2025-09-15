@@ -603,7 +603,7 @@ export function ScaleEditor() {
     )
   }
 
-  function ShareView() {
+  function ShareView({ scale }: { scale: any }) {
     return (
       <>
         <div className="row">
@@ -618,22 +618,28 @@ export function ScaleEditor() {
             {analytics && (
               <div>
                 <div className="item"><div className="label">{t('label.n')}</div><div>{analytics.total_responses||0}</div></div>
-                {analytics.items && analytics.items.length>0 && (
+                {scale?.e2ee_enabled ? (
                   <div className="tile" style={{padding:8, marginTop:8}}>
-                    <div className="muted" style={{marginBottom:6}}>{t('editor.item_distributions')}</div>
-                    <div style={{display:'grid', gridTemplateColumns: `240px repeat(${Math.min(10, (analytics.items?.[0]?.histogram?.length||5))}, 1fr)`, gap:6, alignItems:'center'}}>
-                      <div></div>
-                      {Array.from({length: Math.min(10, (analytics.items?.[0]?.histogram?.length||5))}, (_,i)=> i+1).map(i=> <div key={i} className="muted" style={{textAlign:'center'}}>{i}</div>)}
-                      {analytics.items.map((it:any)=> (
-                        <React.Fragment key={it.id}>
-                          <div className="muted" style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis'}}>{it.stem_i18n?.en || it.id}</div>
-                          {it.histogram.map((v:number,ci:number)=> (
-                            <div key={`${it.id}-${ci}`} title={`${v}`} style={{height:18, borderRadius:3, background:`hsla(${200+(v/Math.max(1,it.total))*80},90%,55%,${0.15+0.85*(v/Math.max(1,it.total))})`}} />
-                          ))}
-                        </React.Fragment>
-                      ))}
-                    </div>
+                    <div className="muted">{t('e2ee.analytics_notice')}</div>
                   </div>
+                ) : (
+                  analytics.items && analytics.items.length>0 && (
+                    <div className="tile" style={{padding:8, marginTop:8}}>
+                      <div className="muted" style={{marginBottom:6}}>{t('editor.item_distributions')}</div>
+                      <div style={{display:'grid', gridTemplateColumns: `240px repeat(${Math.min(10, (analytics.items?.[0]?.histogram?.length||5))}, 1fr)`, gap:6, alignItems:'center'}}>
+                        <div></div>
+                        {Array.from({length: Math.min(10, (analytics.items?.[0]?.histogram?.length||5))}, (_,i)=> i+1).map(i=> <div key={i} className="muted" style={{textAlign:'center'}}>{i}</div>)}
+                        {analytics.items.map((it:any)=> (
+                          <React.Fragment key={it.id}>
+                            <div className="muted" style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis'}}>{it.stem_i18n?.en || it.id}</div>
+                            {it.histogram.map((v:number,ci:number)=> (
+                              <div key={`${it.id}-${ci}`} title={`${v}`} style={{height:18, borderRadius:3, background:`hsla(${200+(v/Math.max(1,it.total))*80},90%,55%,${0.15+0.85*(v/Math.max(1,it.total))})`}} />
+                            ))}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             )}
@@ -672,7 +678,7 @@ export function ScaleEditor() {
       )}
 
       {activeView==='share' && (
-        <ShareView/>
+        <ShareView scale={scale}/>
       )}
 
       {msg && <div className="muted" style={{marginTop:12}}>{msg}</div>}

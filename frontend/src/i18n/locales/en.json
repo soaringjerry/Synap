@@ -263,7 +263,7 @@
       "pub_placeholder": "Paste base64 (x25519 raw) or PEM SPKI (RSA)",
       "key_loss_warning": "Warning: Private key never leaves your device. Losing it means your data is permanently unrecoverable.",
       "csv_notice": "Note: Server-side CSV exports (long/wide/score) are available only when end‑to‑end encryption is OFF. When it is ON, plaintext stays local; convert JSONL to CSV using your analysis tools.",
-      "analytics_notice": "When end‑to‑end encryption is ON, advanced analytics (e.g., histograms, Cronbach's alpha) are unavailable on the server; only basic counts may be shown. Use local plaintext export for analysis.",
+      "analytics_notice": "When end‑to‑end encryption is ON, advanced analytics (e.g., histograms, Cronbach's alpha) are unavailable on the server. Use the local plaintext export in the 'Settings' tab for analysis.",
       "csv_disabled": "CSV disabled (end‑to‑end encryption)",
       "csv_disabled_title": "CSV exports are disabled when end‑to‑end encryption is ON",
       "no_keys": "No project keys registered for end‑to‑end encryption",
