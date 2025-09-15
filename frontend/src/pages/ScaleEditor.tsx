@@ -571,11 +571,15 @@ const [aiTargets, setAiTargets] = useState('zh')
         <div className="row">
           <div className="card span-6">
             <h4 className="section-title" style={{marginTop:0}}>{t('ai.title')}</h4>
-            {!aiReady && <div className="muted">{t('ai.not_ready')}</div>}
+            <div className="muted" style={{marginBottom:8}}>{t('ai.steps')}</div>
             <div className="item"><div className="label">{t('ai.targets')}</div>
               <input className="input" value={aiTargets} onChange={e=> setAiTargets(e.target.value)} placeholder={'zh, en'} />
             </div>
-            <div className="cta-row">
+            <div className="cta-row" style={{flexWrap:'wrap', gap:8}}>
+              <button className="btn btn-ghost" type="button" onClick={()=> setAiTargets('zh')}>EN→ZH</button>
+              <button className="btn btn-ghost" type="button" onClick={()=> setAiTargets('en')}>ZH→EN</button>
+              <button className="btn btn-ghost" type="button" onClick={()=> setAiTargets('zh,en,fr,de')}>+Common</button>
+              <a className="btn btn-ghost" href="/admin/ai" target="_blank" rel="noreferrer">{t('ai.provider')}</a>
               <button className="btn" disabled={!aiReady || aiWorking} onClick={async()=>{
                 setAiMsg(''); setAiPreview(null); setAiWorking(true)
                 try {
@@ -588,6 +592,11 @@ const [aiTargets, setAiTargets] = useState('zh')
                 } catch(e:any){ setAiMsg(e.message||String(e)); toast.error(e.message||String(e)) } finally { setAiWorking(false) }
               }}>{aiWorking? t('working') : t('preview')}</button>
             </div>
+            {!aiReady && (
+              <div className="tile" style={{padding:10, border:'1px solid rgba(255,191,71,0.45)', background:'rgba(255,240,200,0.15)', color:'var(--muted)', marginTop:8}}>
+                {t('ai.not_ready')}
+              </div>
+            )}
             {aiPreview && (
               <div className="tile" style={{padding:10, marginTop:8}}>
                 <div className="muted" style={{marginBottom:8}}>{t('ai.review')}</div>
