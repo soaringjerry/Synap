@@ -570,9 +570,10 @@ const [aiTargets, setAiTargets] = useState('zh')
                 <option value="required">{t('collect_email_required')}</option>
               </select>
             </div>
-            <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-              <input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> setScale((s:any)=> ({...s, e2ee_enabled: e.target.checked }))} /> {t('e2ee.title')}
+            <label className="item" style={{display:'flex',alignItems:'center',gap:8}} title={t('e2ee.locked_after_creation')}>
+              <input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} disabled /> {t('e2ee.title')}
             </label>
+            <div className="muted" style={{marginTop:-4, marginBottom:8}}>{t('e2ee.locked_after_creation')}</div>
             <div className="item"><div className="label">{t('region')}</div>
               <select className="select" value={scale.region||'auto'} onChange={e=> setScale((s:any)=> ({...s, region: e.target.value }))}>
                 {['auto','gdpr','pipl','pdpa','ccpa'].map(r=> <option key={r} value={r}>{r}</option>)}
