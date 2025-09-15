@@ -155,6 +155,10 @@ a:hover, a:focus { text-decoration: none; }
 
 .hero { margin: var(--space-6) 0 var(--space-6); }
 
+.tabs-nav { display:flex; gap:8px; align-items:center; overflow:auto; padding:8px; border:1px solid var(--border); border-radius: 12px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); box-shadow: 0 6px 18px rgba(0,0,0,0.22); }
+.tabs-nav .tab { display:inline-flex; align-items:center; gap:6px; height:32px; padding: 0 12px; border-radius: 999px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: var(--text); cursor: pointer; }
+.tabs-nav .tab:hover { background: rgba(255,255,255,0.08); }
+
 .section-title { margin: 0 0 10px; font-family: 'Space Grotesk', Inter, sans-serif; font-weight: 700; letter-spacing: .3px; }
 .value-bullets { display: grid; grid-template-columns: repeat(1, 1fr); gap: 12px; }
 @media (min-width: 720px) { .value-bullets { grid-template-columns: repeat(3, 1fr); } }

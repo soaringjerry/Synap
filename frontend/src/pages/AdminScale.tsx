@@ -324,9 +324,17 @@ export function AdminScale() {
 
   return (
     <div className="container">
+      {/* Quick nav tabs (sticky) */}
+      <div className="tabs-nav" style={{position:'sticky', top:72, zIndex:40, marginBottom:12}}>
+        <button className="tab" onClick={()=> document.getElementById('sec-basics')?.scrollIntoView({behavior:'smooth', block:'start'})}>{t('manage_scale')||'Basics'}</button>
+        <button className="tab" onClick={()=> document.getElementById('sec-items')?.scrollIntoView({behavior:'smooth', block:'start'})}>{t('your_items')||'Items'}</button>
+        <button className="tab" onClick={()=> document.getElementById('sec-security')?.scrollIntoView({behavior:'smooth', block:'start'})}>{t('e2ee.title')||'Security'}</button>
+        <button className="tab" onClick={()=> document.getElementById('sec-analytics')?.scrollIntoView({behavior:'smooth', block:'start'})}>{t('analytics')||'Analytics'}</button>
+        <button className="tab" onClick={()=> document.getElementById('sec-overview')?.scrollIntoView({behavior:'smooth', block:'start'})}>{t('participant_link')||'Share'}</button>
+      </div>
       <div className="row">
         <section className="card span-12">
-          <h3 style={{marginTop:0}}>{t('participant_link')||'Participant Link'}</h3>
+          <h3 id="sec-overview" style={{marginTop:0}}>{t('participant_link')||'Participant Link'}</h3>
           <div className="item" style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
             <div className="label">{t('language')}</div>
             <select className="select" style={{maxWidth:200}} value={shareLang} onChange={e=> setShareLang((e.target.value as any))}>
@@ -425,7 +433,7 @@ export function AdminScale() {
       </div>
       <div className="row">
         <section className="card span-12">
-          <h3 style={{marginTop:0}}>{t('e2ee.title')||'End‑to‑end Encryption'}</h3>
+          <h3 id="sec-security" style={{marginTop:0}}>{t('e2ee.title')||'End‑to‑end Encryption'}</h3>
           <div className="row">
             <div className="card span-6">
               <div className="item"><div className="label">End‑to‑end Encryption</div>
@@ -760,7 +768,7 @@ export function AdminScale() {
       </div>
       <div className="row">
         <section className="card span-12">
-          <h3 style={{marginTop:0}}>{t('manage_scale')}: <b>{id}</b></h3>
+          <h3 id="sec-basics" style={{marginTop:0}}>{t('manage_scale')}: <b>{id}</b></h3>
           <div className="row">
             <div className="card span-6">
               <div className="item"><div className="label">{t('name_en')}</div>
@@ -943,7 +951,7 @@ export function AdminScale() {
 
       <div className="row" style={{marginTop:16}}>
         <section className="card span-12">
-          <h3 style={{marginTop:0}}>{t('analytics')||'Analytics'}</h3>
+          <h3 id="sec-analytics" style={{marginTop:0}}>{t('analytics')||'Analytics'}</h3>
           {scale.e2ee_enabled && (
             <div className="tile" style={{padding:10, marginBottom:10, border:'1px solid #b36b00', background:'#fffaf0', color:'#b36b00'}}>
               {t('e2ee.analytics_notice')||'When E2EE is ON, advanced analytics (e.g., histograms, alpha) are unavailable on the server; only basic counts may be shown. Use local plaintext export for analysis.'}
@@ -994,7 +1002,7 @@ export function AdminScale() {
 
       <div className="row" style={{marginTop:16}}>
         <section className="card span-12">
-          <h3 style={{marginTop:0}}>{t('your_items')||'Items'}</h3>
+          <h3 id="sec-items" style={{marginTop:0}}>{t('your_items')||'Items'}</h3>
           {items.length===0 && <div className="muted">{t('no_items')||'No items yet.'}</div>}
           <div className="cta-row" style={{marginBottom:8}}>
             <button className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); setMsg(t('saved') as string); toast.success(t('save_success')||t('saved')||'Saved') } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('save')||'Save'} order</button>
