@@ -910,18 +910,18 @@ function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
   return (
     <>
       <h4 className="section-title" style={{marginTop:0}}>{t('export')}</h4>
-      <div className="muted" style={{marginBottom:8}}>{t('export.csv_bom_hint')}</div>
+      <div className="muted" style={{marginBottom:8}}>{t('export_panel.csv_bom_hint')}</div>
       <button className="btn btn-ghost" type="button" onClick={()=> setAdvancedOpen(o=> !o)}>{advancedOpen ? t('hide_advanced') : t('show_advanced')}</button>
       {advancedOpen && (
         <div className="tile" style={{padding:12, marginTop:8}}>
           <div className="item" style={{display:'grid', gap:6}}>
-            <div className="label">{t('export.consent_header')}</div>
+            <div className="label">{t('export_panel.consent_header')}</div>
             <select className="select" value={consentHeader} onChange={e=> setConsentHeader(e.target.value as any)}>
-              <option value="key">{t('export.consent_header_key')}</option>
-              <option value="label_en">{t('export.consent_header_label_en')}</option>
-              <option value="label_zh">{t('export.consent_header_label_zh')}</option>
+              <option value="key">{t('export_panel.consent_header_key')}</option>
+              <option value="label_en">{t('export_panel.consent_header_label_en')}</option>
+              <option value="label_zh">{t('export_panel.consent_header_label_zh')}</option>
             </select>
-            <div className="muted">{t('export.consent_header_help')}</div>
+            <div className="muted">{t('export_panel.consent_header_help')}</div>
           </div>
         </div>
       )}

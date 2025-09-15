@@ -178,6 +178,8 @@
     "likert": {
       "show_numbers": "Show numbers with labels",
       "presets": {
+        "title": "Anchor presets",
+        "custom": "Custom",
         "numeric": "Numeric only",
         "agree5": "Agree (5‑point)",
         "freq5": "Frequency (5‑point)",
@@ -191,6 +193,7 @@
     "admin_console": "Admin Console",
     "admin_console_sub": "Publish surveys · Manage items · Export data",
     "ai": {
+      "title": "AI Translation",
       "steps": "Steps: 1) Configure provider, 2) Pick target languages, 3) Preview, 4) Apply.",
       "targets": "Target languages (comma)",
       "provider": "Provider Settings",
@@ -333,13 +336,13 @@
       "learn": "Learn more"
     },
 
-    "export": {
+    "export_panel": {
       "consent_header": "CSV consent column header format",
       "consent_header_key": "Key (consent.data_use)",
       "consent_header_label_en": "English label",
       "consent_header_label_zh": "Chinese label",
       "consent_header_help": "Choose how consent columns are named in exported CSV files.",
-      "csv_bom_hint": "CSV is UTF‑8 with BOM (Excel‑friendly)"
+      "csv_bom_hint": "CSV is UTF‑8 with BOM (Excel-friendly)"
     },
 
     "home": {

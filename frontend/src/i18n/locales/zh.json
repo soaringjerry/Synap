@@ -178,6 +178,8 @@
     "likert": {
       "show_numbers": "显示数字与标签",
       "presets": {
+        "title": "锚点预设",
+        "custom": "自定义",
         "numeric": "仅数字",
         "agree5": "同意（5 点）",
         "freq5": "频率（5 点）",
@@ -221,6 +223,7 @@
     "admin_console": "管理控制台",
     "admin_console_sub": "发布问卷 · 管理题目 · 导出数据",
     "ai": {
+      "title": "AI 翻译",
       "steps": "使用步骤：1）配置供应商，2）选择目标语言，3）预览，4）应用",
       "targets": "目标语言（逗号分隔）",
       "provider": "供应商设置",
@@ -332,7 +335,7 @@
       "learn": "了解更多"
     },
 
-    "export": {
+    "export_panel": {
       "consent_header": "CSV 同意列标题格式",
       "consent_header_key": "键名（consent.data_use）",
       "consent_header_label_en": "英文标签",
