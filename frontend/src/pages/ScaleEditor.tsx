@@ -259,11 +259,12 @@ const SettingsView = React.memo(function SettingsView({
                 <textarea className="input" rows={4} value={localConsentZh} onChange={e=> setLocalConsentZh(e.target.value)} placeholder={t('consent_hint') as string} />
               </div>
             </div>
+            <div className="muted" style={{marginTop:8}}>{t('consent.inline_hint')}</div>
+            <div className="muted" style={{marginBottom:12}}>{t('consent.group_hint')}</div>
             <div className="muted" style={{marginBottom:12}}>{t('consent_md_hint')}</div>
             <table className="consent-table">
               <thead>
                 <tr>
-                  <th>{t('consent.advanced.key')}</th>
                   <th>{t('consent.advanced.label_en')}</th>
                   <th>{t('consent.advanced.label_zh')}</th>
                   <th>{t('consent.advanced.required')}</th>
@@ -273,12 +274,11 @@ const SettingsView = React.memo(function SettingsView({
               <tbody>
                 {localConsentOptions.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="muted">{t('consent.advanced.empty')}</td>
+                    <td colSpan={4} className="muted">{t('consent.advanced.empty')}</td>
                   </tr>
                 )}
                 {localConsentOptions.map((o, idx) => (
-                  <tr key={idx}>
-                    <td data-label={t('consent.advanced.key')}><input className="input" value={o.key} onChange={e=> setLocalConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></td>
+                  <tr key={o.key || idx}>
                     <td data-label={t('consent.advanced.label_en')}><input className="input" value={o.en||''} onChange={e=> setLocalConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder={t('optional')} /></td>
                     <td data-label={t('consent.advanced.label_zh')}><input className="input" value={o.zh||''} onChange={e=> setLocalConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder={t('optional')} /></td>
                     <td data-label={t('consent.advanced.required')}><label style={{display:'inline-flex',alignItems:'center',gap:6}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setLocalConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} />{t('required')}</label></td>
@@ -294,7 +294,7 @@ const SettingsView = React.memo(function SettingsView({
               </tbody>
             </table>
             <div className="cta-row" style={{marginTop:12, justifyContent:'flex-end'}}>
-              <button className="btn" type="button" onClick={()=> setLocalConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>{t('consent.advanced.add_option')}</button>
+              <button className="btn" type="button" onClick={()=> setLocalConsentOptions(list=> [...list, { key:`custom_${Date.now()}_${Math.floor(Math.random()*1_000)}`, required:false }])}>{t('consent.advanced.add_option')}</button>
               <button className="btn btn-primary" type="button" onClick={saveConsentConfig}>{t('save')}</button>
             </div>
           </div>
