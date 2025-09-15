@@ -148,13 +148,21 @@ const [aiTargets, setAiTargets] = useState('zh')
         return
       }
       const options = consentOptions.map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
-      await adminUpdateScale(id, { consent_config: { version: consentVersion||'v1', options, signature_required: !!signatureRequired } } as any)
+      const consentText = {
+        en: scale?.consent_i18n?.en?.trim() ? scale.consent_i18n.en : undefined,
+        zh: scale?.consent_i18n?.zh?.trim() ? scale.consent_i18n.zh : undefined,
+      }
+      await adminUpdateScale(id, {
+        consent_i18n: consentText,
+        consent_config: { version: consentVersion||'v1', options, signature_required: !!signatureRequired }
+      } as any)
       toast.success(t('save_success'))
     } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
 
   function AdvancedConsent() {
     const [open, setOpen] = useState(false)
+    if (!scale) return null
     const moveRow = (idx: number, delta: number) => {
       if (!delta) return
       setConsentOptions(list => {
@@ -173,6 +181,17 @@ const [aiTargets, setAiTargets] = useState('zh')
         <button className="btn btn-ghost" onClick={()=> setOpen(o=> !o)}>{open? t('consent.hide_advanced') : t('consent.show_advanced')}</button>
         {open && (
           <div className="tile" style={{padding:16, marginTop:8}}>
+            <div className="row">
+              <div className="card span-6">
+                <div className="label">{t('consent_en')}</div>
+                <textarea className="input" rows={4} value={scale.consent_i18n?.en||''} onChange={e=> setScale((prev:any)=> ({...prev, consent_i18n: {...(prev?.consent_i18n||{}), en: e.target.value }}))} placeholder={t('consent_hint') as string} />
+              </div>
+              <div className="card span-6">
+                <div className="label">{t('consent_zh')}</div>
+                <textarea className="input" rows={4} value={scale.consent_i18n?.zh||''} onChange={e=> setScale((prev:any)=> ({...prev, consent_i18n: {...(prev?.consent_i18n||{}), zh: e.target.value }}))} placeholder={t('consent_hint') as string} />
+              </div>
+            </div>
+            <div className="muted" style={{marginBottom:12}}>{t('consent_md_hint')}</div>
             <table className="consent-table">
               <thead>
                 <tr>
