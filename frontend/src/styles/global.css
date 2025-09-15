@@ -453,10 +453,7 @@ a:hover, a:focus { text-decoration: none; }
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--space-4);
 }
-.item-editor-grid .item {
-  display: grid;
-  gap: var(--space-2);
-}
+.item-editor-grid .item { gap: var(--space-2); }
 .item-editor-grid .span-12 { grid-column: span 12; }
 .item-editor-grid .span-8 { grid-column: span 8; }
 .item-editor-grid .span-6 { grid-column: span 6; }
