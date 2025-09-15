@@ -1800,6 +1800,16 @@ func (rt *Router) parseConsentCfg(m map[string]any) *ConsentConfig {
 						}
 					}
 				}
+				if ov, ok3 := om["order"]; ok3 {
+					switch o := ov.(type) {
+					case float64:
+						opt.Order = int(o)
+					case string:
+						if n, err := strconv.Atoi(o); err == nil {
+							opt.Order = n
+						}
+					}
+				}
 				if opt.Key != "" {
 					opts = append(opts, opt)
 				}

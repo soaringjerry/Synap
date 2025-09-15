@@ -388,7 +388,9 @@ export function Survey() {
           const toks = tokenizeConsentTemplate(consentCustom)
           const hasInlineOptions = toks.some(tok => tok.t === 'interactive' || tok.t === 'options')
           const hasInlineSig = toks.some(tok => tok.t === 'interactive' || tok.t === 'signature')
-          const renderOptions = (_keys?: string[], group?: number) => {
+          // Simplified placement: [[CONSENT1]] / [[CONSENT2]] now mean the 1st / 2nd option by order.
+          // We ignore per-option "group" here to reduce complexity.
+          const renderOptions = (_keys?: string[], pos?: number) => {
             const base = (((consentConfig?.options||[]) as any[])?.length? (consentConfig?.options as any[]) : [
               { key:'withdrawal', required:true },
               { key:'data_use', required:true },
@@ -396,7 +398,10 @@ export function Survey() {
             ])
             const seen = new Set<string>()
             let list = base.filter((o:any)=> { const k=String(o?.key||'').trim(); if (!k||!/^[a-z0-9_-]+$/.test(k)||seen.has(k)) return false; seen.add(k); return true })
-            if (group && group>0) list = list.filter((o:any)=> (o.group||1) === group)
+            if (pos && pos>0) {
+              const one = list[pos-1]
+              list = one ? [one] : []
+            }
             return list.map((opt:any)=> (
               <div key={opt.key} className="tile" style={{padding:8, marginTop:8}}>
                 <div style={{display:'flex',alignItems:'center',gap:12, flexWrap:'wrap'}}>

@@ -542,7 +542,7 @@ export function AdminScale() {
                       <div>{t('consent.advanced.label_en')||'Label (EN)'}</div>
                       <div>{t('consent.advanced.label_zh')||'Label (ZH)'}</div>
                       <div>{t('consent.advanced.required')||'Required'}</div>
-                      <div>{t('label.group')||'Group'}</div>
+                      <div>{t('label.position')||'Position'}</div>
                       <div>{t('delete')||'Delete'}</div>
                     </div>
                     {(consentOptions||[]).map((o, idx)=>{
@@ -563,7 +563,7 @@ export function AdminScale() {
                             </label>
                           </div>
                           <div>
-                            <input className="input" type="number" min={1} max={9} value={o.group||1} onChange={e=> { const v = Math.max(1, Math.min(9, parseInt(e.target.value||'1'))); setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, group: v}:x)); autosave() }} />
+                            <input className="input" type="number" min={1} max={999} value={(o as any).order || (idx+1)} onChange={e=> { const v = Math.max(1, Math.min(999, parseInt(e.target.value||String(idx+1)))); setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, order: v}:x)); autosave() }} />
                           </div>
                           <div>
                             <button className="btn btn-ghost" onClick={()=> { const next = consentOptions.filter((_,i)=> i!==idx); setConsentOptions(next); saveConsentWith(next) }}>{t('delete')||'Delete'}</button>
