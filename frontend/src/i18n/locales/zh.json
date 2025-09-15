@@ -152,7 +152,9 @@
       "options_en": "选项（英文）",
       "options_zh": "选项（中文）",
       "likert_anchors_item": "本题 Likert 锚点",
-      "group": "分组"
+      "group": "分组",
+      "placeholder_en": "占位文案（英文）",
+      "placeholder_zh": "占位文案（中文）"
     },
     "action": {
       "apply": "应用",
@@ -161,7 +163,11 @@
     },
     "hint": {
       "options_lang_specific": "选项按语言填写，每行一个。",
-      "likert_custom_labels": "自定义标签（逗号分隔；数量应与 Points 一致）"
+      "likert_custom_labels": "自定义标签（逗号分隔；数量应与 Points 一致）",
+      "likert_anchors_en": "Strongly disagree, Disagree, …",
+      "likert_anchors_zh": "非常不同意，…",
+      "options_en_placeholder": "Option A\nOption B",
+      "options_zh_placeholder": "选项一\n选项二"
     },
     "likert": {
       "show_numbers": "显示数字与标签",
@@ -215,11 +221,13 @@
       "not_ready": "未配置 API Key 或未开启外部 AI。请在“供应商设置”中配置并开启。"
     },
     "preview": "预览",
+    "working": "处理中…",
     "collect_email": "收集邮箱",
     "collect_email_off": "关闭",
     "collect_email_optional": "可选",
     "collect_email_required": "必填",
     "share": "分享",
+    "export": "导出",
     "copy": "复制",
     "copied": "已复制",
     "open": "打开",
@@ -281,6 +289,21 @@
       "import_priv_desc": "选择之前下载的 JSON 密钥文件。它将仅保存在本浏览器（绝不上传）。使用你的口令解锁。",
       "import_button": "导入密钥文件",
       "import_ok": "已导入并保存在本地（未上传）。"
+    },
+    "editor": {
+      "flow_hint": "全新简化编辑器：左侧编辑题目，右侧编辑详情。",
+      "items_tab": "题目编辑器",
+      "settings_tab": "设置",
+      "share_tab": "分享与结果",
+      "save_order": "保存顺序",
+      "edit_item": "编辑题目",
+      "select_item_to_edit": "在左侧选择一个题目进行编辑，或点击“添加题目”。",
+      "basic_info": "基础信息",
+      "security": "安全",
+      "items_per_page": "每页条目数",
+      "copy_link": "复制链接",
+      "no_data": "暂无数据",
+      "item_distributions": "题目分布"
     },
 
     "cookie": {

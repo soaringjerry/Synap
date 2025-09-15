@@ -152,7 +152,9 @@
       "options_en": "Options (EN)",
       "options_zh": "Options (ZH)",
       "likert_anchors_item": "Likert Anchors (this item)",
-      "group": "Group"
+      "group": "Group",
+      "placeholder_en": "Placeholder (EN)",
+      "placeholder_zh": "Placeholder (ZH)"
     },
     "action": {
       "apply": "Apply",
@@ -161,7 +163,11 @@
     },
     "hint": {
       "options_lang_specific": "Options are language-specific; one per line.",
-      "likert_custom_labels": "Custom labels (comma separated; length should equal Points)"
+      "likert_custom_labels": "Custom labels (comma separated; length should equal Points)",
+      "likert_anchors_en": "Strongly disagree, Disagree, …",
+      "likert_anchors_zh": "非常不同意，…",
+      "options_en_placeholder": "Option A\nOption B",
+      "options_zh_placeholder": "选项一\n选项二"
     },
     "likert": {
       "show_numbers": "Show numbers with labels",
@@ -186,11 +192,13 @@
       "not_ready": "Provider not configured or external AI disabled. Set API key and enable external AI in Provider Settings."
     },
     "preview": "Preview",
+    "working": "Working…",
     "collect_email": "Collect email",
     "collect_email_off": "Off",
     "collect_email_optional": "Optional",
     "collect_email_required": "Required",
     "share": "Share",
+    "export": "Export",
     "copy": "Copy",
     
     "open": "Open",
@@ -252,6 +260,21 @@
       "import_priv_desc": "Select the previously downloaded JSON key file. It will be stored in this browser only (never uploaded). Use your passphrase to unlock.",
       "import_button": "Import key file",
       "import_ok": "Key imported and stored locally. Not uploaded."
+    },
+    "editor": {
+      "flow_hint": "New streamlined editor: edit items on the left, details on the right.",
+      "items_tab": "Items Editor",
+      "settings_tab": "Settings",
+      "share_tab": "Share & Results",
+      "save_order": "Save order",
+      "edit_item": "Edit item",
+      "select_item_to_edit": "Select an item from the left to edit, or click \"Add item\".",
+      "basic_info": "Basic Info",
+      "security": "Security",
+      "items_per_page": "Items per page",
+      "copy_link": "Copy link",
+      "no_data": "No data yet.",
+      "item_distributions": "Item distributions"
     },
     "consent": {
       "presets_title": "Pick a preset (you can still tweak below):",

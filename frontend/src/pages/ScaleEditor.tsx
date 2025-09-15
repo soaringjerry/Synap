@@ -13,6 +13,7 @@ import {
   adminReorderItems,
   adminGetAIConfig,
   adminAITranslatePreview,
+  adminPurgeResponses,
 } from '../api/client'
 
 type View = 'editor' | 'settings' | 'share'
@@ -135,10 +136,47 @@ export function ScaleEditor() {
   }
   async function saveConsentConfig() {
     try {
+      const keys = consentOptions.map(o=> o.key.trim())
+      const hasEmpty = keys.some(k=> !k)
+      const dup = keys.find((k, i)=> k && keys.indexOf(k) !== i)
+      if (hasEmpty || dup) {
+        toast.error(t('consent.advanced.save_first_error')||'Please fix highlighted fields')
+        return
+      }
       const options = consentOptions.map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
       await adminUpdateScale(id, { consent_config: { version: consentVersion||'v1', options, signature_required: !!signatureRequired } } as any)
       toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
+  }
+
+  function AdvancedConsent() {
+    const [open, setOpen] = useState(false)
+    return (
+      <>
+        <button className="btn btn-ghost" onClick={()=> setOpen(o=> !o)}>{open? (t('consent.hide_advanced')||'Hide Advanced') : (t('consent.show_advanced')||'Show Advanced')}</button>
+        {open && (
+          <div className="tile" style={{padding:10, marginTop:8}}>
+            {(consentOptions||[]).map((o, idx)=> (
+              <div key={idx} className="row" style={{marginTop:8}}>
+                <div className="card span-3"><div className="label">{t('consent.advanced.key')||'Key'}</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
+                <div className="card span-3"><div className="label">{t('consent.advanced.required')||'Required'}</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> {t('required')}</label></div>
+                <div className="card span-3"><div className="label">{t('consent.advanced.label_en')||'Label (EN)'}</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder="Optional"/></div>
+                <div className="card span-3"><div className="label">{t('consent.advanced.label_zh')||'Label (ZH)'}</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder="可选"/></div>
+                <div className="cta-row" style={{marginTop:6}}>
+                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>{t('delete')||'Delete'}</button>
+                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const j=Math.max(0, idx-1); const t=a[idx]; a[idx]=a[j]; a[j]=t; return a })}>↑</button>
+                  <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const j=Math.min(list.length-1, idx+1); const t=a[idx]; a[idx]=a[j]; a[j]=t; return a })}>↓</button>
+                </div>
+              </div>
+            ))}
+            <div className="cta-row" style={{marginTop:8}}>
+              <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>{t('consent.advanced.add_option')||'Add option'}</button>
+              <button className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
+            </div>
+          </div>
+        )}
+      </>
+    )
   }
 
   // Items CRUD
@@ -210,10 +248,10 @@ export function ScaleEditor() {
   function ItemsList() {
     return (
       <div className="card span-4">
-        <div className="cta-row" style={{justifyContent:'space-between'}}>
+          <div className="cta-row" style={{justifyContent:'space-between'}}>
           <div className="section-title">{t('your_items')||'Items'}</div>
           <div className="cta-row">
-            <button className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); toast.success(t('save_success')||t('saved')||'Saved') } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('save')||'Save'} order</button>
+            <button className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); toast.success(t('save_success')||t('saved')||'Saved') } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('editor.save_order')||`${t('save')} ${t('order')||'order'}`}</button>
             <button className="btn btn-primary" onClick={()=> { setNewOpen(true); setSelectedItemId(null) }}>{t('add_item')||'Add item'}</button>
           </div>
         </div>
@@ -245,7 +283,7 @@ export function ScaleEditor() {
       const it = selectedItem
       return (
         <div className="card span-8">
-          <h4 style={{marginTop:0}}>{t('edit_item')||'Edit item'}</h4>
+          <h4 style={{marginTop:0}}>{t('editor.edit_item')||'Edit item'}</h4>
           <div className="muted">{t('label.id')||'ID'}: <b>{it.id}</b></div>
           <div className="item"><div className="label">{t('stem_en')}</div>
             <input className="input" value={it.stem_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, stem_i18n: {...(x.stem_i18n||{}), en: e.target.value }}:x))} />
@@ -258,34 +296,34 @@ export function ScaleEditor() {
             <>
               <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.reverse_scored} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, reverse_scored: e.target.checked }:x))} /> {t('reverse_scored')}</label></div>
               <div className="item">
-                <div className="label">Likert Anchors (this item)</div>
+                <div className="label">{t('label.likert_anchors_item')||'Likert Anchors (this item)'}</div>
                 <div className="row">
-                  <div className="card span-6"><div className="label">EN</div><input className="input" value={(it as any).likert_labels_i18n?.en?.join(', ')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder="Strongly disagree, Disagree, …" /></div>
-                  <div className="card span-6"><div className="label">中文</div><input className="input" value={(it as any).likert_labels_i18n?.zh?.join('，')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder="非常不同意，…" /></div>
+                  <div className="card span-6"><div className="label">EN</div><input className="input" value={(it as any).likert_labels_i18n?.en?.join(', ')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), en: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_en')||'Strongly disagree, Disagree, …'} /></div>
+                  <div className="card span-6"><div className="label">中文</div><input className="input" value={(it as any).likert_labels_i18n?.zh?.join('，')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_labels_i18n: {...(((x as any).likert_labels_i18n)||{}), zh: e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={t('hint.likert_anchors_zh')||'非常不同意，…'} /></div>
                 </div>
-                <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={!!(it as any).likert_show_numbers} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_show_numbers: e.target.checked }:x))} /> Show numbers with labels</label>
+                <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}><input className="checkbox" type="checkbox" checked={!!(it as any).likert_show_numbers} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, likert_show_numbers: e.target.checked }:x))} /> {t('likert.show_numbers')||'Show numbers with labels'}</label>
               </div>
             </>
           )}
           {(it.type==='single' || it.type==='multiple' || it.type==='dropdown') && (
             <div className="item">
-              <div className="label">{t('options_en')}</div>
-              <textarea className="input" rows={3} value={(it as any).options_i18n?.en?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), en: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={'Option A\nOption B'} />
-              <div className="label">{t('options_zh')}</div>
-              <textarea className="input" rows={3} value={(it as any).options_i18n?.zh?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), zh: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={'选项一\n选项二'} />
+              <div className="label">{t('label.options_en')||'Options (EN)'}</div>
+              <textarea className="input" rows={3} value={(it as any).options_i18n?.en?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), en: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={(t('hint.options_en_placeholder') as string) || 'Option A\nOption B'} />
+              <div className="label">{t('label.options_zh')||'Options (ZH)'}</div>
+              <textarea className="input" rows={3} value={(it as any).options_i18n?.zh?.join('\n')||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, options_i18n: {...(((x as any).options_i18n)||{}), zh: e.target.value.split(/\n/).map(s=>s.trim()).filter(Boolean) }}:x))} placeholder={(t('hint.options_zh_placeholder') as string) || '选项一\n选项二'} />
             </div>
           )}
           {(it.type==='rating' || it.type==='numeric' || it.type==='slider') && (
             <div className="row">
-              <div className="card span-4"><div className="label">Min</div><input className="input" type="number" value={(it.min??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, min: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
-              <div className="card span-4"><div className="label">Max</div><input className="input" type="number" value={(it.max??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, max: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
-              <div className="card span-4"><div className="label">Step</div><input className="input" type="number" value={(it.step??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, step: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+              <div className="card span-4"><div className="label">{t('label.min')||'Min'}</div><input className="input" type="number" value={(it.min??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, min: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+              <div className="card span-4"><div className="label">{t('label.max')||'Max'}</div><input className="input" type="number" value={(it.max??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, max: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
+              <div className="card span-4"><div className="label">{t('label.step')||'Step'}</div><input className="input" type="number" value={(it.step??'') as any} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, step: e.target.value===''? undefined : Number(e.target.value) }:x))} /></div>
             </div>
           )}
           {(it.type==='short_text' || it.type==='long_text') && (
             <div className="row">
-              <div className="card span-6"><div className="label">Placeholder (EN)</div><input className="input" value={(it as any).placeholder_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), en: e.target.value }}:x))} /></div>
-              <div className="card span-6"><div className="label">Placeholder (ZH)</div><input className="input" value={(it as any).placeholder_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), zh: e.target.value }}:x))} /></div>
+              <div className="card span-6"><div className="label">{t('label.placeholder_en')||'Placeholder (EN)'}</div><input className="input" value={(it as any).placeholder_i18n?.en||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), en: e.target.value }}:x))} /></div>
+              <div className="card span-6"><div className="label">{t('label.placeholder_zh')||'Placeholder (ZH)'}</div><input className="input" value={(it as any).placeholder_i18n?.zh||''} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, placeholder_i18n: {...(((x as any).placeholder_i18n)||{}), zh: e.target.value }}:x))} /></div>
             </div>
           )}
           <div className="item"><label><input className="checkbox" type="checkbox" checked={!!it.required} onChange={e=> setItems(arr=> arr.map(x=> x.id===it.id? {...x, required: e.target.checked }:x))} /> {t('required')}</label></div>
@@ -317,9 +355,9 @@ export function ScaleEditor() {
               </div>
               {newType==='likert' && (
                 <div className="row">
-                  <div className="card span-6"><div className="label">Likert anchors (EN)</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder="Strongly disagree, …"/></div>
-                  <div className="card span-6"><div className="label">Likert anchors (ZH)</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder="非常不同意，…"/></div>
-                  <div className="card span-12"><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> Show numbers with labels</label></div>
+                  <div className="card span-6"><div className="label">{t('label.likert_anchors_item')||'Likert Anchors (this item)'} (EN)</div><input className="input" value={likertLabelsEn} onChange={e=> setLikertLabelsEn(e.target.value)} placeholder={t('hint.likert_anchors_en')||'Strongly disagree, …'}/></div>
+                  <div className="card span-6"><div className="label">{t('label.likert_anchors_item')||'Likert Anchors (this item)'} (ZH)</div><input className="input" value={likertLabelsZh} onChange={e=> setLikertLabelsZh(e.target.value)} placeholder={t('hint.likert_anchors_zh')||'非常不同意，…'}/></div>
+                  <div className="card span-12"><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={likertShowNumbers} onChange={e=> setLikertShowNumbers(e.target.checked)} /> {t('likert.show_numbers')||'Show numbers with labels'}</label></div>
                 </div>
               )}
               {(newType==='single' || newType==='multiple' || newType==='dropdown') && (
@@ -363,7 +401,7 @@ export function ScaleEditor() {
       <>
         <div className="row">
           <div className="card span-6">
-            <h4 className="section-title" style={{marginTop:0}}>{t('basic_info')||'Basic Info'}</h4>
+            <h4 className="section-title" style={{marginTop:0}}>{t('editor.basic_info')||'Basic Info'}</h4>
             <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={scale.name_i18n?.en||''} onChange={e=> setScale((s:any)=> ({...s, name_i18n: {...(s.name_i18n||{}), en: e.target.value }}))} /></div>
             <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={scale.name_i18n?.zh||''} onChange={e=> setScale((s:any)=> ({...s, name_i18n: {...(s.name_i18n||{}), zh: e.target.value }}))} /></div>
             <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" value={scale.points||5} onChange={e=> setScale((s:any)=> ({...s, points: Number(e.target.value||5) }))} /></div>
@@ -372,7 +410,7 @@ export function ScaleEditor() {
             </div>
           </div>
           <div className="card span-6">
-            <h4 className="section-title" style={{marginTop:0}}>{t('security')||'Security'}</h4>
+            <h4 className="section-title" style={{marginTop:0}}>{t('editor.security')||'Security'}</h4>
             <div className="item"><div className="label">{t('collect_email')}</div>
               <select className="select" value={scale.collect_email||'off'} onChange={e=> setScale((s:any)=> ({...s, collect_email: e.target.value }))}>
                 <option value="off">{t('collect_email_off')||'Off'}</option>
@@ -381,7 +419,7 @@ export function ScaleEditor() {
               </select>
             </div>
             <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-              <input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> setScale((s:any)=> ({...s, e2ee_enabled: e.target.checked }))} /> End‑to‑end encryption
+              <input className="checkbox" type="checkbox" checked={!!scale.e2ee_enabled} onChange={e=> setScale((s:any)=> ({...s, e2ee_enabled: e.target.checked }))} /> {t('e2ee.title')||'End‑to‑end Encryption'}
             </label>
             <div className="item"><div className="label">{t('region')||'Region'}</div>
               <select className="select" value={scale.region||'auto'} onChange={e=> setScale((s:any)=> ({...s, region: e.target.value }))}>
@@ -389,9 +427,9 @@ export function ScaleEditor() {
               </select>
             </div>
             <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-              <input className="checkbox" type="checkbox" checked={!!turnstile} onChange={e=> setTurnstile(e.target.checked)} /> Turnstile (anti‑bot)
+              <input className="checkbox" type="checkbox" checked={!!turnstile} onChange={e=> setTurnstile(e.target.checked)} /> {t('turnstile.enable_label')||'Enable Cloudflare Turnstile'}
             </label>
-            <div className="item"><div className="label">{t('items_per_page')||'Items per page'}</div><input className="input" type="number" value={itemsPerPage} onChange={e=> setItemsPerPage(e.target.value)} /></div>
+            <div className="item"><div className="label">{t('editor.items_per_page')||'Items per page'}</div><input className="input" type="number" value={itemsPerPage} onChange={e=> setItemsPerPage(e.target.value)} /></div>
             <div className="cta-row" style={{marginTop:8}}>
               <button className="btn btn-primary" onClick={saveScale}>{t('save')}</button>
             </div>
@@ -426,6 +464,7 @@ export function ScaleEditor() {
               </label>
               <div className="cta-row" style={{marginTop:8}}>
                 <button className="btn btn-primary" onClick={saveConsentConfig}>{t('save')}</button>
+                <AdvancedConsent/>
               </div>
             </div>
           </div>
@@ -433,9 +472,9 @@ export function ScaleEditor() {
 
         <div className="row">
           <div className="card span-6">
-            <h4 className="section-title" style={{marginTop:0}}>AI {t('translate')||'Translate'}</h4>
-            {!aiReady && <div className="muted">{t('ai_not_configured')||'AI translation is not configured. Set API key in Admin → AI.'}</div>}
-            <div className="item"><div className="label">{t('target_languages')||'Target languages (comma separated)'}</div>
+            <h4 className="section-title" style={{marginTop:0}}>{t('ai.title')||'AI Translation'}</h4>
+            {!aiReady && <div className="muted">{t('ai.not_ready')||'Provider not configured or external AI disabled.'}</div>}
+            <div className="item"><div className="label">{t('ai.targets')||'Target languages (comma)'}</div>
               <input className="input" value={aiTargets} onChange={e=> setAiTargets(e.target.value)} placeholder={'zh, en'} />
             </div>
             <div className="cta-row">
@@ -450,7 +489,7 @@ export function ScaleEditor() {
             </div>
             {aiPreview && (
               <div className="tile" style={{padding:10, marginTop:8}}>
-                <div className="muted">{t('preview')} · {Object.keys(aiPreview.items||{}).length} {t('items')||'items'}</div>
+                <div className="muted">{t('preview')} · {Object.keys(aiPreview.items||{}).length} {t('your_items')||'items'}</div>
               </div>
             )}
             {aiMsg && <div className="muted" style={{marginTop:6}}>{aiMsg}</div>}
@@ -459,6 +498,7 @@ export function ScaleEditor() {
             <ExportPanel/>
           </div>
         </div>
+        <DangerZone scaleId={scale.id} />
       </>
     )
   }
@@ -470,11 +510,11 @@ export function ScaleEditor() {
           <div className="card span-6">
             <h4 className="section-title" style={{marginTop:0}}>{t('share')}</h4>
             <div className="item"><div className="label">URL</div><input className="input" value={shareLink(id)} readOnly /></div>
-            <div className="cta-row"><button className="btn" onClick={()=>copyLink(id)}>{t('copy_link')||'Copy link'}</button></div>
+            <div className="cta-row"><button className="btn" onClick={()=>copyLink(id)}>{t('editor.copy_link')||t('copy')||'Copy'}</button></div>
           </div>
           <div className="card span-6">
             <h4 className="section-title" style={{marginTop:0}}>{t('analytics')||'Analytics'}</h4>
-            {!analytics && <div className="muted">{t('no_data')||'No data yet.'}</div>}
+            {!analytics && <div className="muted">{t('editor.no_data')||'No data yet.'}</div>}
             {analytics && (
               <div>
                 <div className="item"><div className="label">N</div><div>{analytics.total_responses||0}</div></div>
@@ -507,13 +547,13 @@ export function ScaleEditor() {
     <div className="container">
       <div className="hero">
         <div className="glitch" data-text={t('manage')}>{t('manage')}</div>
-        <div className="muted">{t('admin_edit_flow_hint')||'New streamlined editor: edit items on the left, details on the right.'}</div>
+        <div className="muted">{t('editor.flow_hint')||'New streamlined editor: edit items on the left, details on the right.'}</div>
       </div>
 
       <div className="tabs-nav" style={{marginBottom:12}}>
-        <button className="tab" onClick={()=> setActiveView('editor')} style={{borderColor: activeView==='editor'?'rgba(125,211,252,0.65)':''}}>{t('items_editor')||'Items Editor'}</button>
-        <button className="tab" onClick={()=> setActiveView('settings')} style={{borderColor: activeView==='settings'?'rgba(125,211,252,0.65)':''}}>{t('settings')||'Settings'}</button>
-        <button className="tab" onClick={()=> setActiveView('share')} style={{borderColor: activeView==='share'?'rgba(125,211,252,0.65)':''}}>{t('share')||'Share & Results'}</button>
+        <button className="tab" onClick={()=> setActiveView('editor')} style={{borderColor: activeView==='editor'?'rgba(125,211,252,0.65)':''}}>{t('editor.items_tab')||'Items Editor'}</button>
+        <button className="tab" onClick={()=> setActiveView('settings')} style={{borderColor: activeView==='settings'?'rgba(125,211,252,0.65)':''}}>{t('editor.settings_tab')||'Settings'}</button>
+        <button className="tab" onClick={()=> setActiveView('share')} style={{borderColor: activeView==='share'?'rgba(125,211,252,0.65)':''}}>{t('editor.share_tab')||'Share & Results'}</button>
       </div>
 
       {activeView==='editor' && (
@@ -562,5 +602,31 @@ function ExportPanel() {
       </div>
       <div className="muted" style={{marginTop:6}}>{t('e2ee.csv_disabled')||'CSV disabled (end‑to‑end encryption)'}</div>
     </>
+  )
+}
+
+function DangerZone({ scaleId }: { scaleId: string }) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const onPurge = async () => {
+    try {
+      const warn = t('confirm_delete_responses') || 'Delete ALL responses for this scale? This cannot be undone.'
+      const promptMsg = `${warn}\n\nType the scale ID to confirm: ${scaleId}`
+      const input = window.prompt(promptMsg)
+      if (!input || input.trim() !== scaleId) return
+      await adminPurgeResponses(scaleId)
+      toast.success(t('delete_success')||'Deleted successfully')
+    } catch (e:any) {
+      toast.error(e.message||String(e))
+    }
+  }
+  return (
+    <div className="row" style={{marginTop:16}}>
+      <div className="card span-12" style={{borderColor:'rgba(248,113,113,0.45)'}}>
+        <h4 className="section-title" style={{marginTop:0}}>{t('danger_zone')||'Danger Zone'}</h4>
+        <div className="muted" style={{marginBottom:8}}>{t('confirm_delete_responses')||'Delete ALL responses for this scale? This cannot be undone.'}</div>
+        <button className="btn" onClick={onPurge}>{t('delete_all_responses')||'Delete all responses'}</button>
+      </div>
+    </div>
   )
 }
