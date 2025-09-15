@@ -6,10 +6,10 @@
 
 ```mermaid
 flowchart LR
-  A[Create Project<br/>Enable E2EE<br/>Configure Consent] --> B[Publish<br/>Share link<br/>Optional Turnstile]
-  B --> C[Collect<br/>Interactive consent<br/>Evidence hash]
-  C --> D[Export<br/>Local CSV/JSONL (E2EE)<br/>Encrypted bundle]
-  D --> E[Self‑Service<br/>/self export/delete]
+  A["Create Project\nEnable E2EE\nConfigure Consent"] --> B["Publish\nShare link\nOptional Turnstile"]
+  B --> C["Collect\nInteractive consent\nEvidence hash"]
+  C --> D["Export\nLocal CSV/JSONL (E2EE)\nEncrypted bundle"]
+  D --> E["Self-Service\n/self export/delete"]
 ```
 
 - Promise highlights: end‑to‑end encryption (E2EE), local plaintext export for E2EE projects, self‑service participant rights, hashed consent evidence.
