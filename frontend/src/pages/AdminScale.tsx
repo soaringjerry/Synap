@@ -120,7 +120,7 @@ export function AdminScale() {
   }
   async function saveConsentWith(nextOpts?: typeof consentOptions, nextSig?: boolean) {
     try {
-      const options = (nextOpts || consentOptions).map(o=> ({ key:o.key.trim(), required: !!o.required, group: o.group && o.group>0 ? o.group : undefined, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
+      const options = (nextOpts || consentOptions).map(o=> ({ key:o.key.trim(), required: !!o.required, group: (typeof o.group==='number' && o.group>0) ? o.group : undefined, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
       await adminUpdateScale(id, { consent_config: { version: consentVersion||'v1', options, signature_required: typeof nextSig==='boolean'? nextSig : !!signatureRequired } } as any)
       setMsg(t('saved') as string)
       toast.success(t('save_success')||t('saved')||'Saved')
@@ -190,7 +190,7 @@ export function AdminScale() {
       const cc = (s as any).consent_config || {}
       setConsentVersion(cc.version||'v1')
       setSignatureRequired(!!(cc.signature_required ?? true))
-      const opts = (cc.options||[]).map((o:any)=> ({ key:o.key, required: !!o.required, en: o.label_i18n?.en, zh: o.label_i18n?.zh, group: (o as any).group || 1 }))
+      const opts = (cc.options||[]).map((o:any)=> ({ key:o.key, required: !!o.required, en: o.label_i18n?.en, zh: o.label_i18n?.zh, group: (typeof (o as any).group === 'number' && (o as any).group > 0) ? (o as any).group : 1 }))
       setConsentOptions(opts)
       if (!opts || opts.length === 0) {
         applyConsentPreset('recommended')
