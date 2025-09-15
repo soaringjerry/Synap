@@ -18,6 +18,7 @@ flowchart LR
 ## Features
 
 * **Survey Builder** — customizable questionnaires (not limited to Likert scales)
+* **Admin Console Refresh** — new Items / Settings / Share & Results tabs unify item editing, consent & Likert defaults, AI translation preview/apply, and context-aware exports; legacy view remains available if you need the previous workflow
 * **Automated Metrics** — reliability checks such as Cronbach’s α
 * **Consent & Compliance** — configurable interactive confirmations (Off/Optional/Required), optional signature; evidence hash; GDPR self‑service export/delete; consent text supports Markdown and inline markers (e.g., [[CONSENT]], [[CONSENT1]], [[CONSENT:options=…]])
 * **Region-Aware Privacy** — PDPA by default; GDPR/CCPA/PIPL applied when stricter
@@ -29,7 +30,7 @@ flowchart LR
 
 1) Open `/auth` and register/sign in.
 2) Admin → Create Scale: set Name, Points; toggle E2EE (recommended) and configure Consent (version + options/signature).
-3) Share participant link and collect responses; for E2EE projects, export locally as CSV/JSONL (Admin → Manage), or download encrypted bundle for offline decryption.
+3) Open Admin → Manage (new default editor). Items handles question editing, Settings covers consent/Likert/AI translation, and Share & Results centralizes participant links, analytics, and exports. Copy the link from Share & Results to collect responses. With E2EE ON, use the local decrypt/export actions; otherwise server CSV exports remain available.
 
 Advanced/Automation: see Quick Start (API) in `docs/quick-start.md`.
 
@@ -97,7 +98,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 Admin quick path:
 - Create Scale → Basics + End‑to‑end Encryption (generate or upload a public key; locked after creation) + Consent (version, interactive confirmations, optional signature). Likert anchors are configured per item (add/edit) with presets (Agree 5/7, Frequency 5, Bipolar 7, Monopolar 5) or custom labels, and a “show numbers with labels” toggle.
-- Manage Scale → Share the participant link. With E2EE ON, server exposes only encrypted bundles; plaintext export happens locally in the browser (JSONL/CSV long|wide) with readable EN/ZH texts. With E2EE OFF, server CSV exports are available; use `consent_header=label_en|label_zh` to use labels as column names.
+- Manage → Items / Settings / Share & Results (new editor). Share & Results combines participant link copy, baseline analytics, and export options. When E2EE is ON you’ll see local JSONL/CSV decrypt buttons instead of server CSV; when E2EE is OFF the server long/wide/score CSV buttons return. Append `consent_header=label_en|label_zh` if you prefer consent columns to use readable labels.
 - Consent Markdown supports inline markers: [[CONSENT]] inserts all (options + signature), [[CONSENT1]]/[[CONSENT2]] insert grouped options, [[CONSENT:signature]] inserts signature only. If no marker is present, the interactive block is shown after the text.
 
 Security & Privacy snapshot:

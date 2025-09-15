@@ -29,7 +29,7 @@ All notable changes to this project will be documented here.
 
 - Admin
   - Danger Zone: DELETE /api/admin/scales/{id}/responses (purge responses); delete scale from list
-  - Create/Manage Scale: E2EE + Consent 指引更清晰；Likert 锚点模板（Agree/Frequency 5、Agree/Bipolar 7、Monopolar 5）与自定义；可选择“数字+文字”模式
+- Create/Manage Scale: 默认进入全新 Items / Settings / Share & Results 视图；Share 视图整合链接复制、E2EE 感知的导出与基础统计；Settings 汇集 Likert 预设、AI 翻译预览+应用、高级同意设置表格；保留 Legacy 入口
 
 - UX/Responsive
   - Mobile: larger tap targets, Likert wrap (max 5/row), sticky submit bar, 16px inputs (prevent iOS zoom)

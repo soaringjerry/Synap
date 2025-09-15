@@ -4,7 +4,7 @@
 
 1) Visit `/auth` to register and sign in.
 2) Go to Admin → Create Scale. Set Points, enable End‑to‑end Encryption (recommended), and configure Consent (version + confirmations/signature).
-3) Share the participant link to collect responses. If E2EE is ON, export plaintext locally (CSV/JSONL) or download an encrypted bundle for offline decryption; if E2EE is OFF, use server CSV exports.
+3) Open Admin → Manage (new default editor). Items covers question editing, Settings handles consent/Likert/AI translation, and Share & Results centralizes participant link copy plus analytics/exports. Use Share & Results to distribute the link; when E2EE is ON the panel walks you through local JSONL/CSV decrypt, otherwise server CSV exports stay available.
 
 ## Advanced: API & local run
 
@@ -37,9 +37,9 @@ Create your first scale (Admin UI):
    - Basics: Name (EN/ZH), Points, Region
    - End‑to‑end encryption: Generate key in browser or paste a public key. Private key is encrypted locally and never uploaded. E2EE/Region are locked after creation.
    - Consent: Version, interactive confirmations with simple modes per item — Off / Optional / Required; optional signature requirement. Consent text supports Markdown (headings, lists, links, bold/italic, code)
-3) Manage Scale → Share participant link
+3) Manage → Items / Settings / Share & Results. Items lets you revise stems/options, Settings consolidates consent defaults, Likert presets, and AI translation, while Share & Results exposes the participant link alongside analytics and exports. Need the previous UI? Use the “Legacy view” button in the header.
 
-Exports:
+Exports (Share & Results panel):
 - When E2EE is ON: server exports encrypted bundle only; plaintext export happens locally in your browser (JSONL/CSV long|wide) with readable EN/ZH question texts
 - When E2EE is OFF: server CSV exports (long/wide/score) are available (UTF‑8 with BOM to avoid garbling in Excel). You can use consent_header=label_en|label_zh to use human‑readable labels as column names (instead of consent.<key>).
 
