@@ -304,6 +304,8 @@
       "item_distributions": "Item distributions"
     },
     "consent": {
+      "inline_hint": "Insert [[CONSENT]] to render all interactive confirmations (options + signature) at the chosen position. If omitted, they appear after the text.",
+      "group_hint": "Assign a Group number to each confirmation below. Example: [[CONSENT1]] renders the items in group 1, [[CONSENT2]] renders group 2; keep using [[CONSENT]] to show every group together.",
       "presets_title": "Pick a preset (you can still tweak below):",
       "preset_min": "Minimal",
       "preset_rec": "Recommended",

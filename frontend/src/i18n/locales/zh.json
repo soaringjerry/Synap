@@ -194,6 +194,8 @@
       }
     },
     "consent": {
+      "inline_hint": "提示：在自定义内容中插入 [[CONSENT]] 可把交互式确认（选项 + 签名）渲染在当前位置；若未插入，则会显示在文本末尾。",
+      "group_hint": "为每个确认项设置“分组号”后，可用 [[CONSENT1]]、[[CONSENT2]] 等分别插入对应分组；使用 [[CONSENT]] 可一次插入全部分组。",
       "presets_title": "选择一个预设（仍可在下方微调）：",
       "preset_min": "最简",
       "preset_rec": "推荐",

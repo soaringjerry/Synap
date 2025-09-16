@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../components/Toast'
 import {
   adminGetScale,
   adminGetScaleItems,
+  adminCreateScale,
   adminUpdateScale,
   adminUpdateItem,
   adminDeleteItem,
@@ -1314,12 +1315,10 @@ const LIKERT_PRESETS: Record<string, { en: string[]; zh: string[] }> = {
   mono5: { en: ['Not at all','Slightly','Moderately','Very','Extremely'], zh: ['完全没有','稍微','中等','非常','极其'] },
 }
 
-export function ScaleEditor() {
-  const { id = '' } = useParams()
+export function ScaleCreate() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const toast = useToast()
-  const isCreateMode = !id || id === 'new'
 
   const handleCreateScale = useCallback(async ({ nameEn, nameZh, points }: { nameEn: string; nameZh: string; points: number }) => {
     try {
@@ -1341,18 +1340,22 @@ export function ScaleEditor() {
     }
   }, [navigate, toast, t])
 
-  if (isCreateMode) {
-    return (
-      <div className="container">
-        <div className="hero">
-          <div className="glitch" data-text={t('create_scale')}>{t('create_scale')}</div>
-          <div className="muted">{t('editor.create_intro')}</div>
-        </div>
-        <CreateScaleView onCreate={handleCreateScale} />
+  return (
+    <div className="container">
+      <div className="hero">
+        <div className="glitch" data-text={t('create_scale')}>{t('create_scale')}</div>
+        <div className="muted">{t('editor.create_intro')}</div>
       </div>
-    )
-  }
+      <CreateScaleView onCreate={handleCreateScale} />
+    </div>
+  )
+}
 
+export function ScaleEditor() {
+  const { id = '' } = useParams()
+  if (!id || id === 'new') {
+    return <Navigate to="/admin/scale/new" replace />
+  }
   return <ExistingScaleEditor id={id} />
 }
 
