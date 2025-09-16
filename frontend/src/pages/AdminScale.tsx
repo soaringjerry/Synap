@@ -1,3 +1,16 @@
+/*
+================================================================================
+// DEPRECATED COMPONENT //
+================================================================================
+This file represents the legacy version of the scale editor UI.
+It is preserved for backward compatibility and should NOT be used for new feature development.
+
+All new development and bug fixes should be applied to:
+/frontend/src/pages/ScaleEditor.tsx
+
+Reason for deprecation: Poor UX, high complexity, and difficult maintenance.
+================================================================================
+*/
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
