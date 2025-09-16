@@ -1,5 +1,5 @@
 name: Docker (GHCR)
-run-name: ${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title) || github.event.head_commit.message || format('{0} #{1}', github.workflow, github.run_number) }}
+run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title) || github.event.head_commit.message || format('{0} #{1}', github.workflow, github.run_number) }}"
 
 on:
   push:
