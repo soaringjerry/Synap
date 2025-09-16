@@ -8,8 +8,10 @@
 ## Run
 
 ```bash
-# API
-SYNAP_ADDR=:8080 go run ./cmd/server
+# API (auto-creates SQLite if needed)
+SYNAP_SQLITE_PATH=./data/synap.sqlite \
+SYNAP_ADDR=:8080 \
+go run ./cmd/server
 
 # Frontend
 cd frontend && npm ci && npm run dev
@@ -18,6 +20,15 @@ cd frontend && npm ci && npm run dev
 Dev convenience:
 - `SYNAP_DEV_FRONTEND_URL` lets backend proxy `/` to Vite dev server
 - Use GHCR `synap-dev` image to run both in one container (see README)
+
+### SQLite & legacy snapshot migration
+
+- Primary storage lives at `SYNAP_SQLITE_PATH` (defaults to `./data/synap.sqlite`). Delete the file to reset local data.
+- If `SYNAP_DB_PATH` points to an encrypted snapshot, the next server start will migrate it into SQLite and continue on the new database.
+- Migration verification tips:
+  1. Create sample data with the legacy build (or an older commit) using only `SYNAP_DB_PATH` + `SYNAP_ENC_KEY`.
+  2. Switch to the current build, remove any `.sqlite` file, keep the snapshot, and start the server with both `SYNAP_SQLITE_PATH` and `SYNAP_DB_PATH` set. Watch logs for “First run detected…” and inspect the new DB (`sqlite3 $SYNAP_SQLITE_PATH 'SELECT COUNT(*) FROM scales;'`).
+  3. Restart without `SYNAP_DB_PATH` to ensure the idempotent path works (no duplicate migration).
 
 ## Lint & Test
 
@@ -29,4 +40,3 @@ cd frontend && npm run typecheck && npm run lint
 ## Commits & PRs
 - Conventional Commits; small, focused PRs with screenshots for UI
 - Update docs when behavior or endpoints change
-

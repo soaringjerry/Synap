@@ -32,6 +32,9 @@ func main() {
 		migrationsDir = "migrations"
 	}
 	snapshotPath := os.Getenv("SYNAP_DB_PATH")
+	if err := os.MkdirAll(filepath.Dir(sqlitePath), 0o755); err != nil {
+		log.Fatalf("create sqlite directory: %v", err)
+	}
 	if err := MigrateIfNeeded(snapshotPath, sqlitePath, migrationsDir); err != nil {
 		log.Fatalf("data migration failed: %v", err)
 	}

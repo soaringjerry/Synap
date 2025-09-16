@@ -23,7 +23,7 @@ flowchart LR
 * **Consent & Compliance** — configurable interactive confirmations (Off/Optional/Required), optional signature; evidence hash; GDPR self‑service export/delete; consent text supports Markdown and inline markers (e.g., [[CONSENT]], [[CONSENT1]], [[CONSENT:options=…]])
 * **Region-Aware Privacy** — PDPA by default; GDPR/CCPA/PIPL applied when stricter
 * **End‑to‑End Encryption** — end‑to‑end encryption (enabled at creation); keys are generated in the browser and private keys never leave the device; admins can download encrypted bundles; local decryption exports JSONL/CSV (long/wide) with readable question texts; after submit a unified management link (/self) is shown for export/delete
-* **Lightweight & Fast** — Go + TypeScript with encrypted snapshot storage (DB backends planned)
+* **Lightweight & Fast** — Go + TypeScript with a SQLite-backed store (auto-migrates legacy encrypted snapshots)
 * **AI Integration (Planned)** — automated analysis, summarization, adaptive survey design
 
 ## Quick Start (UI in 3 steps)
@@ -81,10 +81,13 @@ go run ./cmd/server
 Environment variables (examples):
 
 ```bash
-export SYNAP_DB_PATH=./data/synap.db
-export SYNAP_ENC_KEY=$(openssl rand -base64 32)
+export SYNAP_SQLITE_PATH=./data/synap.sqlite   # primary database (auto-migrates if missing)
+export SYNAP_DB_PATH=./data/synap.db          # optional: legacy encrypted snapshot for one-time migration
+export SYNAP_ENC_KEY=$(openssl rand -base64 32) # required only when reading legacy snapshot
 export SYNAP_ADDR=:8080
 ```
+
+On first launch, Synap checks `SYNAP_SQLITE_PATH`. If the file is absent and a legacy snapshot (`SYNAP_DB_PATH`) is available, the server clones all data into SQLite and continues using the new store.
 
 ### Frontend (TypeScript)
 

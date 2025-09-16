@@ -20,9 +20,12 @@
 ```
 docker run -d --name synap -p 8080:8080 \
   -e SYNAP_ADDR=:8080 \
-  -e SYNAP_DB_PATH=/data/synap.db \
+  -e SYNAP_SQLITE_PATH=/data/synap.sqlite \
   -v synap-data:/data \
   ghcr.io/soaringjerry/synap-backend:latest
+
+# 可选：存在旧版 JSON 快照时映射并触发一次性迁移
+# -e SYNAP_DB_PATH=/data/legacy/synap.db -v synap-legacy:/data/legacy
 ```
 
 ## 方式二：docker run（一体化）
@@ -57,8 +60,11 @@ docker compose up -d
 ## 常用环境变量
 
 - `SYNAP_ADDR`（默认 `:8080`）
-- `SYNAP_DB_PATH`（默认 `./data/synap.db`，容器内建议 `/data/synap.db`）
+- `SYNAP_SQLITE_PATH`（默认 `./data/synap.sqlite`，容器内建议 `/data/synap.sqlite`）
+- `SYNAP_DB_PATH`（可选，一次性迁移旧版 JSON 快照时使用）
 - `SYNAP_STATIC_DIR`（一体化镜像用于前端静态资源，默认 `/public`）
+
+> 首次启动时若 `SYNAP_SQLITE_PATH` 不存在且指定了 `SYNAP_DB_PATH`，服务会自动读取旧快照并迁移到 SQLite。迁移成功后只需保留新的 `.sqlite` 文件。
 
 ## 使用自有 Nginx（双层反代或仅 Nginx）
 
