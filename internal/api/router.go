@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -24,8 +25,9 @@ import (
 )
 
 type Router struct {
-	store    Store
-	signPriv ed25519.PrivateKey
+	store       Store
+	signPriv    ed25519.PrivateKey
+	responseSvc *services.ResponseService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -33,7 +35,11 @@ func NewRouterWithStore(store Store) *Router {
 		log.Printf("persistence disabled: using in-memory store")
 		store = newMemoryStore("")
 	}
-	return &Router{store: store, signPriv: deriveSignKey()}
+	return &Router{
+		store:       store,
+		signPriv:    deriveSignKey(),
+		responseSvc: services.NewResponseService(newResponseStoreAdapter(store)),
+	}
 }
 
 func NewRouter() *Router {
@@ -438,104 +444,42 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.GetScale(req.ScaleID)
-	if sc == nil {
-		http.Error(w, "scale not found", http.StatusNotFound)
-		return
-	}
-	// Turnstile verification if enabled for this scale
-	if sc.TurnstileEnabled {
-		if ok := rt.verifyTurnstile(r, req.TurnstileToken); !ok {
-			http.Error(w, "turnstile verification failed", http.StatusBadRequest)
-			return
-		}
-	}
-	// E2EE projects must not accept plaintext submissions
-	if sc.E2EEEnabled {
-		http.Error(w, "plaintext submissions are disabled for E2EE projects", http.StatusBadRequest)
-		return
-	}
-	pid := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
-	p := &Participant{ID: pid, Email: req.Participant.Email}
-	if req.ConsentID != "" {
-		if c := rt.store.GetConsentByID(req.ConsentID); c != nil && c.ScaleID == req.ScaleID {
-			p.ConsentID = req.ConsentID
-		}
-	}
-	rt.store.AddParticipant(p)
-	now := time.Now().UTC()
-	rs := make([]*Response, 0, len(req.Answers))
+	answers := make([]services.BulkAnswer, 0, len(req.Answers))
 	for _, a := range req.Answers {
-		it := rt.store.GetItem(a.ItemID)
-		if it == nil {
-			continue
-		}
-		// Determine raw numeric if available
-		rawNum := 0
-		hadNum := false
-		if a.RawInt != nil {
-			rawNum = *a.RawInt
-			hadNum = true
-		} else if len(a.Raw) > 0 {
-			var tmpNum float64
-			if err := json.Unmarshal(a.Raw, &tmpNum); err == nil {
-				rawNum = int(tmpNum)
-				hadNum = true
-			}
-		}
-		// Prepare Response
-		rec := &Response{ParticipantID: pid, ItemID: a.ItemID, SubmittedAt: now}
-		// If the item is Likert or numeric-like, use numeric raw/score
-		itype := it.Type
-		if itype == "" {
-			itype = "likert"
-		}
-		switch itype {
-		case "likert":
-			if !hadNum {
-				// attempt parse from raw JSON string
-				var s string
-				if len(a.Raw) > 0 && json.Unmarshal(a.Raw, &s) == nil {
-					if n, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
-						rawNum = n
-						hadNum = true
-					}
-				}
-			}
-			if hadNum {
-				rec.RawValue = rawNum
-				score := rawNum
-				if it.ReverseScored {
-					score = services.ReverseScore(score, sc.Points)
-				}
-				rec.ScoreValue = score
-			}
-		case "rating", "slider", "numeric":
-			if hadNum {
-				rec.RawValue = rawNum
-				rec.ScoreValue = rawNum
-			}
-		default:
-			// Non-numeric: store raw JSON as-is; keep score 0
-		}
-		if len(a.Raw) > 0 {
-			rec.RawJSON = string(a.Raw)
-		} else if hadNum {
-			rec.RawJSON = strconv.Itoa(rawNum)
-		}
-		rs = append(rs, rec)
+		answers = append(answers, services.BulkAnswer{ItemID: a.ItemID, Raw: a.Raw, RawInt: a.RawInt})
 	}
-	rt.store.AddResponses(rs)
+	result, err := rt.responseSvc.ProcessBulkResponses(services.BulkResponsesRequest{
+		ScaleID:          req.ScaleID,
+		ParticipantEmail: req.Participant.Email,
+		ConsentID:        req.ConsentID,
+		TurnstileToken:   req.TurnstileToken,
+		Answers:          answers,
+		VerifyTurnstile: func(token string) (bool, error) {
+			return rt.verifyTurnstile(r, token), nil
+		},
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrScaleNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		case errors.Is(err, services.ErrTurnstileVerificationFailed):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, services.ErrPlaintextDisabled):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	// Provide self-service capability for GDPR export/delete
 	selfBase := "/api/self/participant"
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"ok":             true,
-		"participant_id": pid,
-		"count":          len(rs),
-		"self_token":     p.SelfToken,
-		"self_export":    selfBase + "/export?pid=" + pid + "&token=" + p.SelfToken,
-		"self_delete":    selfBase + "/delete?pid=" + pid + "&token=" + p.SelfToken,
+		"participant_id": result.ParticipantID,
+		"count":          result.ResponsesCount,
+		"self_token":     result.SelfToken,
+		"self_export":    selfBase + "/export?pid=" + result.ParticipantID + "&token=" + result.SelfToken,
+		"self_delete":    selfBase + "/delete?pid=" + result.ParticipantID + "&token=" + result.SelfToken,
 	})
 }
 
