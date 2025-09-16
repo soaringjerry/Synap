@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../components/Toast'
 import {
   adminGetScale,
   adminGetScaleItems,
-  adminCreateScale,
   adminUpdateScale,
   adminUpdateItem,
   adminDeleteItem,
@@ -29,57 +28,6 @@ type SettingsViewProps = {
   likertDefaults: { en: string; zh: string; showNumbers: boolean; preset: string }
   onLikertDefaultsSaved: (defaults: { en: string; zh: string; showNumbers: boolean; preset: string }) => void
   onReload: () => Promise<void>
-}
-
-type CreateScaleViewProps = {
-  onCreate: (payload: { nameEn: string; nameZh: string; points: number }) => Promise<void>
-}
-
-const CreateScaleView: React.FC<CreateScaleViewProps> = ({ onCreate }) => {
-  const { t } = useTranslation()
-  const [nameEn, setNameEn] = useState('')
-  const [nameZh, setNameZh] = useState('')
-  const [points, setPoints] = useState('5')
-  const [working, setWorking] = useState(false)
-  const [error, setError] = useState('')
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setError('')
-    const trimmedEn = nameEn.trim()
-    const trimmedZh = nameZh.trim()
-    if (!trimmedEn && !trimmedZh) {
-      setError(t('editor.create_error_name'))
-      return
-    }
-    const parsedPoints = parseInt(points, 10)
-    if (Number.isNaN(parsedPoints) || parsedPoints <= 0) {
-      setError(t('editor.create_error_points'))
-      return
-    }
-    setWorking(true)
-    try {
-      await onCreate({ nameEn: trimmedEn, nameZh: trimmedZh, points: parsedPoints })
-    } catch (err: any) {
-      setError(err?.message || String(err))
-    } finally {
-      setWorking(false)
-    }
-  }
-
-  return (
-    <form className="row" onSubmit={handleSubmit}>
-      <div className="card span-6" style={{ margin: '0 auto', display: 'grid', gap: 16, padding: 24 }}>
-        <div className="item"><div className="label">{t('common.name_en')}</div><input className="input" value={nameEn} onChange={e=> setNameEn(e.target.value)} placeholder={t('common.name_en') as string} /></div>
-        <div className="item"><div className="label">{t('common.name_zh')}</div><input className="input" value={nameZh} onChange={e=> setNameZh(e.target.value)} placeholder={t('common.name_zh') as string} /></div>
-        <div className="item"><div className="label">{t('common.points')}</div><input className="input" type="number" min={1} value={points} onChange={e=> setPoints(e.target.value)} /></div>
-        {error && <div className="muted" style={{ color: '#f87171' }}>{error}</div>}
-        <div className="cta-row" style={{ justifyContent: 'flex-end' }}>
-          <button type="submit" className="btn btn-primary" disabled={working}>{working ? t('loading') : t('editor.create_button')}</button>
-        </div>
-      </div>
-    </form>
-  )
 }
 
 const SettingsView = React.memo(function SettingsView({
@@ -1315,47 +1263,8 @@ const LIKERT_PRESETS: Record<string, { en: string[]; zh: string[] }> = {
   mono5: { en: ['Not at all','Slightly','Moderately','Very','Extremely'], zh: ['完全没有','稍微','中等','非常','极其'] },
 }
 
-export function ScaleCreate() {
-  const navigate = useNavigate()
-  const { t } = useTranslation()
-  const toast = useToast()
-
-  const handleCreateScale = useCallback(async ({ nameEn, nameZh, points }: { nameEn: string; nameZh: string; points: number }) => {
-    try {
-      const payload: any = {
-        name_i18n: {
-          ...(nameEn ? { en: nameEn } : {}),
-          ...(nameZh ? { zh: nameZh } : {}),
-        },
-        points,
-        randomize: false,
-      }
-      const created = await adminCreateScale(payload)
-      toast.success(t('common.create_success'))
-      navigate(`/admin/scale/${created.id}`, { replace: true })
-    } catch (e: any) {
-      const message = e?.message || String(e)
-      toast.error(message)
-      throw new Error(message)
-    }
-  }, [navigate, toast, t])
-
-  return (
-    <div className="container">
-      <div className="hero">
-        <div className="glitch" data-text={t('create_scale')}>{t('create_scale')}</div>
-        <div className="muted">{t('editor.create_intro')}</div>
-      </div>
-      <CreateScaleView onCreate={handleCreateScale} />
-    </div>
-  )
-}
-
 export function ScaleEditor() {
   const { id = '' } = useParams()
-  if (!id || id === 'new') {
-    return <Navigate to="/admin/scale/new" replace />
-  }
   return <ExistingScaleEditor id={id} />
 }
 

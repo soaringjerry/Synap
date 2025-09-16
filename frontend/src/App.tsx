@@ -9,7 +9,7 @@ import { Admin } from './pages/Admin'
 import { Auth } from './pages/Auth'
 import { Survey } from './pages/Survey'
 import { AdminScale } from './pages/AdminScale'
-import { ScaleCreate, ScaleEditor } from './pages/ScaleEditor'
+import { ScaleEditor } from './pages/ScaleEditor'
 import { AdminKeys } from './pages/AdminKeys'
 import { AdminAI } from './pages/AdminAI'
 import { SelfManage } from './pages/SelfManage'
@@ -117,7 +117,6 @@ const router = createBrowserRouter([
     { path: '/admin', element: <Protected><Admin/></Protected> },
     { path: '/admin/keys', element: <Protected><AdminKeys/></Protected> },
     { path: '/admin/ai', element: <Protected><AdminAI/></Protected> },
-    { path: '/admin/scale/new', element: <Protected><ScaleCreate/></Protected> },
     { path: '/admin/scale/:id', element: <Protected><ScaleEditor/></Protected> },
     { path: '/admin/scale/:id/legacy', element: <Protected><AdminScale/></Protected> },
     { path: '/auth', element: <Auth/> },
