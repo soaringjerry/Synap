@@ -228,14 +228,6 @@
       }
     },
     "consent_settings": "知情同意设置",
-    "admin": {
-      "create_flow_hint": "先填写最核心的信息（名称与分值）。创建完成后，在“设置”页调整知情同意、端到端加密、分页等高级选项。",
-      "create_followup_hint": "提示：知情同意文本、交互确认、Turnstile 以及 E2EE 配置都集中在新版编辑器的“设置”→“知情同意 / 安全”中。",
-      "checklist_create": "创建你的第一个问卷",
-      "checklist_settings": "在设置页配置知情同意、加密与分页",
-      "checklist_share": "分享参与链接并收集一次测试提交",
-      "checklist_export": "在“分享与结果”中尝试导出（E2EE 项目使用本地解密）"
-    },
     "admin_console": "管理控制台",
     "admin_console_sub": "发布问卷 · 管理题目 · 导出数据",
     "ai": {

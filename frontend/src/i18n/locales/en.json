@@ -195,14 +195,6 @@
     },
     
     "consent_settings": "Consent Settings",
-    "admin": {
-      "create_flow_hint": "Start with the essentials. Provide a name and point scale, then fine-tune consent, encryption, and pagination inside Settings after creation.",
-      "create_followup_hint": "Tip: consent text, interactive confirmations, Turnstile, and E2EE now live in the new editor under Settings → Consent/Security.",
-      "checklist_create": "Create your first scale",
-      "checklist_settings": "Open Settings to configure consent, encryption, pagination",
-      "checklist_share": "Share the participant link and collect a test response",
-      "checklist_export": "Try the Share & Results exports (local decrypt for E2EE projects)"
-    },
     "admin_console": "Admin Console",
     "admin_console_sub": "Publish surveys · Manage items · Export data",
     "ai": {
