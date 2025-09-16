@@ -2,7 +2,7 @@ package services
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 )
@@ -60,7 +60,7 @@ func TestTranslationServiceSuccess(t *testing.T) {
 	client := &stubHTTPClient{
 		resp: &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`{"choices":[{"message":{"content":"{\"items\":{\"I1\":{\"zh\":\"你好\"}}}"}}]}`)),
+			Body:       io.NopCloser(bytes.NewBufferString(`{"choices":[{"message":{"content":"{\"items\":{\"I1\":{\"zh\":\"你好\"}}}"}}]}`)),
 		},
 	}
 	svc := NewTranslationService(store, client)
@@ -90,7 +90,7 @@ func TestTranslationServiceBadGateway(t *testing.T) {
 		cfg:   &TenantAIConfig{TenantID: "T1", OpenAIKey: "key", AllowExternal: true},
 	}
 	client := &stubHTTPClient{
-		resp: &http.Response{StatusCode: 500, Body: ioutil.NopCloser(bytes.NewBufferString("error"))},
+		resp: &http.Response{StatusCode: 500, Body: io.NopCloser(bytes.NewBufferString("error"))},
 	}
 	svc := NewTranslationService(store, client)
 	if _, err := svc.PreviewScaleTranslation("T1", TranslationPreviewRequest{ScaleID: "S1", TargetLangs: []string{"zh"}}); err == nil {
