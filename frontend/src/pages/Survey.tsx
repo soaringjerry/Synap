@@ -42,6 +42,37 @@ export function Survey() {
   const turnstileRef = useRef<HTMLDivElement|null>(null)
   const toast = useToast()
 
+  // Pagination + visible items must be computed before any early return,
+  // so that subsequent hooks keep a stable order across renders.
+  const totalItems = items.length
+  const pages = itemsPerPage && itemsPerPage > 0 ? Math.ceil(totalItems / itemsPerPage) : 1
+  const startIdx = itemsPerPage && itemsPerPage > 0 ? Math.max(0, (page-1) * itemsPerPage) : 0
+  const endIdx = itemsPerPage && itemsPerPage > 0 ? Math.min(totalItems, startIdx + itemsPerPage) : totalItems
+  const visible = items.slice(startIdx, endIdx)
+
+  // Validate current page — keep hook unconditionally at top level
+  const validateCurrentPage = React.useCallback(() => {
+    const missing: Record<string, boolean> = {}
+    const isAnswered = (item: ItemOut, value: any) => {
+      if (value === undefined || value === null) return false
+      const type = item.type || 'likert'
+      if (type === 'multiple') return Array.isArray(value) && value.length > 0
+      if (type === 'single' || type === 'dropdown' || type === 'short_text' || type === 'long_text' || type === 'date' || type === 'time') return String(value).trim().length > 0
+      return String(value).length > 0
+    }
+    for (const item of visible) {
+      if (item.required && !isAnswered(item, answers[item.id])) {
+        missing[item.id] = true
+      }
+    }
+    setValidationErrors(missing)
+    if (Object.keys(missing).length > 0) {
+      toast.error(t('survey.required_warning') || 'Please complete all required items')
+      return false
+    }
+    return true
+  }, [answers, toast, t, visible])
+
   // Lazy-load Turnstile JS
   function ensureTurnstile(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -549,32 +580,7 @@ export function Survey() {
     )
   }
 
-  const totalItems = items.length
-  const pages = itemsPerPage && itemsPerPage > 0 ? Math.ceil(totalItems / itemsPerPage) : 1
-  const startIdx = itemsPerPage && itemsPerPage > 0 ? (page-1) * itemsPerPage : 0
-  const endIdx = itemsPerPage && itemsPerPage > 0 ? Math.min(totalItems, startIdx + itemsPerPage) : totalItems
-  const visible = items.slice(startIdx, endIdx)
-  const validateCurrentPage = React.useCallback(() => {
-    const missing: Record<string, boolean> = {}
-    const isAnswered = (item: ItemOut, value: any) => {
-      if (value === undefined || value === null) return false
-      const type = item.type || 'likert'
-      if (type === 'multiple') return Array.isArray(value) && value.length > 0
-      if (type === 'single' || type === 'dropdown' || type === 'short_text' || type === 'long_text' || type === 'date' || type === 'time') return String(value).trim().length > 0
-      return String(value).length > 0
-    }
-    for (const item of visible) {
-      if (item.required && !isAnswered(item, answers[item.id])) {
-        missing[item.id] = true
-      }
-    }
-    setValidationErrors(missing)
-    if (Object.keys(missing).length > 0) {
-      toast.error(t('survey.required_warning') || 'Please complete all required items')
-      return false
-    }
-    return true
-  }, [answers, toast, t, visible])
+  
 
   return (
     <div className="card span-12">
