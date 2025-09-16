@@ -72,15 +72,15 @@ function RootLayout() {
             <Link className="btn btn-ghost" to="/" onClick={closeMenu}>{t('nav.home')}</Link>
             <Link className="btn btn-ghost" to="/admin" onClick={closeMenu}>{t('nav.admin')}</Link>
             <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap" target="_blank" rel="noreferrer" onClick={closeMenu}>{t('nav.github')}</a>
-            <LanguageSwitcher />
+            {authed ? (
+              <button className="btn btn-ghost" onClick={()=>{ closeMenu(); logout(setAuthed, navigate) }}>{t('nav.logout')}</button>
+            ) : (
+              <Link className="btn btn-ghost" to="/auth" onClick={closeMenu}>{t('nav.auth')}</Link>
+            )}
             <VersionBadge />
           </div>
           <div className="primary-action">
-            {authed ? (
-              <button className="btn" onClick={()=>logout(setAuthed, navigate)}>{t('nav.logout')}</button>
-            ) : (
-              <Link className="btn" to="/auth" onClick={closeMenu}>{t('nav.auth')}</Link>
-            )}
+            <LanguageSwitcher />
           </div>
         </div>
       </header>
