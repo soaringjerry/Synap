@@ -39,6 +39,14 @@ gofmt -l . && go vet ./... && go test ./... -cover
 cd frontend && npm run typecheck && npm run lint
 ```
 
+## Frontend structure cheatsheet
+
+- Complex admin pages now follow a feature folder pattern (`frontend/src/pages/scale-editor/`).
+- Use a context + reducer (`ScaleEditorContext`) to hold API results, selection state, analytics, and flash messages.
+- Views (`ItemsView`, `SettingsView`, `ShareView`) consume the shared hooks; keep their local state minimal and domain-specific.
+- Shared presets/utilities (e.g. Likert defaults) live beside the feature in `constants.ts` to avoid leaking business rules into global helpers.
+- Run `npm run typecheck` and `npm run build` before committing frontend refactors to catch regressions early.
+
 ## Commits & PRs
 - Conventional Commits; small, focused PRs with screenshots for UI
 - Update docs when behavior or endpoints change
