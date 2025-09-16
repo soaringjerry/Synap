@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 
 	"github.com/soaringjerry/Synap/internal/api"
 	storedb "github.com/soaringjerry/Synap/internal/db"
@@ -42,7 +42,7 @@ func main() {
 	}
 
 	dsn := fmt.Sprintf("file:%s?cache=shared&_busy_timeout=5000", filepath.ToSlash(sqlitePath))
-	sqliteDB, err := sql.Open("sqlite3", dsn)
+	sqliteDB, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		log.Fatalf("open sqlite database: %v", err)
 	}
