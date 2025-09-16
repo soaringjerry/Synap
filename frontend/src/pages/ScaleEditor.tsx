@@ -857,40 +857,38 @@ function ExistingScaleEditor({ id }: { id: string }) {
   }
 
   // UI chunks
-  function ItemsList() {
-    return (
-      <div className="card span-4">
-          <div className="cta-row" style={{justifyContent:'space-between'}}>
-          <div className="section-title">{t('your_items')}</div>
-          <div className="cta-row">
-            <button type="button" className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); toast.success(t('save_success')) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('editor.save_order')}</button>
-            <button type="button" className="btn btn-primary" onClick={()=> { setNewOpen(true); setSelectedItemId(null) }}>{t('add_item')}</button>
-          </div>
-        </div>
-        {items.length===0 && <div className="muted">{t('no_items')}</div>}
-        <div style={{marginTop:8}}>
-          {items.map((it:any, idx:number)=> (
-            <div key={it.id} className="tile" style={{padding:10, marginTop:8, border: selectedItemId===it.id? '1px solid var(--accent)' : '1px solid var(--border)', borderRadius:12}}>
-              <div className="cta-row" style={{justifyContent:'space-between'}}>
-                <button type="button" className="btn btn-ghost" onClick={()=> setSelectedItemId(it.id)} style={{flex:1, justifyContent:'flex-start'}}>
-                  <div style={{textAlign:'left'}}>
-                    <div className="muted" style={{fontSize:12}}>{it.type||'likert'}</div>
-                    <div style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{it.stem_i18n?.[i18n.language as 'en'|'zh'] || it.stem_i18n?.en || it.stem_i18n?.zh || it.id}</div>
-                  </div>
-                </button>
-                <div className="cta-row">
-                  <button type="button" className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx<=0) return a; const t=a[idx]; a[idx]=a[idx-1]; a[idx-1]=t; return a })} disabled={idx===0}>↑</button>
-                  <button type="button" className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx>=arr.length-1) return a; const t=a[idx]; a[idx]=a[idx+1]; a[idx+1]=t; return a })} disabled={idx===items.length-1}>↓</button>
-                </div>
-              </div>
-            </div>
-          ))}
+  const renderItemsList = () => (
+    <div className="card span-4">
+        <div className="cta-row" style={{justifyContent:'space-between'}}>
+        <div className="section-title">{t('your_items')}</div>
+        <div className="cta-row">
+          <button type="button" className="btn" onClick={async()=>{ try { await adminReorderItems(id, items.map((x:any)=> x.id)); toast.success(t('save_success')) } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) } }}>{t('editor.save_order')}</button>
+          <button type="button" className="btn btn-primary" onClick={()=> { setNewOpen(true); setSelectedItemId(null) }}>{t('add_item')}</button>
         </div>
       </div>
-    )
-  }
+      {items.length===0 && <div className="muted">{t('no_items')}</div>}
+      <div style={{marginTop:8}}>
+        {items.map((it:any, idx:number)=> (
+          <div key={it.id} className="tile" style={{padding:10, marginTop:8, border: selectedItemId===it.id? '1px solid var(--accent)' : '1px solid var(--border)', borderRadius:12}}>
+            <div className="cta-row" style={{justifyContent:'space-between'}}>
+              <button type="button" className="btn btn-ghost" onClick={()=> setSelectedItemId(it.id)} style={{flex:1, justifyContent:'flex-start'}}>
+                <div style={{textAlign:'left'}}>
+                  <div className="muted" style={{fontSize:12}}>{it.type||'likert'}</div>
+                  <div style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{it.stem_i18n?.[i18n.language as 'en'|'zh'] || it.stem_i18n?.en || it.stem_i18n?.zh || it.id}</div>
+                </div>
+              </button>
+              <div className="cta-row">
+                <button type="button" className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx<=0) return a; const t=a[idx]; a[idx]=a[idx-1]; a[idx-1]=t; return a })} disabled={idx===0}>↑</button>
+                <button type="button" className="btn btn-ghost" onClick={()=> setItems(arr=> { const a=[...arr]; if (idx>=arr.length-1) return a; const t=a[idx]; a[idx]=a[idx+1]; a[idx+1]=t; return a })} disabled={idx===items.length-1}>↓</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
-  function ItemEditor() {
+  const renderItemEditor = () => {
     if (selectedItem) {
       const it = selectedItem
       return (
@@ -1136,8 +1134,8 @@ function ExistingScaleEditor({ id }: { id: string }) {
 
       {activeView==='editor' && (
         <div className="row">
-          <ItemsList/>
-          <ItemEditor/>
+          {renderItemsList()}
+          {renderItemEditor()}
         </div>
       )}
 
