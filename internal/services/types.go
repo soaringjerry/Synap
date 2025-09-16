@@ -71,3 +71,26 @@ type User struct {
 	TenantID  string
 	CreatedAt time.Time
 }
+
+type Participant struct {
+	ID        string
+	Email     string
+	ConsentID string
+	SelfToken string
+}
+
+type Response struct {
+	ParticipantID string
+	ItemID        string
+	RawValue      int
+	ScoreValue    int
+	SubmittedAt   time.Time
+	RawJSON       string
+}
+
+type ConsentRecord struct {
+	ID       string
+	ScaleID  string
+	Choices  map[string]bool
+	SignedAt time.Time
+}

@@ -28,6 +28,7 @@ type Router struct {
 	responseSvc *services.ResponseService
 	scaleSvc    *services.ScaleService
 	authSvc     *services.AuthService
+	exportSvc   *services.ExportService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -41,6 +42,7 @@ func NewRouterWithStore(store Store) *Router {
 		responseSvc: services.NewResponseService(newResponseStoreAdapter(store)),
 		scaleSvc:    services.NewScaleService(newScaleStoreAdapter(store)),
 		authSvc:     services.NewAuthService(newAuthStoreAdapter(store), middleware.SignToken),
+		exportSvc:   services.NewExportService(newExportStoreAdapter(store)),
 	}
 }
 
@@ -467,266 +469,19 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	scaleID := r.URL.Query().Get("scale_id")
 	format := r.URL.Query().Get("format")
-	sc := rt.store.GetScale(scaleID)
-	// consent header naming: key (default) | label_en | label_zh
 	consentHeader := r.URL.Query().Get("consent_header")
 	if consentHeader == "" {
 		consentHeader = "key"
 	}
-	if scaleID == "" {
-		http.Error(w, "scale_id required", http.StatusBadRequest)
+	res, err := rt.exportSvc.ExportCSV(services.ExportParams{ScaleID: scaleID, Format: format, ConsentHeader: consentHeader})
+	if err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	if format == "" {
-		format = "long"
-	}
-	// Disallow plaintext CSV exports for E2EE projects
-	if sc != nil && sc.E2EEEnabled {
-		http.Error(w, "CSV exports are disabled for E2EE projects", http.StatusBadRequest)
-		return
-	}
-	items := rt.store.ListItems(scaleID)
-	rs := rt.store.ListResponsesByScale(scaleID)
-
-	switch format {
-	case "long":
-		rows := rt.buildLongRows(rs)
-		rt.appendConsentLongNamed(&rows, rs, scaleID, consentHeader)
-		b, err := services.ExportLongCSV(rows)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", "attachment; filename=long.csv")
-		_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
-		_, _ = w.Write(b)
-		return
-	case "wide":
-		mp := rt.buildWideMap(rs)
-		rt.mergeConsentWideNamed(mp, rs, scaleID, consentHeader)
-		b, err := services.ExportWideCSV(mp)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", "attachment; filename=wide.csv")
-		_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
-		_, _ = w.Write(b)
-		return
-	case "score":
-		totals := rt.buildTotals(items, rs)
-		b, err := services.ExportScoreCSV(totals)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", "attachment; filename=score.csv")
-		_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
-		_, _ = w.Write(b)
-		return
-	default:
-		http.Error(w, "unsupported format", http.StatusBadRequest)
-		return
-	}
-}
-
-// buildLongRows converts responses into LongRow slice
-func (rt *Router) buildLongRows(rs []*Response) []services.LongRow {
-	out := make([]services.LongRow, 0, len(rs))
-	for _, r := range rs {
-		out = append(out, services.LongRow{ParticipantID: r.ParticipantID, ItemID: r.ItemID, RawValue: r.RawValue, ScoreValue: r.ScoreValue, SubmittedAt: r.SubmittedAt.Format(time.RFC3339)})
-	}
-	return out
-}
-
-// buildWideMap converts responses into map[participant]map[item]score
-func (rt *Router) buildWideMap(rs []*Response) map[string]map[string]int {
-	mp := map[string]map[string]int{}
-	for _, r := range rs {
-		if mp[r.ParticipantID] == nil {
-			mp[r.ParticipantID] = map[string]int{}
-		}
-		mp[r.ParticipantID][r.ItemID] = r.ScoreValue
-	}
-	return mp
-}
-
-// buildTotals sums scores per participant for score CSV
-func (rt *Router) buildTotals(_ []*Item, rs []*Response) map[string][]int {
-	totals := map[string][]int{}
-	for _, r := range rs {
-		totals[r.ParticipantID] = append(totals[r.ParticipantID], r.ScoreValue)
-	}
-	return totals
-}
-
-// appendConsentLong appends consent choices as pseudo-items to long rows
-func (rt *Router) appendConsentLong(rows *[]services.LongRow, rs []*Response, scaleID string) { // legacy; use appendConsentLongNamed
-	pidSet := map[string]struct{}{}
-	for _, r := range rs {
-		pidSet[r.ParticipantID] = struct{}{}
-	}
-	for pid := range pidSet {
-		p := rt.store.GetParticipant(pid)
-		if p == nil || p.ConsentID == "" {
-			continue
-		}
-		c := rt.store.GetConsentByID(p.ConsentID)
-		if c == nil || c.ScaleID != scaleID {
-			continue
-		}
-		for k, v := range c.Choices {
-			val := 0
-			if v {
-				val = 1
-			}
-			*rows = append(*rows, services.LongRow{ParticipantID: pid, ItemID: "consent." + k, RawValue: val, ScoreValue: val, SubmittedAt: c.SignedAt.Format(time.RFC3339)})
-		}
-	}
-}
-
-// mergeConsentWide merges consent choices into the wide map as consent.<key> columns (legacy)
-func (rt *Router) mergeConsentWide(mp map[string]map[string]int, rs []*Response, scaleID string) {
-	pidSet := map[string]struct{}{}
-	for _, r := range rs {
-		pidSet[r.ParticipantID] = struct{}{}
-	}
-	for pid := range pidSet {
-		p := rt.store.GetParticipant(pid)
-		if p == nil || p.ConsentID == "" {
-			continue
-		}
-		c := rt.store.GetConsentByID(p.ConsentID)
-		if c == nil || c.ScaleID != scaleID {
-			continue
-		}
-		if mp[pid] == nil {
-			mp[pid] = map[string]int{}
-		}
-		for k, v := range c.Choices {
-			if v {
-				mp[pid]["consent."+k] = 1
-			} else {
-				mp[pid]["consent."+k] = 0
-			}
-		}
-	}
-}
-
-// Helper: find label for consent key in a scale for given lang
-func (rt *Router) consentLabel(sc *Scale, key, lang string) string {
-	if sc == nil || sc.ConsentConfig == nil {
-		return ""
-	}
-	for _, o := range sc.ConsentConfig.Options {
-		if o.Key == key {
-			if o.LabelI18n != nil {
-				if s := o.LabelI18n[lang]; s != "" {
-					return s
-				}
-				if s := o.LabelI18n["en"]; s != "" {
-					return s
-				}
-			}
-			break
-		}
-	}
-	return ""
-}
-
-// appendConsentLongNamed appends consent choices with configurable item_id naming: key (default) or label_en/label_zh
-func (rt *Router) appendConsentLongNamed(rows *[]services.LongRow, rs []*Response, scaleID, mode string) {
-	pidSet := map[string]struct{}{}
-	for _, r := range rs {
-		pidSet[r.ParticipantID] = struct{}{}
-	}
-	sc := rt.store.GetScale(scaleID)
-	lang := "en"
-	if mode == "label_zh" {
-		lang = "zh"
-	}
-	for pid := range pidSet {
-		p := rt.store.GetParticipant(pid)
-		if p == nil || p.ConsentID == "" {
-			continue
-		}
-		c := rt.store.GetConsentByID(p.ConsentID)
-		if c == nil || c.ScaleID != scaleID {
-			continue
-		}
-		for k, v := range c.Choices {
-			val := 0
-			if v {
-				val = 1
-			}
-			name := "consent." + k
-			if mode == "label_en" || mode == "label_zh" {
-				if lbl := rt.consentLabel(sc, k, lang); lbl != "" {
-					name = lbl
-				}
-			}
-			*rows = append(*rows, services.LongRow{ParticipantID: pid, ItemID: name, RawValue: val, ScoreValue: val, SubmittedAt: c.SignedAt.Format(time.RFC3339)})
-		}
-	}
-}
-
-// mergeConsentWideNamed merges consent with configurable column naming: key (default) or label_en/label_zh
-func (rt *Router) mergeConsentWideNamed(mp map[string]map[string]int, rs []*Response, scaleID, mode string) {
-	pidSet := map[string]struct{}{}
-	for _, r := range rs {
-		pidSet[r.ParticipantID] = struct{}{}
-	}
-	sc := rt.store.GetScale(scaleID)
-	lang := "en"
-	if mode == "label_zh" {
-		lang = "zh"
-	}
-	// helper to ensure unique column names
-	colName := func(existing map[string]int, base string) string {
-		name := base
-		if _, ok := existing[name]; !ok {
-			return name
-		}
-		// If duplicate, suffix with (n)
-		for i := 2; ; i++ {
-			cand := fmt.Sprintf("%s (%d)", base, i)
-			if _, ok := existing[cand]; !ok {
-				return cand
-			}
-		}
-	}
-	// Build participant-wise
-	for pid := range pidSet {
-		p := rt.store.GetParticipant(pid)
-		if p == nil || p.ConsentID == "" {
-			continue
-		}
-		c := rt.store.GetConsentByID(p.ConsentID)
-		if c == nil || c.ScaleID != scaleID {
-			continue
-		}
-		if mp[pid] == nil {
-			mp[pid] = map[string]int{}
-		}
-		for k, v := range c.Choices {
-			name := "consent." + k
-			if mode == "label_en" || mode == "label_zh" {
-				if lbl := rt.consentLabel(sc, k, lang); lbl != "" {
-					name = lbl
-				}
-				// ensure uniqueness per participant row map
-				name = colName(mp[pid], name)
-			}
-			if v {
-				mp[pid][name] = 1
-			} else {
-				mp[pid][name] = 0
-			}
-		}
-	}
+	w.Header().Set("Content-Type", res.ContentType)
+	w.Header().Set("Content-Disposition", "attachment; filename="+res.Filename)
+	_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
+	_, _ = w.Write(res.Data)
 }
 
 // GET /api/admin/participant/export?email=...

@@ -1,0 +1,148 @@
+package services
+
+import (
+	"encoding/csv"
+	"strings"
+	"testing"
+	"time"
+)
+
+type exportStubStore struct {
+	scale        *Scale
+	items        []*Item
+	responses    []*Response
+	participants map[string]*Participant
+	consents     map[string]*ConsentRecord
+}
+
+func newExportStubStore() *exportStubStore {
+	return &exportStubStore{
+		participants: map[string]*Participant{},
+		consents:     map[string]*ConsentRecord{},
+	}
+}
+
+func (s *exportStubStore) GetScale(id string) (*Scale, error) {
+	if s.scale != nil && s.scale.ID == id {
+		copy := *s.scale
+		return &copy, nil
+	}
+	return nil, nil
+}
+
+func (s *exportStubStore) ListItems(scaleID string) ([]*Item, error) {
+	out := []*Item{}
+	for _, it := range s.items {
+		if it.ScaleID == scaleID {
+			copy := *it
+			out = append(out, &copy)
+		}
+	}
+	return out, nil
+}
+
+func (s *exportStubStore) ListResponsesByScale(scaleID string) ([]*Response, error) {
+	out := []*Response{}
+	for _, r := range s.responses {
+		out = append(out, &Response{ParticipantID: r.ParticipantID, ItemID: r.ItemID, RawValue: r.RawValue, ScoreValue: r.ScoreValue, SubmittedAt: r.SubmittedAt, RawJSON: r.RawJSON})
+	}
+	return out, nil
+}
+
+func (s *exportStubStore) GetParticipant(id string) (*Participant, error) {
+	if p, ok := s.participants[id]; ok {
+		copy := *p
+		return &copy, nil
+	}
+	return nil, nil
+}
+
+func (s *exportStubStore) GetConsentByID(id string) (*ConsentRecord, error) {
+	if c, ok := s.consents[id]; ok {
+		copy := *c
+		return &copy, nil
+	}
+	return nil, nil
+}
+
+func TestExportServiceLongWithConsent(t *testing.T) {
+	store := newExportStubStore()
+	store.scale = &Scale{ID: "S1", ConsentConfig: &ConsentConfig{Options: []ConsentOptionConf{{Key: "agree", LabelI18n: map[string]string{"en": "Agree", "zh": "同意"}}}}}
+	store.items = []*Item{{ID: "I1", ScaleID: "S1"}}
+	store.responses = []*Response{{ParticipantID: "P1", ItemID: "I1", RawValue: 3, ScoreValue: 3, SubmittedAt: time.Date(2025, 9, 18, 0, 0, 0, 0, time.UTC)}}
+	store.participants["P1"] = &Participant{ID: "P1", ConsentID: "C1"}
+	store.consents["C1"] = &ConsentRecord{ID: "C1", ScaleID: "S1", Choices: map[string]bool{"agree": true}, SignedAt: time.Date(2025, 9, 18, 0, 0, 0, 0, time.UTC)}
+
+	svc := NewExportService(store)
+	res, err := svc.ExportCSV(ExportParams{ScaleID: "S1", Format: "long", ConsentHeader: "label_en"})
+	if err != nil {
+		t.Fatalf("ExportCSV returned error: %v", err)
+	}
+	if res.Filename != "long.csv" {
+		t.Fatalf("filename = %q", res.Filename)
+	}
+	r := csv.NewReader(strings.NewReader(string(res.Data)))
+	records, err := r.ReadAll()
+	if err != nil {
+		t.Fatalf("read csv: %v", err)
+	}
+	if len(records) != 3 { // header + two rows (response + consent)
+		t.Fatalf("records len = %d", len(records))
+	}
+	if records[1][1] != "I1" {
+		t.Fatalf("expected item row, got %v", records[1])
+	}
+	if records[2][1] != "Agree" {
+		t.Fatalf("expected consent label, got %v", records[2][1])
+	}
+}
+
+func TestExportServiceWideAndScore(t *testing.T) {
+	store := newExportStubStore()
+	store.scale = &Scale{ID: "S1"}
+	store.items = []*Item{{ID: "I1", ScaleID: "S1"}, {ID: "I2", ScaleID: "S1"}}
+	store.responses = []*Response{
+		{ParticipantID: "P1", ItemID: "I1", ScoreValue: 3, SubmittedAt: time.Now()},
+		{ParticipantID: "P1", ItemID: "I2", ScoreValue: 4, SubmittedAt: time.Now()},
+	}
+	svc := NewExportService(store)
+
+	wide, err := svc.ExportCSV(ExportParams{ScaleID: "S1", Format: "wide"})
+	if err != nil {
+		t.Fatalf("wide export error: %v", err)
+	}
+	recs, err := csv.NewReader(strings.NewReader(string(wide.Data))).ReadAll()
+	if err != nil {
+		t.Fatalf("wide read error: %v", err)
+	}
+	if len(recs) != 2 {
+		t.Fatalf("wide rows = %d", len(recs))
+	}
+	if recs[0][1] != "I1" {
+		t.Fatalf("wide header unexpected: %v", recs[0])
+	}
+
+	score, err := svc.ExportCSV(ExportParams{ScaleID: "S1", Format: "score"})
+	if err != nil {
+		t.Fatalf("score export error: %v", err)
+	}
+	scoreRecs, err := csv.NewReader(strings.NewReader(string(score.Data))).ReadAll()
+	if err != nil {
+		t.Fatalf("score read error: %v", err)
+	}
+	if len(scoreRecs) != 2 {
+		t.Fatalf("score rows = %d", len(scoreRecs))
+	}
+	if scoreRecs[1][1] != "7" {
+		t.Fatalf("score total expected 7, got %v", scoreRecs[1][1])
+	}
+}
+
+func TestExportServiceRejectsE2EE(t *testing.T) {
+	store := newExportStubStore()
+	store.scale = &Scale{ID: "S1", E2EEEnabled: true}
+	svc := NewExportService(store)
+	if _, err := svc.ExportCSV(ExportParams{ScaleID: "S1", Format: "long"}); err == nil {
+		t.Fatalf("expected error for E2EE scale")
+	}
+}
