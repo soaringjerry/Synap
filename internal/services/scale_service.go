@@ -13,12 +13,13 @@ import (
 type ErrorCode string
 
 const (
-	ErrorInvalid      ErrorCode = "invalid"
-	ErrorForbidden    ErrorCode = "forbidden"
-	ErrorNotFound     ErrorCode = "not_found"
-	ErrorConflict     ErrorCode = "conflict"
-	ErrorUnauthorized ErrorCode = "unauthorized"
-	ErrorBadGateway   ErrorCode = "bad_gateway"
+	ErrorInvalid         ErrorCode = "invalid"
+	ErrorForbidden       ErrorCode = "forbidden"
+	ErrorNotFound        ErrorCode = "not_found"
+	ErrorConflict        ErrorCode = "conflict"
+	ErrorUnauthorized    ErrorCode = "unauthorized"
+	ErrorBadGateway      ErrorCode = "bad_gateway"
+	ErrorTooManyRequests ErrorCode = "too_many_requests"
 )
 
 type ServiceError struct {
@@ -37,6 +38,10 @@ func NewUnauthorizedError(msg string) error {
 }
 
 func NewBadGatewayError(msg string) error { return &ServiceError{Code: ErrorBadGateway, Message: msg} }
+
+func NewTooManyRequestsError(msg string) error {
+	return &ServiceError{Code: ErrorTooManyRequests, Message: msg}
+}
 
 func AsServiceError(err error) (*ServiceError, bool) {
 	var se *ServiceError

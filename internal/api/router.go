@@ -29,6 +29,7 @@ type Router struct {
 	exportSvc      *services.ExportService
 	participantSvc *services.ParticipantDataService
 	translationSvc *services.TranslationService
+	e2eeSvc        *services.E2EEService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -36,7 +37,7 @@ func NewRouterWithStore(store Store) *Router {
 		log.Printf("persistence disabled: using in-memory store")
 		store = newMemoryStore("")
 	}
-	return &Router{
+	ert := &Router{
 		store:          store,
 		signPriv:       deriveSignKey(),
 		responseSvc:    services.NewResponseService(newResponseStoreAdapter(store)),
@@ -45,7 +46,14 @@ func NewRouterWithStore(store Store) *Router {
 		exportSvc:      services.NewExportService(newExportStoreAdapter(store)),
 		participantSvc: services.NewParticipantDataService(newParticipantStoreAdapter(store)),
 		translationSvc: services.NewTranslationService(newTranslationStoreAdapter(store), http.DefaultClient),
+		e2eeSvc:        services.NewE2EEService(newE2EEStoreAdapter(store), nil),
 	}
+	if ert.signPriv != nil {
+		ert.e2eeSvc.WithSigner(func(data []byte) (string, error) {
+			return base64.StdEncoding.EncodeToString(ed25519.Sign(ert.signPriv, data)), nil
+		})
+	}
+	return ert
 }
 
 func NewRouter() *Router {
@@ -552,8 +560,11 @@ func (rt *Router) handleProjectKeys(w http.ResponseWriter, r *http.Request) {
 	id := parts[0]
 	switch r.Method {
 	case http.MethodGet:
-		// Publicly list registered public keys for encryption
-		ks := rt.store.ListProjectKeys(id)
+		ks, err := rt.e2eeSvc.ListProjectKeys(id)
+		if err != nil {
+			rt.writeServiceError(w, err)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"keys": ks})
 		return
@@ -562,11 +573,6 @@ func (rt *Router) handleProjectKeys(w http.ResponseWriter, r *http.Request) {
 		tid, ok := middleware.TenantIDFromContext(r.Context())
 		if !ok {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		sc := rt.store.GetScale(id)
-		if sc == nil || sc.TenantID != tid {
-			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
 		var in struct {
@@ -579,8 +585,10 @@ func (rt *Router) handleProjectKeys(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		k := &ProjectKey{ScaleID: id, Algorithm: in.Algorithm, KDF: in.KDF, PublicKey: in.PublicKey, Fingerprint: in.Fingerprint, CreatedAt: time.Now().UTC()}
-		rt.store.AddProjectKey(k)
+		if err := rt.e2eeSvc.AddProjectKey(tid, id, services.ProjectKeyInput{Algorithm: in.Algorithm, KDF: in.KDF, PublicKey: in.PublicKey, Fingerprint: in.Fingerprint}); err != nil {
+			rt.writeServiceError(w, err)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		return
@@ -611,37 +619,26 @@ func (rt *Router) handleE2EEResponse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if in.ScaleID == "" || in.Ciphertext == "" || in.Nonce == "" || len(in.EncDEK) == 0 {
-		http.Error(w, "invalid payload", http.StatusBadRequest)
+	res, err := rt.e2eeSvc.IntakeResponse(services.IntakeResponseInput{
+		ScaleID:        in.ScaleID,
+		ResponseID:     in.ResponseID,
+		Ciphertext:     in.Ciphertext,
+		Nonce:          in.Nonce,
+		AADHash:        in.AADHash,
+		EncDEK:         in.EncDEK,
+		PMKFingerprint: in.PMKFingerprint,
+	}, func(token string) (bool, error) { return rt.verifyTurnstile(r, token), nil })
+	if err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	if sc := rt.store.GetScale(in.ScaleID); sc != nil && sc.TurnstileEnabled {
-		if ok := rt.verifyTurnstile(r, in.TurnstileToken); !ok {
-			http.Error(w, "turnstile verification failed", http.StatusBadRequest)
-			return
-		}
-	}
-	// store opaque ciphertext without touching plaintext
-	rid := in.ResponseID
-	if rid == "" {
-		rid = strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
-	}
-	// generate self token
-	rb := make([]byte, 24)
-	_, _ = rand.Read(rb)
-	tok := base64.RawURLEncoding.EncodeToString(rb)
-	rt.store.AddE2EEResponse(&E2EEResponse{
-		ScaleID: in.ScaleID, ResponseID: rid, Ciphertext: in.Ciphertext, Nonce: in.Nonce,
-		AADHash: in.AADHash, EncDEK: in.EncDEK, PMKFingerprint: in.PMKFingerprint, CreatedAt: time.Now().UTC(),
-		SelfToken: tok,
-	})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"ok":          true,
-		"response_id": rid,
-		"self_token":  tok,
-		"self_export": "/api/self/e2ee/export?response_id=" + rid + "&token=" + tok,
-		"self_delete": "/api/self/e2ee/delete?response_id=" + rid + "&token=" + tok,
+		"response_id": res.ResponseID,
+		"self_token":  res.SelfToken,
+		"self_export": "/api/self/e2ee/export?response_id=" + res.ResponseID + "&token=" + res.SelfToken,
+		"self_delete": "/api/self/e2ee/delete?response_id=" + res.ResponseID + "&token=" + res.SelfToken,
 	})
 }
 
@@ -668,97 +665,35 @@ func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "scale_id required", http.StatusBadRequest)
 			return
 		}
-		sc := rt.store.GetScale(in.ScaleID)
-		if sc == nil || sc.TenantID != tid {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
 		ip := r.Header.Get("X-Forwarded-For")
 		if ip == "" {
 			ip = r.RemoteAddr
 		}
-		if job := rt.store.FindRecentExportJob(tid, in.ScaleID, ip, 30*time.Second); job != nil {
-			rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_reuse", Target: in.ScaleID, Note: job.ID})
-			url := fmt.Sprintf("/api/exports/e2ee?job=%s&token=%s", job.ID, job.Token)
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"url": url, "expires_at": job.ExpiresAt.UTC().Format(time.RFC3339)})
+		res, err := rt.e2eeSvc.RequestExport(services.E2EEExportRequest{TenantID: tid, ScaleID: in.ScaleID, RemoteIP: ip, Actor: actorEmail(r)})
+		if err != nil {
+			rt.writeServiceError(w, err)
 			return
 		}
-		if !rt.store.AllowExport(tid, 5*time.Second) {
-			http.Error(w, "too many requests", http.StatusTooManyRequests)
-			return
-		}
-		job := rt.store.CreateExportJob(tid, in.ScaleID, ip, 5*time.Minute)
-		rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_request", Target: in.ScaleID, Note: job.ID})
-		url := fmt.Sprintf("/api/exports/e2ee?job=%s&token=%s", job.ID, job.Token)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"url": url, "expires_at": job.ExpiresAt.UTC().Format(time.RFC3339)})
+		_ = json.NewEncoder(w).Encode(map[string]any{"url": res.URL, "expires_at": res.ExpiresAt.UTC().Format(time.RFC3339)})
 		return
 	case http.MethodGet:
 		// If a job token is provided, use tokenized download; else allow legacy scale_id path with step-up
-		if jobID := r.URL.Query().Get("job"); jobID != "" {
-			token := r.URL.Query().Get("token")
-			job := rt.store.GetExportJob(jobID, token)
-			if job == nil || job.TenantID != tid {
-				http.Error(w, "invalid or expired job", http.StatusForbidden)
-				return
-			}
-			sc := rt.store.GetScale(job.ScaleID)
-			if sc == nil || sc.TenantID != tid {
-				http.Error(w, "forbidden", http.StatusForbidden)
-				return
-			}
-			rs := rt.store.ListE2EEResponses(job.ScaleID)
-			manifest := map[string]any{
-				"version":    1,
-				"type":       "e2ee-bundle",
-				"scale_id":   job.ScaleID,
-				"count":      len(rs),
-				"created_at": time.Now().UTC().Format(time.RFC3339),
-			}
-			mb, _ := json.Marshal(manifest)
-			sig := ""
-			if rt.signPriv != nil {
-				sig = base64.StdEncoding.EncodeToString(ed25519.Sign(rt.signPriv, mb))
-			}
-			// audit with manifest hash
-			h := sha256.Sum256(mb)
-			rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_download", Target: job.ScaleID, Note: base64.StdEncoding.EncodeToString(h[:])})
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Content-Disposition", "attachment; filename=e2ee_bundle.json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"manifest": manifest, "signature": sig, "responses": rs})
+		bundle, err := rt.e2eeSvc.DownloadExport(services.E2EEDownloadRequest{
+			TenantID: tid,
+			ScaleID:  r.URL.Query().Get("scale_id"),
+			JobID:    r.URL.Query().Get("job"),
+			JobToken: r.URL.Query().Get("token"),
+			Actor:    actorEmail(r),
+			StepUp:   r.Header.Get("X-Step-Up") == "true",
+		})
+		if err != nil {
+			rt.writeServiceError(w, err)
 			return
-		}
-		// Legacy path: requires step-up header and query scale_id
-		if r.Header.Get("X-Step-Up") != "true" {
-			http.Error(w, "step-up required", http.StatusForbidden)
-			return
-		}
-		scaleID := r.URL.Query().Get("scale_id")
-		if scaleID == "" {
-			http.Error(w, "scale_id required", http.StatusBadRequest)
-			return
-		}
-		sc := rt.store.GetScale(scaleID)
-		if sc == nil || sc.TenantID != tid {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-		rs := rt.store.ListE2EEResponses(scaleID)
-		manifest := map[string]any{
-			"version":    1,
-			"type":       "e2ee-bundle",
-			"scale_id":   scaleID,
-			"count":      len(rs),
-			"created_at": time.Now().UTC().Format(time.RFC3339),
-		}
-		mb, _ := json.Marshal(manifest)
-		sig := ""
-		if rt.signPriv != nil {
-			sig = base64.StdEncoding.EncodeToString(ed25519.Sign(rt.signPriv, mb))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"manifest": manifest, "signature": sig, "responses": rs})
+		w.Header().Set("Content-Disposition", "attachment; filename=e2ee_bundle.json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"manifest": bundle.Manifest, "signature": bundle.Signature, "responses": bundle.Responses})
 		return
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -784,21 +719,12 @@ func (rt *Router) handleRewrapJobs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.GetScale(in.ScaleID)
-	if sc == nil || sc.TenantID != tid {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	res, err := rt.e2eeSvc.ListRewrapItems(tid, in.ScaleID, in.FromFP, in.ToFP)
+	if err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	rs := rt.store.ListE2EEResponses(in.ScaleID)
-	type item struct {
-		ResponseID string   `json:"response_id"`
-		EncDEK     []string `json:"enc_dek"`
-	}
-	out := make([]item, 0, len(rs))
-	for _, r2 := range rs {
-		out = append(out, item{ResponseID: r2.ResponseID, EncDEK: r2.EncDEK})
-	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": in.ScaleID, "from_fp": in.FromFP, "to_fp": in.ToFP, "items": out})
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 // POST /api/rewrap/submit  { scale_id, to_fp, items:[{response_id, enc_dek_new}] }
@@ -823,14 +749,13 @@ func (rt *Router) handleRewrapSubmit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.GetScale(in.ScaleID)
-	if sc == nil || sc.TenantID != tid {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	// append new encDEK
+	items := make([]services.RewrapSubmitItem, 0, len(in.Items))
 	for _, it := range in.Items {
-		rt.store.AppendE2EEEncDEK(it.ResponseID, it.EncDEKNew)
+		items = append(items, services.RewrapSubmitItem{ResponseID: it.ResponseID, EncDEKNew: it.EncDEKNew})
+	}
+	if err := rt.e2eeSvc.SubmitRewrap(tid, in.ScaleID, actorEmail(r), items, in.ToFP); err != nil {
+		rt.writeServiceError(w, err)
+		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "to_fp": in.ToFP, "count": len(in.Items)})
 }
@@ -1298,6 +1223,8 @@ func (rt *Router) writeServiceError(w http.ResponseWriter, err error) {
 			status = http.StatusConflict
 		case services.ErrorBadGateway:
 			status = http.StatusBadGateway
+		case services.ErrorTooManyRequests:
+			status = http.StatusTooManyRequests
 		}
 		http.Error(w, se.Message, status)
 		return

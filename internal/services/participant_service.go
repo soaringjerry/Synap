@@ -12,14 +12,15 @@ type ParticipantStore interface {
 }
 
 type E2EEResponse struct {
-	ScaleID    string    `json:"scale_id"`
-	ResponseID string    `json:"response_id"`
-	Ciphertext string    `json:"ciphertext"`
-	Nonce      string    `json:"nonce"`
-	AADHash    string    `json:"aad_hash"`
-	EncDEK     []string  `json:"enc_dek"`
-	CreatedAt  time.Time `json:"created_at"`
-	SelfToken  string    `json:"self_token"`
+	ScaleID        string    `json:"scale_id"`
+	ResponseID     string    `json:"response_id"`
+	Ciphertext     string    `json:"ciphertext"`
+	Nonce          string    `json:"nonce"`
+	AADHash        string    `json:"aad_hash"`
+	EncDEK         []string  `json:"enc_dek"`
+	PMKFingerprint string    `json:"pmk_fingerprint"`
+	CreatedAt      time.Time `json:"created_at"`
+	SelfToken      string    `json:"self_token"`
 }
 
 type ParticipantDataService struct {

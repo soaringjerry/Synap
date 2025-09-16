@@ -73,11 +73,11 @@ type User struct {
 }
 
 type TenantAIConfig struct {
-	TenantID     string
-	OpenAIKey    string
-	OpenAIBase   string
+	TenantID      string
+	OpenAIKey     string
+	OpenAIBase    string
 	AllowExternal bool
-	StoreLogs    bool
+	StoreLogs     bool
 }
 
 type Participant struct {
@@ -101,4 +101,24 @@ type ConsentRecord struct {
 	ScaleID  string
 	Choices  map[string]bool
 	SignedAt time.Time
+}
+
+type ProjectKey struct {
+	ScaleID     string    `json:"scale_id"`
+	Algorithm   string    `json:"alg"`
+	KDF         string    `json:"kdf"`
+	PublicKey   string    `json:"public_key"`
+	Fingerprint string    `json:"fingerprint"`
+	CreatedAt   time.Time `json:"created_at"`
+	Disabled    bool      `json:"disabled"`
+}
+
+type ExportJob struct {
+	ID        string
+	TenantID  string
+	ScaleID   string
+	Token     string
+	RequestIP string
+	CreatedAt time.Time
+	ExpiresAt time.Time
 }
