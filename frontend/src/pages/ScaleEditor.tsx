@@ -39,7 +39,7 @@ const SettingsView = React.memo(function SettingsView({
   onLikertDefaultsSaved,
   onReload,
 }: SettingsViewProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const toast = useToast()
 
   const [localNameEn, setLocalNameEn] = useState('')
@@ -125,13 +125,20 @@ const SettingsView = React.memo(function SettingsView({
       if (mode === 'off') return list.filter(o => o.key !== key)
       const idx = list.findIndex(o => o.key === key)
       if (idx === -1) {
-        return [...list, { key, required: mode === 'required' }]
+        const enLabel = i18n.t(`survey.consent_opt.${key}` as const, { lng: 'en' })
+        const zhLabel = i18n.t(`survey.consent_opt.${key}` as const, { lng: 'zh' })
+        return [...list, {
+          key,
+          required: mode === 'required',
+          en: enLabel !== `survey.consent_opt.${key}` ? enLabel : undefined,
+          zh: zhLabel !== `survey.consent_opt.${key}` ? zhLabel : undefined,
+        }]
       }
       const next = [...list]
       next[idx] = { ...next[idx], required: mode === 'required' }
       return next
     })
-  }, [])
+  }, [i18n])
 
   const saveScale = useCallback(async () => {
     if (!scale) return
