@@ -3,6 +3,13 @@ import react from '@vitejs/plugin-react-swc'
 
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    coverage: {
+      reporter: ['text', 'lcov'],
+    },
+  },
   server: {
     host: true,            // listen on 0.0.0.0
     port: 5173,
