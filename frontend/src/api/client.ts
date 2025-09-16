@@ -14,7 +14,12 @@ export type ItemOut = {
   likert_show_numbers?: boolean
 }
 
-const base = '' // relative to same origin
+// API base URL
+// By default it is same-origin (''). When deploying the frontend separately from the backend,
+// set VITE_API_BASE to the backend origin (e.g., https://api.example.com) without trailing slash.
+const base: string = (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_API_BASE)
+  ? String((import.meta as any).env.VITE_API_BASE).replace(/\/+$/, '')
+  : ''
 
 async function j<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -57,47 +62,47 @@ function authHeaders(): Record<string,string> {
 }
 
 export async function adminListScales() {
-  const res = await fetch(`/api/admin/scales`, { headers: authHeaders() })
+  const res = await fetch(`${base}/api/admin/scales`, { headers: authHeaders() })
   return j<{ scales: Scale[] }>(res)
 }
 export async function adminGetScale(id: string) {
-  const res = await fetch(`/api/admin/scales/${encodeURIComponent(id)}`, { headers: authHeaders() })
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(id)}`, { headers: authHeaders() })
   return j<Scale>(res)
 }
 export async function adminGetScaleItems(id: string) {
-  const res = await fetch(`/api/admin/scales/${encodeURIComponent(id)}/items`, { headers: authHeaders() })
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(id)}/items`, { headers: authHeaders() })
   return j<{ items: any[] }>(res)
 }
 export async function adminReorderItems(scaleId: string, order: string[]) {
-  const res = await fetch(`/api/admin/scales/${encodeURIComponent(scaleId)}/items/reorder`, { method:'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ order }) })
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(scaleId)}/items/reorder`, { method:'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ order }) })
   return j<{ ok: boolean }>(res)
 }
 export async function adminCreateScale(input: Partial<Scale> & { name_i18n: Record<string,string>, points: number }) {
-  const res = await fetch(`/api/scales`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  const res = await fetch(`${base}/api/scales`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<Scale>(res)
 }
 export async function adminUpdateScale(id: string, input: Partial<Scale>) {
-  const res = await fetch(`/api/admin/scales/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<{ok:true}>(res)
 }
 export async function adminDeleteScale(id: string) {
-  const res = await fetch(`/api/admin/scales/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders() })
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders() })
   return j<{ok:true}>(res)
 }
 export async function adminPurgeResponses(scaleId: string) {
-  const res = await fetch(`/api/admin/scales/${encodeURIComponent(scaleId)}/responses`, { method: 'DELETE', headers: authHeaders() })
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(scaleId)}/responses`, { method: 'DELETE', headers: authHeaders() })
   return j<{ok:true; removed:number}>(res)
 }
 export async function adminCreateItem(input: { scale_id: string, reverse_scored?: boolean, stem_i18n: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string>, likert_labels_i18n?: Record<string,string[]>, likert_show_numbers?: boolean }) {
-  const res = await fetch(`/api/items`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  const res = await fetch(`${base}/api/items`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<any>(res)
 }
 export async function adminUpdateItem(id: string, input: { reverse_scored?: boolean, stem_i18n?: Record<string,string>, type?: ItemOut['type'], options_i18n?: Record<string,string[]>, min?: number, max?: number, step?: number, required?: boolean, placeholder_i18n?: Record<string,string>, likert_labels_i18n?: Record<string,string[]>, likert_show_numbers?: boolean }) {
-  const res = await fetch(`/api/admin/items/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  const res = await fetch(`${base}/api/admin/items/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<{ok:true}>(res)
 }
 export async function adminDeleteItem(id: string) {
-  const res = await fetch(`/api/admin/items/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders() })
+  const res = await fetch(`${base}/api/admin/items/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders() })
   return j<{ok:true}>(res)
 }
 
@@ -117,71 +122,77 @@ export type AnalyticsSummary = {
 }
 
 export async function adminAnalyticsSummary(scaleId: string) {
-  const res = await fetch(`/api/admin/analytics/summary?scale_id=${encodeURIComponent(scaleId)}`, { headers: authHeaders() })
+  const res = await fetch(`${base}/api/admin/analytics/summary?scale_id=${encodeURIComponent(scaleId)}`, { headers: authHeaders() })
   return j<AnalyticsSummary>(res)
 }
 
 // E2EE keys management
 export async function adminListProjectKeys(projectId: string) {
-  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/keys`, { headers: authHeaders() })
+  const res = await fetch(`${base}/api/projects/${encodeURIComponent(projectId)}/keys`, { headers: authHeaders() })
   return j<{ keys: { alg:string; kdf:string; public_key:string; fingerprint:string; created_at:string; disabled?: boolean }[] }>(res)
 }
 export async function adminAddProjectKey(projectId: string, input: { alg:string; kdf:string; public_key:string; fingerprint:string }) {
-  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/keys`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  const res = await fetch(`${base}/api/projects/${encodeURIComponent(projectId)}/keys`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<{ok:true}>(res)
 }
 
 export async function listProjectKeysPublic(projectId: string) {
-  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/keys`)
+  const res = await fetch(`${base}/api/projects/${encodeURIComponent(projectId)}/keys`)
   return j<{ keys: { alg:string; kdf:string; public_key:string; fingerprint:string }[] }>(res)
 }
 
 export async function submitE2EE(input: { scale_id: string; response_id?: string; ciphertext: string; nonce: string; enc_dek: string[]; aad_hash: string; pmk_fingerprint?: string; turnstile_token?: string }) {
-  const res = await fetch(`/api/responses/e2ee`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(input) })
+  const res = await fetch(`${base}/api/responses/e2ee`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(input) })
   return j<{ ok: boolean; response_id: string; self_token?: string; self_export?: string; self_delete?: string }>(res)
 }
 
 // Participant self-service (GDPR)
 export async function participantSelfExport(pid: string, token: string) {
-  const res = await fetch(`/api/self/participant/export?pid=${encodeURIComponent(pid)}&token=${encodeURIComponent(token)}`)
+  const res = await fetch(`${base}/api/self/participant/export?pid=${encodeURIComponent(pid)}&token=${encodeURIComponent(token)}`)
   return j<{ participant: any; responses: any[] }>(res)
 }
 export async function participantSelfDelete(pid: string, token: string, hard?: boolean) {
-  const res = await fetch(`/api/self/participant/delete?pid=${encodeURIComponent(pid)}&token=${encodeURIComponent(token)}${hard?'&hard=true':''}`, { method: 'POST' })
+  const res = await fetch(`${base}/api/self/participant/delete?pid=${encodeURIComponent(pid)}&token=${encodeURIComponent(token)}${hard?'&hard=true':''}`, { method: 'POST' })
   return j<{ ok: boolean }>(res)
 }
 export async function e2eeSelfExport(response_id: string, token: string) {
-  const res = await fetch(`/api/self/e2ee/export?response_id=${encodeURIComponent(response_id)}&token=${encodeURIComponent(token)}`)
+  const res = await fetch(`${base}/api/self/e2ee/export?response_id=${encodeURIComponent(response_id)}&token=${encodeURIComponent(token)}`)
   return j<any>(res)
 }
 export async function e2eeSelfDelete(response_id: string, token: string) {
-  const res = await fetch(`/api/self/e2ee/delete?response_id=${encodeURIComponent(response_id)}&token=${encodeURIComponent(token)}`, { method: 'POST' })
+  const res = await fetch(`${base}/api/self/e2ee/delete?response_id=${encodeURIComponent(response_id)}&token=${encodeURIComponent(token)}`, { method: 'POST' })
   return j<{ ok: boolean }>(res)
 }
 
 // E2EE export (step-up + short URL)
 export async function adminCreateE2EEExport(scale_id: string) {
-  const res = await fetch(`/api/exports/e2ee`, { method:'POST', headers: { 'Content-Type':'application/json', 'X-Step-Up':'true', ...authHeaders() }, body: JSON.stringify({ scale_id }) })
+  const res = await fetch(`${base}/api/exports/e2ee`, { method:'POST', headers: { 'Content-Type':'application/json', 'X-Step-Up':'true', ...authHeaders() }, body: JSON.stringify({ scale_id }) })
   return j<{ url: string; expires_at: string }>(res)
 }
 
 // --- Admin AI config & translation ---
 export type AIConfig = { tenant_id: string; openai_key?: string; openai_base?: string; allow_external: boolean; store_logs: boolean }
 export async function adminGetAIConfig() {
-  const res = await fetch(`/api/admin/ai/config`, { headers: authHeaders() })
+  const res = await fetch(`${base}/api/admin/ai/config`, { headers: authHeaders() })
   return j<AIConfig>(res)
 }
 export async function adminUpdateAIConfig(input: Partial<AIConfig>) {
-  const res = await fetch(`/api/admin/ai/config`, { method:'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  const res = await fetch(`${base}/api/admin/ai/config`, { method:'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
   return j<{ok:true}>(res)
 }
 export async function adminAITranslatePreview(scale_id: string, target_langs: string[], model?: string) {
-  const res = await fetch(`/api/admin/ai/translate/preview`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ scale_id, target_langs, model }) })
+  const res = await fetch(`${base}/api/admin/ai/translate/preview`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ scale_id, target_langs, model }) })
   return j<{ items: Record<string, Record<string,string>>; name_i18n?: Record<string,string>; consent_i18n?: Record<string,string> }>(res)
 }
 
 // Consent signature evidence
 export async function postConsentSign(input: { scale_id: string; version?: string; locale?: string; choices: Record<string, boolean>; signed_at?: string; signature_kind?: string; evidence: string }) {
-  const res = await fetch(`/api/consent/sign`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(input) })
+  const res = await fetch(`${base}/api/consent/sign`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(input) })
   return j<{ ok: boolean; id: string; hash: string }>(res)
+}
+
+// Public scale metadata
+export async function getScalePublicMeta(id: string) {
+  const res = await fetch(`${base}/api/scale/${encodeURIComponent(id)}`)
+  return j<any>(res)
 }

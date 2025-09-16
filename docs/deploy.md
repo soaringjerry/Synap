@@ -64,6 +64,27 @@ docker compose up -d
 - `SYNAP_DB_PATH`（可选，一次性迁移旧版 JSON 快照时使用）
 - `SYNAP_STATIC_DIR`（一体化镜像用于前端静态资源，默认 `/public`）
 
+前后端分离（静态站点 + 独立 API）时：
+
+- 前端构建时可以设置 `VITE_API_BASE` 指向后端（例如 `https://api.example.com`）。
+  - 示例：`VITE_API_BASE=https://api.example.com npm run build`
+  - 注意：若跨域（不同源），需在网关/反代层做路径转发，或在后端开启 CORS（默认未开启）。推荐“同源 + 路径转发”避免 CORS。
+
+避免 404 的正确方式：
+
+- 使用一体化镜像（同源提供 `/` 与 `/api/*`），或
+- 在你的反向代理（如 Nginx）里将 `/api/` 路由到后端容器，例如：
+
+```
+location /api/ {
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_pass http://127.0.0.1:9000; # 后端监听地址
+}
+```
+
 > 首次启动时若 `SYNAP_SQLITE_PATH` 不存在且指定了 `SYNAP_DB_PATH`，服务会自动读取旧快照并迁移到 SQLite。迁移成功后只需保留新的 `.sqlite` 文件。迁移脚本使用内置的迁移文件，除非设置 `SYNAP_MIGRATIONS_DIR` 指向自定义目录。
 
 ## 使用自有 Nginx（双层反代或仅 Nginx）

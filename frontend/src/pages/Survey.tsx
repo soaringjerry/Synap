@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { listItems, submitBulk, seedSample, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign, participantSelfDelete, e2eeSelfDelete } from '../api/client'
+import { listItems, submitBulk, seedSample, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign, participantSelfDelete, e2eeSelfDelete, getScalePublicMeta } from '../api/client'
 import { e2eeInit, encryptForProject } from '../crypto/e2ee'
 import { mdToHtml } from '../utils/markdown'
 import { useTranslation } from 'react-i18next'
@@ -143,14 +143,9 @@ export function Survey() {
   }
 
   async function fetchMetaFresh(): Promise<any> {
-    const res = await fetch(`/api/scale/${encodeURIComponent(scaleId)}?ts=${Date.now()}`, { cache: 'no-store' })
-    if (!res.ok) {
-      const msg = await res.text()
-      const err = new Error(msg || res.statusText)
-      ;(err as any).status = res.status
-      throw err
-    }
-    return res.json()
+    // Use API client so it respects VITE_API_BASE when frontend is deployed separately
+    const meta = await getScalePublicMeta(scaleId)
+    return meta
   }
 
   function applyMeta(meta: any) {
