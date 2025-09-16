@@ -19,21 +19,6 @@ type BulkResponseStore interface {
 	AddResponses(rs []*Response) error
 }
 
-// Scale captures fields used by the bulk response workflow.
-type Scale struct {
-	ID               string
-	Points           int
-	E2EEEnabled      bool
-	TurnstileEnabled bool
-}
-
-// Item are survey items that accept responses.
-type Item struct {
-	ID            string
-	Type          string
-	ReverseScored bool
-}
-
 // ConsentRecord links a consent submission to a scale.
 type ConsentRecord struct {
 	ID      string

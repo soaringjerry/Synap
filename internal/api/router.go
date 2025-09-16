@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +27,7 @@ type Router struct {
 	store       Store
 	signPriv    ed25519.PrivateKey
 	responseSvc *services.ResponseService
+	scaleSvc    *services.ScaleService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -39,6 +39,7 @@ func NewRouterWithStore(store Store) *Router {
 		store:       store,
 		signPriv:    deriveSignKey(),
 		responseSvc: services.NewResponseService(newResponseStoreAdapter(store)),
+		scaleSvc:    services.NewScaleService(newScaleStoreAdapter(store)),
 	}
 }
 
@@ -156,23 +157,13 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	b, _ := json.Marshal(raw)
-	var sc Scale
-	_ = json.Unmarshal(b, &sc)
-	// Default: Turnstile is disabled unless explicitly enabled by the creator
-	if _, ok := raw["turnstile_enabled"]; !ok {
-		sc.TurnstileEnabled = false
+	created, err := rt.scaleSvc.CreateScale(tid, raw)
+	if err != nil {
+		rt.writeServiceError(w, err)
+		return
 	}
-	if sc.ID == "" {
-		sc.ID = strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
-	}
-	if sc.Points == 0 {
-		sc.Points = 5
-	}
-	sc.TenantID = tid
-	rt.store.AddScale(&sc)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(sc)
+	_ = json.NewEncoder(w).Encode(created)
 }
 
 // POST /api/items
@@ -186,30 +177,18 @@ func (rt *Router) handleItems(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var it Item
+	var it services.Item
 	if err := json.NewDecoder(r.Body).Decode(&it); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if it.ID == "" {
-		it.ID = strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
-	}
-	if it.ScaleID == "" {
-		http.Error(w, "scale_id required", http.StatusBadRequest)
+	created, err := rt.scaleSvc.CreateItem(tid, &it)
+	if err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	if len(it.StemI18n) == 0 {
-		http.Error(w, "stem_i18n required", http.StatusBadRequest)
-		return
-	}
-	sc := rt.store.GetScale(it.ScaleID)
-	if sc == nil || sc.TenantID != tid {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	rt.store.AddItem(&it)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(it)
+	_ = json.NewEncoder(w).Encode(created)
 }
 
 // GET /api/scales/{id}/items?lang=xx
@@ -1556,204 +1535,88 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 	}
 	parts := strings.Split(rest, "/")
 	id := parts[0]
-	// Special subroute: reorder items
 	if len(parts) == 3 && parts[1] == "items" && parts[2] == "reorder" && r.Method == http.MethodPut {
 		tid, ok := middleware.TenantIDFromContext(r.Context())
 		if !ok {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		sc := rt.store.GetScale(id)
-		if sc == nil || sc.TenantID != tid {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
 		var in struct {
 			Order []string `json:"order"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil || len(in.Order) == 0 {
-			http.Error(w, "order required", http.StatusBadRequest)
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if ok2 := rt.store.ReorderItems(id, in.Order); !ok2 {
-			http.Error(w, "reorder failed", http.StatusBadRequest)
+		count, err := rt.scaleSvc.ReorderItems(tid, id, in.Order)
+		if err != nil {
+			rt.writeServiceError(w, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "count": len(in.Order)})
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "count": count})
 		return
 	}
 	switch r.Method {
 	case http.MethodGet:
-		rt.adminScaleGet(w, id, parts)
+		if len(parts) == 2 && parts[1] == "items" {
+			items, err := rt.scaleSvc.ListItems(id)
+			if err != nil {
+				rt.writeServiceError(w, err)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+			return
+		}
+		sc, err := rt.scaleSvc.GetScale(id)
+		if err != nil {
+			rt.writeServiceError(w, err)
+			return
+		}
+		if sc == nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(sc)
 	case http.MethodDelete:
-		rt.adminScaleDelete(w, r, id, parts)
+		if len(parts) == 2 && parts[1] == "responses" {
+			tid, ok := middleware.TenantIDFromContext(r.Context())
+			if !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			removed, err := rt.scaleSvc.DeleteScaleResponses(tid, id, actorEmail(r))
+			if err != nil {
+				rt.writeServiceError(w, err)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "removed": removed})
+			return
+		}
+		if err := rt.scaleSvc.DeleteScale(id, actorEmail(r)); err != nil {
+			rt.writeServiceError(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 	case http.MethodPut:
-		rt.adminScalePut(w, r, id)
+		var raw map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := rt.scaleSvc.UpdateScale(id, raw, actorEmail(r)); err != nil {
+			rt.writeServiceError(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-func (rt *Router) adminScaleGet(w http.ResponseWriter, id string, parts []string) {
-	if len(parts) == 2 && parts[1] == "items" {
-		items := rt.store.ListItems(id)
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
-		return
-	}
-	sc := rt.store.GetScale(id)
-	if sc == nil {
-		http.NotFound(w, &http.Request{})
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(sc)
-}
-
-func (rt *Router) adminScaleDelete(w http.ResponseWriter, r *http.Request, id string, parts []string) {
-	if len(parts) == 2 && parts[1] == "responses" {
-		tid, ok := middleware.TenantIDFromContext(r.Context())
-		if !ok {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		sc := rt.store.GetScale(id)
-		if sc == nil || sc.TenantID != tid {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-		n := rt.store.DeleteResponsesByScale(id)
-		rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "purge_responses", Target: id, Note: strconv.Itoa(n)})
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "removed": n})
-		return
-	}
-	if ok := rt.store.DeleteScale(id); !ok {
-		http.NotFound(w, r)
-		return
-	}
-	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "delete_scale", Target: id})
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-}
-
-func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id string) {
-	var raw map[string]any
-	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	old := rt.store.GetScale(id)
-	if old == nil {
-		http.NotFound(w, r)
-		return
-	}
-	updated := *old
-	if v, ok := raw["e2ee_enabled"]; ok {
-		if vb, ok2 := v.(bool); ok2 && vb != old.E2EEEnabled {
-			http.Error(w, "e2ee_enabled cannot be modified after creation", http.StatusBadRequest)
-			return
-		}
-	}
-	rt.applyScaleName(&updated, raw["name_i18n"])
-	if v, ok := raw["points"].(float64); ok {
-		updated.Points = int(v)
-	}
-	if v, ok := raw["randomize"].(bool); ok {
-		updated.Randomize = v
-	}
-	rt.applyConsentCopy(&updated, raw["consent_i18n"])
-	if v, ok := raw["collect_email"].(string); ok {
-		updated.CollectEmail = v
-	}
-	if v, ok := raw["region"].(string); ok && strings.TrimSpace(v) != "" {
-		updated.Region = v
-	}
-	if v, ok := raw["items_per_page"].(float64); ok {
-		updated.ItemsPerPage = int(v)
-	}
-	if v, ok := raw["turnstile_enabled"].(bool); ok {
-		updated.TurnstileEnabled = v
-	}
-	rt.applyLikertLabels(&updated, raw["likert_labels_i18n"])
-	if v, ok := raw["likert_show_numbers"].(bool); ok {
-		updated.LikertShowNumbers = v
-	}
-	if v, ok := raw["likert_preset"].(string); ok {
-		updated.LikertPreset = v
-	}
-	if v, ok := raw["consent_config"]; ok && v != nil {
-		if m, ok2 := v.(map[string]any); ok2 {
-			updated.ConsentConfig = rt.parseConsentCfg(m)
-		}
-	}
-	updated.E2EEEnabled = old.E2EEEnabled
-	if ok := rt.store.UpdateScale(&updated); !ok {
-		http.NotFound(w, r)
-		return
-	}
-	if updated.Region != "" && updated.Region != old.Region {
-		rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: updated.Region})
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-}
-
-func (rt *Router) applyScaleName(updated *Scale, raw any) {
-	m, ok := raw.(map[string]any)
-	if !ok {
-		return
-	}
-	name := make(map[string]string, len(m))
-	for k, v := range m {
-		name[k] = toString(v)
-	}
-	updated.NameI18n = name
-}
-
-func (rt *Router) applyConsentCopy(updated *Scale, raw any) {
-	m, ok := raw.(map[string]any)
-	if !ok {
-		return
-	}
-	copy := make(map[string]string, len(m))
-	for k, v := range m {
-		copy[k] = toString(v)
-	}
-	updated.ConsentI18n = copy
-}
-
-func (rt *Router) applyLikertLabels(updated *Scale, raw any) {
-	m, ok := raw.(map[string]any)
-	if !ok {
-		return
-	}
-	labels := make(map[string][]string, len(m))
-	for lang, payload := range m {
-		slice := rt.parseStringSlice(payload)
-		if len(slice) > 0 {
-			labels[lang] = slice
-		}
-	}
-	if len(labels) > 0 {
-		updated.LikertLabelsI18n = labels
-	}
-}
-
-func (rt *Router) parseStringSlice(raw any) []string {
-	arr, ok := raw.([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(arr))
-	for _, item := range arr {
-		val := strings.TrimSpace(toString(item))
-		if val != "" {
-			out = append(out, val)
-		}
-	}
-	return out
 }
 
 func actorEmail(r *http.Request) string {
@@ -1763,74 +1626,22 @@ func actorEmail(r *http.Request) string {
 	return "admin"
 }
 
-func toString(v any) string {
-	switch t := v.(type) {
-	case string:
-		return t
-	case fmt.Stringer:
-		return t.String()
-	default:
-		b, _ := json.Marshal(v)
-		return strings.Trim(string(b), "\"")
+func (rt *Router) writeServiceError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
 	}
-}
-
-// parseConsentCfg converts a raw map into a typed ConsentConfig
-func (rt *Router) parseConsentCfg(m map[string]any) *ConsentConfig {
-	cc := &ConsentConfig{}
-	if ver, ok := m["version"].(string); ok {
-		cc.Version = ver
-	}
-	if sr, ok := m["signature_required"].(bool); ok {
-		cc.SignatureRequired = sr
-	}
-	if arr, ok := m["options"].([]any); ok {
-		opts := make([]ConsentOptionConf, 0, len(arr))
-		for _, it := range arr {
-			if om, ok2 := it.(map[string]any); ok2 {
-				opt := ConsentOptionConf{}
-				if k, ok3 := om["key"].(string); ok3 {
-					opt.Key = k
-				}
-				if req, ok3 := om["required"].(bool); ok3 {
-					opt.Required = req
-				}
-				if li, ok3 := om["label_i18n"]; ok3 {
-					if lm, ok4 := li.(map[string]any); ok4 {
-						opt.LabelI18n = map[string]string{}
-						for lk, lv := range lm {
-							opt.LabelI18n[lk] = toString(lv)
-						}
-					}
-				}
-				if gv, ok3 := om["group"]; ok3 {
-					switch g := gv.(type) {
-					case float64:
-						opt.Group = int(g)
-					case string:
-						if n, err := strconv.Atoi(g); err == nil {
-							opt.Group = n
-						}
-					}
-				}
-				if ov, ok3 := om["order"]; ok3 {
-					switch o := ov.(type) {
-					case float64:
-						opt.Order = int(o)
-					case string:
-						if n, err := strconv.Atoi(o); err == nil {
-							opt.Order = n
-						}
-					}
-				}
-				if opt.Key != "" {
-					opts = append(opts, opt)
-				}
-			}
+	if se, ok := services.AsServiceError(err); ok {
+		status := http.StatusBadRequest
+		switch se.Code {
+		case services.ErrorForbidden:
+			status = http.StatusForbidden
+		case services.ErrorNotFound:
+			status = http.StatusNotFound
 		}
-		cc.Options = opts
+		http.Error(w, se.Message, status)
+		return
 	}
-	return cc
+	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
 // PUT /api/admin/items/{id}  -> update item (stem_i18n, reverse_scored)
@@ -1843,22 +1654,22 @@ func (rt *Router) handleAdminItemOps(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodPut:
-		var in Item
+		var in services.Item
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		in.ID = id
-		if ok := rt.store.UpdateItem(&in); !ok {
-			http.NotFound(w, r)
+		if err := rt.scaleSvc.UpdateItem(&in); err != nil {
+			rt.writeServiceError(w, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		return
 	case http.MethodDelete:
-		if ok := rt.store.DeleteItem(id); !ok {
-			http.NotFound(w, r)
+		if err := rt.scaleSvc.DeleteItem(id); err != nil {
+			rt.writeServiceError(w, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
