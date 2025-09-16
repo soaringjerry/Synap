@@ -129,8 +129,8 @@ func main() {
 		}
 	}
 
-	// Wrap mux with locale + security + no-store cache middleware
-	handler := middleware.NoStore(middleware.SecureHeaders(middleware.LocaleMiddleware(mux)))
+	// Wrap mux with locale + security + no-store cache middleware + permissive CORS
+	handler := middleware.CORS(middleware.NoStore(middleware.SecureHeaders(middleware.LocaleMiddleware(mux))))
 
 	log.Printf("Synap server listening on %s", addr)
 	if err := http.ListenAndServe(addr, handler); err != nil {

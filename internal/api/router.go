@@ -109,7 +109,11 @@ func (rt *Router) handleSeed(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	sc := &Scale{ID: "SAMPLE", Points: 5, Randomize: false, NameI18n: map[string]string{"en": "Sample Scale", "zh": "示例量表"}}
+	// Ensure a demo tenant exists for persistent stores that enforce tenant FK.
+	demoTenantID := "DEMO"
+	rt.store.AddTenant(&Tenant{ID: demoTenantID, Name: "Demo"})
+
+	sc := &Scale{ID: "SAMPLE", TenantID: demoTenantID, Points: 5, Randomize: false, NameI18n: map[string]string{"en": "Sample Scale", "zh": "示例量表"}}
 	// Upsert-like behavior: if exists, keep; else add
 	if rt.store.GetScale(sc.ID) == nil {
 		rt.store.AddScale(sc)
