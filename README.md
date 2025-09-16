@@ -62,7 +62,7 @@ Advanced/Automation: see Quick Start (API) in `docs/quick-start.md`.
 
 * Go 1.23+
 * Node.js 20+ and npm
-* SQLite 3.x
+* SQLite 3.x (optional for inspection; backend uses pure Go driver `modernc.org/sqlite`)
 
 ### Clone
 
@@ -75,6 +75,7 @@ cd Synap
 
 ```bash
 # Example: run the API server (adjust path if your entrypoint differs)
+# No CGO required — we ship with the pure Go driver `modernc.org/sqlite`.
 go run ./cmd/server
 ```
 
