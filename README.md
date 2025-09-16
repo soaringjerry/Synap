@@ -18,7 +18,7 @@ flowchart LR
 ## Features
 
 * **Survey Builder** — customizable questionnaires (not limited to Likert scales)
-* **Admin Console Refresh** — new Items / Settings / Share & Results tabs unify item editing, consent & Likert defaults, AI translation preview/apply, and context-aware exports; legacy view remains available if you need the previous workflow
+* **Admin Console Refresh** — new Items / Settings / Share & Results tabs unify item editing, consent & Likert defaults, AI translation preview/apply, and context-aware exports. Navigation now adapts to smaller screens via a compact hamburger menu while keeping auth actions visible.
 * **Automated Metrics** — reliability checks such as Cronbach’s α
 * **Consent & Compliance** — configurable interactive confirmations (Off/Optional/Required), optional signature; evidence hash; GDPR self‑service export/delete; consent text supports Markdown and inline markers (e.g., [[CONSENT]], [[CONSENT1]], [[CONSENT:options=…]])
 * **Region-Aware Privacy** — PDPA by default; GDPR/CCPA/PIPL applied when stricter

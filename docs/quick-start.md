@@ -6,6 +6,8 @@
 2) Go to Admin → Create Scale. Set Points, enable End‑to‑end Encryption (recommended), and configure Consent (version + confirmations/signature).
 3) Open Admin → Manage (new default editor). Items covers question editing, Settings handles consent/Likert/AI translation, and Share & Results centralizes participant link copy plus analytics/exports. Use Share & Results to distribute the link; when E2EE is ON the panel walks you through local JSONL/CSV decrypt, otherwise server CSV exports stay available.
 
+> Mobile navigation tip: 在手机或窄屏设备上，顶部导航栏会折叠成汉堡菜单，点按即可展开“首页”、“管理”、“GitHub”、“语言切换”等入口，同时“登录/注册”按钮始终保持可见。
+
 ## Advanced: API & local run
 
 Run the minimal stack locally:
