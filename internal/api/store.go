@@ -158,6 +158,57 @@ type memoryStore struct {
 	consents []*ConsentRecord
 }
 
+func (s *memoryStore) buildSnapshot() *LegacySnapshot {
+	snap := &LegacySnapshot{
+		Scales:        []*Scale{},
+		Items:         []*Item{},
+		Participants:  []*Participant{},
+		Responses:     []*Response{},
+		ResponsesE2EE: []*E2EEResponse{},
+		ProjectKeys:   map[string][]*ProjectKey{},
+		Tenants:       []*Tenant{},
+		Users:         []*User{},
+		AIConfigs:     []*TenantAIConfig{},
+		Audit:         append([]AuditEntry(nil), s.audit...),
+	}
+	for _, sc := range s.scales {
+		snap.Scales = append(snap.Scales, sc)
+	}
+	for _, it := range s.items {
+		snap.Items = append(snap.Items, it)
+	}
+	for _, p := range s.participants {
+		snap.Participants = append(snap.Participants, p)
+	}
+	snap.Responses = append(snap.Responses, s.responses...)
+	snap.ResponsesE2EE = append(snap.ResponsesE2EE, s.e2ee...)
+	for k, v := range s.projectKeys {
+		snap.ProjectKeys[k] = append([]*ProjectKey(nil), v...)
+	}
+	for _, t := range s.tenants {
+		snap.Tenants = append(snap.Tenants, t)
+	}
+	for _, u := range s.usersByEmail {
+		snap.Users = append(snap.Users, u)
+	}
+	for _, a := range s.aiConfigs {
+		snap.AIConfigs = append(snap.AIConfigs, a)
+	}
+	snap.Consents = append(snap.Consents, s.consents...)
+	return snap
+}
+
+// MemoryStoreSnapshot returns a clone of all legacy data when backed by memoryStore.
+func MemoryStoreSnapshot(st Store) *LegacySnapshot {
+	ms, ok := st.(*memoryStore)
+	if !ok || ms == nil {
+		return nil
+	}
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+	return ms.buildSnapshot()
+}
+
 func newMemoryStore(path string) *memoryStore {
 	return &memoryStore{
 		e2ee:         []*E2EEResponse{},
@@ -179,32 +230,65 @@ func newMemoryStore(path string) *memoryStore {
 }
 
 // newMemoryStoreFromEnv loads snapshot from SYNAP_DB_PATH if set.
-func newMemoryStoreFromEnv() *memoryStore {
-	path := os.Getenv("SYNAP_DB_PATH")
+func loadMemoryStore(path string) (*memoryStore, error) {
 	if path == "" {
-		return nil
+		return nil, nil
 	}
-	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, err
+	}
 	s := newMemoryStore(path)
-	// Load/derive encryption key (env, file, or optional autogenerate)
 	s.encKey = loadOrAutogenEncKey()
 	if len(s.encKey) != 32 {
-		// Encryption key missing or invalid — disable persistence to avoid plaintext storage
-		// Start in-memory only to comply with "encrypted at rest" requirement.
-		return nil
+		return nil, errors.New("encryption key missing or invalid")
 	}
-	_ = s.load()
-	return s
+	if err := s.load(); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
-func (s *memoryStore) addScale(sc *Scale) {
+func newMemoryStoreFromEnv() *memoryStore {
+	path := os.Getenv("SYNAP_DB_PATH")
+	ms, err := loadMemoryStore(path)
+	if err != nil {
+		return nil
+	}
+	return ms
+}
+
+// NewMemoryStoreFromEnv exposes the legacy in-memory store for migration usage.
+func NewMemoryStoreFromEnv() (Store, error) {
+	ms, err := loadMemoryStore(os.Getenv("SYNAP_DB_PATH"))
+	if err != nil {
+		return nil, err
+	}
+	if ms == nil {
+		return nil, nil
+	}
+	return ms, nil
+}
+
+// NewMemoryStoreFromPath attempts to load a legacy snapshot from the given path.
+func NewMemoryStoreFromPath(path string) (Store, error) {
+	ms, err := loadMemoryStore(path)
+	if err != nil {
+		return nil, err
+	}
+	if ms == nil {
+		return nil, nil
+	}
+	return ms, nil
+}
+
+func (s *memoryStore) AddScale(sc *Scale) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.scales[sc.ID] = sc
 	s.saveLocked()
 }
 
-func (s *memoryStore) updateScale(sc *Scale) bool {
+func (s *memoryStore) UpdateScale(sc *Scale) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	old := s.scales[sc.ID]
@@ -243,7 +327,7 @@ func (s *memoryStore) updateScale(sc *Scale) bool {
 }
 
 // deleteScale removes the scale, its items, and responses associated with those items
-func (s *memoryStore) deleteScale(id string) bool {
+func (s *memoryStore) DeleteScale(id string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.scales[id] == nil {
@@ -269,7 +353,7 @@ func (s *memoryStore) deleteScale(id string) bool {
 	return true
 }
 
-func (s *memoryStore) addItem(it *Item) {
+func (s *memoryStore) AddItem(it *Item) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.items[it.ID] = it
@@ -289,7 +373,13 @@ func (s *memoryStore) addItem(it *Item) {
 	s.saveLocked()
 }
 
-func (s *memoryStore) updateItem(it *Item) bool {
+func (s *memoryStore) GetItem(id string) *Item {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.items[id]
+}
+
+func (s *memoryStore) UpdateItem(it *Item) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	old := s.items[it.ID]
@@ -348,7 +438,7 @@ func (s *memoryStore) updateItem(it *Item) bool {
 	return true
 }
 
-func (s *memoryStore) deleteItem(id string) bool {
+func (s *memoryStore) DeleteItem(id string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	it := s.items[id]
@@ -379,7 +469,7 @@ func (s *memoryStore) deleteItem(id string) bool {
 	return true
 }
 
-func (s *memoryStore) listItems(scaleID string) []*Item {
+func (s *memoryStore) ListItems(scaleID string) []*Item {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	// return a sorted copy by order
@@ -395,7 +485,7 @@ func (s *memoryStore) listItems(scaleID string) []*Item {
 }
 
 // reorderItems sets explicit order for the given list of ids; others keep tail positions preserving relative order
-func (s *memoryStore) reorderItems(scaleID string, order []string) bool {
+func (s *memoryStore) ReorderItems(scaleID string, order []string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	list := s.itemsByScale[scaleID]
@@ -429,13 +519,13 @@ func (s *memoryStore) reorderItems(scaleID string, order []string) bool {
 	return true
 }
 
-func (s *memoryStore) getScale(id string) *Scale {
+func (s *memoryStore) GetScale(id string) *Scale {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.scales[id]
 }
 
-func (s *memoryStore) addParticipant(p *Participant) {
+func (s *memoryStore) AddParticipant(p *Participant) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if p.SelfToken == "" {
@@ -448,21 +538,41 @@ func (s *memoryStore) addParticipant(p *Participant) {
 	s.saveLocked()
 }
 
-func (s *memoryStore) addResponses(rs []*Response) {
+func (s *memoryStore) GetParticipant(id string) *Participant {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.participants[id]
+}
+
+func (s *memoryStore) GetParticipantByEmail(email string) *Participant {
+	if strings.TrimSpace(email) == "" {
+		return nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, p := range s.participants {
+		if p.Email != "" && strings.EqualFold(p.Email, email) {
+			return p
+		}
+	}
+	return nil
+}
+
+func (s *memoryStore) AddResponses(rs []*Response) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.responses = append(s.responses, rs...)
 	s.saveLocked()
 }
 
-func (s *memoryStore) addE2EEResponse(r *E2EEResponse) {
+func (s *memoryStore) AddE2EEResponse(r *E2EEResponse) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.e2ee = append(s.e2ee, r)
 	s.saveLocked()
 }
 
-func (s *memoryStore) listE2EEResponses(scaleID string) []*E2EEResponse {
+func (s *memoryStore) ListE2EEResponses(scaleID string) []*E2EEResponse {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]*E2EEResponse, 0)
@@ -474,20 +584,70 @@ func (s *memoryStore) listE2EEResponses(scaleID string) []*E2EEResponse {
 	return out
 }
 
-func (s *memoryStore) addProjectKey(k *ProjectKey) {
+func (s *memoryStore) ListAllE2EEResponses() []*E2EEResponse {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]*E2EEResponse, len(s.e2ee))
+	copy(out, s.e2ee)
+	return out
+}
+
+func (s *memoryStore) GetE2EEResponse(responseID string) *E2EEResponse {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, r := range s.e2ee {
+		if r.ResponseID == responseID {
+			return r
+		}
+	}
+	return nil
+}
+
+func (s *memoryStore) AppendE2EEEncDEK(responseID string, encDEK string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, r := range s.e2ee {
+		if r.ResponseID == responseID {
+			r.EncDEK = append(r.EncDEK, encDEK)
+			s.saveLocked()
+			return true
+		}
+	}
+	return false
+}
+
+func (s *memoryStore) DeleteE2EEResponse(responseID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	idx := -1
+	for i, r := range s.e2ee {
+		if r.ResponseID == responseID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return false
+	}
+	s.e2ee = append(s.e2ee[:idx], s.e2ee[idx+1:]...)
+	s.saveLocked()
+	return true
+}
+
+func (s *memoryStore) AddProjectKey(k *ProjectKey) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.projectKeys[k.ScaleID] = append(s.projectKeys[k.ScaleID], k)
 	s.saveLocked()
 }
 
-func (s *memoryStore) listProjectKeys(scaleID string) []*ProjectKey {
+func (s *memoryStore) ListProjectKeys(scaleID string) []*ProjectKey {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return append([]*ProjectKey(nil), s.projectKeys[scaleID]...)
 }
 
-func (s *memoryStore) listResponsesByScale(scaleID string) []*Response {
+func (s *memoryStore) ListResponsesByScale(scaleID string) []*Response {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]*Response, 0, len(s.responses))
@@ -501,8 +661,20 @@ func (s *memoryStore) listResponsesByScale(scaleID string) []*Response {
 	return out
 }
 
+func (s *memoryStore) ListResponsesByParticipant(pid string) []*Response {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]*Response, 0)
+	for _, r := range s.responses {
+		if r.ParticipantID == pid {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // deleteResponsesByScale removes all responses (plain and E2EE) for a scale. Returns removed count.
-func (s *memoryStore) deleteResponsesByScale(scaleID string) int {
+func (s *memoryStore) DeleteResponsesByScale(scaleID string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	removed := 0
@@ -532,7 +704,7 @@ func (s *memoryStore) deleteResponsesByScale(scaleID string) int {
 }
 
 // cleanup responses before cutoff time, return removed count
-func (s *memoryStore) cleanupBefore(cutoff time.Time) int {
+func (s *memoryStore) CleanupBefore(cutoff time.Time) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	removed := 0
@@ -558,13 +730,13 @@ type AuditEntry struct {
 	Note   string    `json:"note,omitempty"`
 }
 
-func (s *memoryStore) addAudit(e AuditEntry) {
+func (s *memoryStore) AddAudit(e AuditEntry) {
 	s.mu.Lock()
 	s.audit = append(s.audit, e)
 	s.mu.Unlock()
 	s.save()
 }
-func (s *memoryStore) listAudit() []AuditEntry {
+func (s *memoryStore) ListAudit() []AuditEntry {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]AuditEntry, len(s.audit))
@@ -573,7 +745,7 @@ func (s *memoryStore) listAudit() []AuditEntry {
 }
 
 // participant-scope helpers
-func (s *memoryStore) exportParticipantByEmail(email string) ([]*Response, *Participant) {
+func (s *memoryStore) ExportParticipantByEmail(email string) ([]*Response, *Participant) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var p *Participant
@@ -594,7 +766,7 @@ func (s *memoryStore) exportParticipantByEmail(email string) ([]*Response, *Part
 	}
 	return rs, p
 }
-func (s *memoryStore) deleteParticipantByEmail(email string, hard bool) bool {
+func (s *memoryStore) DeleteParticipantByEmail(email string, hard bool) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var pid string
@@ -623,7 +795,7 @@ func (s *memoryStore) deleteParticipantByEmail(email string, hard bool) bool {
 }
 
 // deleteParticipantByID deletes responses for a participant and optionally anonymizes/removes the participant record
-func (s *memoryStore) deleteParticipantByID(pid string, hard bool) bool {
+func (s *memoryStore) DeleteParticipantByID(pid string, hard bool) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.participants[pid]; !ok {
@@ -659,24 +831,24 @@ type User struct {
 	CreatedAt time.Time
 }
 
-func (s *memoryStore) addTenant(t *Tenant) {
+func (s *memoryStore) AddTenant(t *Tenant) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.tenants[t.ID] = t
 	s.saveLocked()
 }
-func (s *memoryStore) addUser(u *User) {
+func (s *memoryStore) AddUser(u *User) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.usersByEmail[strings.ToLower(u.Email)] = u
 	s.saveLocked()
 }
-func (s *memoryStore) findUserByEmail(email string) *User {
+func (s *memoryStore) FindUserByEmail(email string) *User {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.usersByEmail[strings.ToLower(email)]
 }
-func (s *memoryStore) listScalesByTenant(tid string) []*Scale {
+func (s *memoryStore) ListScalesByTenant(tid string) []*Scale {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := []*Scale{}
@@ -690,7 +862,7 @@ func (s *memoryStore) listScalesByTenant(tid string) []*Scale {
 }
 
 // --- snapshot persistence (MVP JSON) ---
-type snapshot struct {
+type LegacySnapshot struct {
 	Scales        []*Scale                 `json:"scales"`
 	Items         []*Item                  `json:"items"`
 	Participants  []*Participant           `json:"participants"`
@@ -723,7 +895,7 @@ func (s *memoryStore) load() error {
 		}
 		b = db
 	}
-	var snap snapshot
+	var snap LegacySnapshot
 	if err := json.Unmarshal(b, &snap); err != nil {
 		return err
 	}
@@ -790,43 +962,10 @@ func (s *memoryStore) saveUnlocked() {
 	if s.snapshotPath == "" {
 		return
 	}
-	snap := snapshot{
-		Scales:        []*Scale{},
-		Items:         []*Item{},
-		Participants:  []*Participant{},
-		Responses:     []*Response{},
-		ResponsesE2EE: []*E2EEResponse{},
-		ProjectKeys:   map[string][]*ProjectKey{},
-		Tenants:       []*Tenant{},
-		Users:         []*User{},
-		AIConfigs:     []*TenantAIConfig{},
-		Audit:         append([]AuditEntry(nil), s.audit...),
-	}
-	for _, sc := range s.scales {
-		snap.Scales = append(snap.Scales, sc)
-	}
-	for _, it := range s.items {
-		snap.Items = append(snap.Items, it)
-	}
-	for _, p := range s.participants {
-		snap.Participants = append(snap.Participants, p)
-	}
-	snap.Responses = append(snap.Responses, s.responses...)
-	snap.ResponsesE2EE = append(snap.ResponsesE2EE, s.e2ee...)
-	snap.ProjectKeys = s.projectKeys
-	for _, t := range s.tenants {
-		snap.Tenants = append(snap.Tenants, t)
-	}
-	for _, u := range s.usersByEmail {
-		snap.Users = append(snap.Users, u)
-	}
-	for _, a := range s.aiConfigs {
-		snap.AIConfigs = append(snap.AIConfigs, a)
-	}
-	snap.Consents = append(snap.Consents, s.consents...)
+	snap := s.buildSnapshot()
 	_ = os.MkdirAll(filepath.Dir(s.snapshotPath), 0o755)
 	tmp := s.snapshotPath + ".tmp"
-	b, _ := json.MarshalIndent(&snap, "", "  ")
+	b, _ := json.MarshalIndent(snap, "", "  ")
 	// Encrypt if key is available
 	if len(s.encKey) == 32 {
 		if eb, err := s.encrypt(b); err == nil {
@@ -859,7 +998,7 @@ type ConsentRecord struct {
 	Hash     string          `json:"hash"` // sha256 base64 of client evidence JSON
 }
 
-func (s *memoryStore) getConsentByID(id string) *ConsentRecord {
+func (s *memoryStore) GetConsentByID(id string) *ConsentRecord {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, c := range s.consents {
@@ -870,14 +1009,14 @@ func (s *memoryStore) getConsentByID(id string) *ConsentRecord {
 	return nil
 }
 
-func (s *memoryStore) addConsentRecord(cr *ConsentRecord) {
+func (s *memoryStore) AddConsentRecord(cr *ConsentRecord) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.consents = append(s.consents, cr)
 	s.saveLocked()
 }
 
-func (s *memoryStore) createExportJob(tid, scaleID, ip string, ttl time.Duration) *ExportJob {
+func (s *memoryStore) CreateExportJob(tid, scaleID, ip string, ttl time.Duration) *ExportJob {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// prune expired
@@ -899,7 +1038,7 @@ func (s *memoryStore) createExportJob(tid, scaleID, ip string, ttl time.Duration
 	return job
 }
 
-func (s *memoryStore) getExportJob(id, token string) *ExportJob {
+func (s *memoryStore) GetExportJob(id, token string) *ExportJob {
 	s.mu.RLock()
 	job := s.exportJobs[id]
 	s.mu.RUnlock()
@@ -915,7 +1054,7 @@ func (s *memoryStore) getExportJob(id, token string) *ExportJob {
 	return job
 }
 
-func (s *memoryStore) allowExport(tid string, minInterval time.Duration) bool {
+func (s *memoryStore) AllowExport(tid string, minInterval time.Duration) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	last := s.lastExport[tid]
@@ -1021,12 +1160,12 @@ func (s *memoryStore) decrypt(enc []byte) ([]byte, error) {
 }
 
 // AI config helpers
-func (s *memoryStore) getAIConfig(tenantID string) *TenantAIConfig {
+func (s *memoryStore) GetAIConfig(tenantID string) *TenantAIConfig {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.aiConfigs[tenantID]
 }
-func (s *memoryStore) upsertAIConfig(cfg *TenantAIConfig) {
+func (s *memoryStore) UpsertAIConfig(cfg *TenantAIConfig) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if cfg.TenantID == "" {

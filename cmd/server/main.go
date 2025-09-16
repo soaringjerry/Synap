@@ -1,22 +1,54 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/soaringjerry/Synap/internal/api"
+	storedb "github.com/soaringjerry/Synap/internal/db"
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/utils"
 )
 
 func main() {
+	sqlitePath := os.Getenv("SYNAP_SQLITE_PATH")
+	if sqlitePath == "" {
+		sqlitePath = "./data/synap.sqlite"
+	}
+	migrationsDir := os.Getenv("SYNAP_MIGRATIONS_DIR")
+	if migrationsDir == "" {
+		migrationsDir = "migrations"
+	}
+	snapshotPath := os.Getenv("SYNAP_DB_PATH")
+	if err := MigrateIfNeeded(snapshotPath, sqlitePath, migrationsDir); err != nil {
+		log.Fatalf("data migration failed: %v", err)
+	}
+
+	dsn := fmt.Sprintf("file:%s?cache=shared&_busy_timeout=5000", filepath.ToSlash(sqlitePath))
+	sqliteDB, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		log.Fatalf("open sqlite database: %v", err)
+	}
+	if err := storedb.RunMigrations(sqliteDB, migrationsDir); err != nil {
+		log.Fatalf("ensure migrations: %v", err)
+	}
+	store, err := storedb.NewStore(sqliteDB)
+	if err != nil {
+		log.Fatalf("init sqlite store: %v", err)
+	}
+
 	addr := os.Getenv("SYNAP_ADDR")
 	if addr == "" {
 		addr = ":8080"
@@ -26,7 +58,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	// API routes
-	api.NewRouter().Register(mux)
+	api.NewRouterWithStore(store).Register(mux)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		locale := middleware.LocaleFromContext(r.Context())

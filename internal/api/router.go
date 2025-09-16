@@ -24,18 +24,26 @@ import (
 )
 
 type Router struct {
-	store    *memoryStore
+	store    Store
 	signPriv ed25519.PrivateKey
+}
+
+func NewRouterWithStore(store Store) *Router {
+	if store == nil {
+		log.Printf("persistence disabled: using in-memory store")
+		store = newMemoryStore("")
+	}
+	return &Router{store: store, signPriv: deriveSignKey()}
 }
 
 func NewRouter() *Router {
 	// Optionally load snapshot from disk via SYNAP_DB_PATH (MVP persistence)
 	// If empty or unavailable, fall back to pure in-memory.
-	if s := newMemoryStoreFromEnv(); s != nil {
-		return &Router{store: s, signPriv: deriveSignKey()}
+	store, err := NewMemoryStoreFromEnv()
+	if err != nil {
+		log.Printf("failed to load legacy store: %v", err)
 	}
-	log.Printf("persistence disabled: set SYNAP_DB_PATH and SYNAP_ENC_KEY to enable encrypted storage")
-	return &Router{store: newMemoryStore(""), signPriv: deriveSignKey()}
+	return NewRouterWithStore(store)
 }
 
 func deriveSignKey() ed25519.PrivateKey {
@@ -103,8 +111,8 @@ func (rt *Router) handleSeed(w http.ResponseWriter, r *http.Request) {
 	}
 	sc := &Scale{ID: "SAMPLE", Points: 5, Randomize: false, NameI18n: map[string]string{"en": "Sample Scale", "zh": "示例量表"}}
 	// Upsert-like behavior: if exists, keep; else add
-	if rt.store.getScale(sc.ID) == nil {
-		rt.store.addScale(sc)
+	if rt.store.GetScale(sc.ID) == nil {
+		rt.store.AddScale(sc)
 	}
 	items := []*Item{
 		{ID: "I1", ScaleID: sc.ID, ReverseScored: false, StemI18n: map[string]string{"en": "I am satisfied with my current study progress.", "zh": "我对当前学习进度感到满意"}},
@@ -113,8 +121,8 @@ func (rt *Router) handleSeed(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, it := range items {
 		// Avoid duplicate append in itemsByScale; only add if not present
-		if rt.store.items[it.ID] == nil {
-			rt.store.addItem(it)
+		if rt.store.GetItem(it.ID) == nil {
+			rt.store.AddItem(it)
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -152,7 +160,7 @@ func (rt *Router) handleScales(w http.ResponseWriter, r *http.Request) {
 		sc.Points = 5
 	}
 	sc.TenantID = tid
-	rt.store.addScale(&sc)
+	rt.store.AddScale(&sc)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(sc)
 }
@@ -184,12 +192,12 @@ func (rt *Router) handleItems(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "stem_i18n required", http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(it.ScaleID)
+	sc := rt.store.GetScale(it.ScaleID)
 	if sc == nil || sc.TenantID != tid {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	rt.store.addItem(&it)
+	rt.store.AddItem(&it)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(it)
 }
@@ -211,7 +219,7 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 	if lang == "" {
 		lang = "en"
 	}
-	items := rt.store.listItems(id)
+	items := rt.store.ListItems(id)
 	type outItem struct {
 		ID            string   `json:"id"`
 		ReverseScored bool     `json:"reverse_scored"`
@@ -282,7 +290,7 @@ func (rt *Router) handleScaleMeta(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	sc := rt.store.getScale(id)
+	sc := rt.store.GetScale(id)
 	if sc == nil {
 		http.NotFound(w, r)
 		return
@@ -375,7 +383,7 @@ func (rt *Router) handleConsentSign(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(in.ScaleID)
+	sc := rt.store.GetScale(in.ScaleID)
 	if sc == nil {
 		http.Error(w, "scale not found", http.StatusNotFound)
 		return
@@ -391,9 +399,9 @@ func (rt *Router) handleConsentSign(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	id := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
-	rt.store.addConsentRecord(&ConsentRecord{ID: id, ScaleID: in.ScaleID, Version: in.Version, Choices: in.Choices, Locale: in.Locale, SignedAt: ts, Hash: hash})
+	rt.store.AddConsentRecord(&ConsentRecord{ID: id, ScaleID: in.ScaleID, Version: in.Version, Choices: in.Choices, Locale: in.Locale, SignedAt: ts, Hash: hash})
 	// audit
-	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "consent_sign", Target: in.ScaleID, Note: id})
+	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "consent_sign", Target: in.ScaleID, Note: id})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "id": id, "hash": hash})
 }
@@ -422,7 +430,7 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(req.ScaleID)
+	sc := rt.store.GetScale(req.ScaleID)
 	if sc == nil {
 		http.Error(w, "scale not found", http.StatusNotFound)
 		return
@@ -442,15 +450,15 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 	pid := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
 	p := &Participant{ID: pid, Email: req.Participant.Email}
 	if req.ConsentID != "" {
-		if c := rt.store.getConsentByID(req.ConsentID); c != nil && c.ScaleID == req.ScaleID {
+		if c := rt.store.GetConsentByID(req.ConsentID); c != nil && c.ScaleID == req.ScaleID {
 			p.ConsentID = req.ConsentID
 		}
 	}
-	rt.store.addParticipant(p)
+	rt.store.AddParticipant(p)
 	now := time.Now().UTC()
 	rs := make([]*Response, 0, len(req.Answers))
 	for _, a := range req.Answers {
-		it := rt.store.items[a.ItemID]
+		it := rt.store.GetItem(a.ItemID)
 		if it == nil {
 			continue
 		}
@@ -509,7 +517,7 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 		}
 		rs = append(rs, rec)
 	}
-	rt.store.addResponses(rs)
+	rt.store.AddResponses(rs)
 	w.Header().Set("Content-Type", "application/json")
 	// Provide self-service capability for GDPR export/delete
 	selfBase := "/api/self/participant"
@@ -527,7 +535,7 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	scaleID := r.URL.Query().Get("scale_id")
 	format := r.URL.Query().Get("format")
-	sc := rt.store.getScale(scaleID)
+	sc := rt.store.GetScale(scaleID)
 	// consent header naming: key (default) | label_en | label_zh
 	consentHeader := r.URL.Query().Get("consent_header")
 	if consentHeader == "" {
@@ -545,8 +553,8 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "CSV exports are disabled for E2EE projects", http.StatusBadRequest)
 		return
 	}
-	items := rt.store.listItems(scaleID)
-	rs := rt.store.listResponsesByScale(scaleID)
+	items := rt.store.ListItems(scaleID)
+	rs := rt.store.ListResponsesByScale(scaleID)
 
 	switch format {
 	case "long":
@@ -630,11 +638,11 @@ func (rt *Router) appendConsentLong(rows *[]services.LongRow, rs []*Response, sc
 		pidSet[r.ParticipantID] = struct{}{}
 	}
 	for pid := range pidSet {
-		p := rt.store.participants[pid]
+		p := rt.store.GetParticipant(pid)
 		if p == nil || p.ConsentID == "" {
 			continue
 		}
-		c := rt.store.getConsentByID(p.ConsentID)
+		c := rt.store.GetConsentByID(p.ConsentID)
 		if c == nil || c.ScaleID != scaleID {
 			continue
 		}
@@ -655,11 +663,11 @@ func (rt *Router) mergeConsentWide(mp map[string]map[string]int, rs []*Response,
 		pidSet[r.ParticipantID] = struct{}{}
 	}
 	for pid := range pidSet {
-		p := rt.store.participants[pid]
+		p := rt.store.GetParticipant(pid)
 		if p == nil || p.ConsentID == "" {
 			continue
 		}
-		c := rt.store.getConsentByID(p.ConsentID)
+		c := rt.store.GetConsentByID(p.ConsentID)
 		if c == nil || c.ScaleID != scaleID {
 			continue
 		}
@@ -703,17 +711,17 @@ func (rt *Router) appendConsentLongNamed(rows *[]services.LongRow, rs []*Respons
 	for _, r := range rs {
 		pidSet[r.ParticipantID] = struct{}{}
 	}
-	sc := rt.store.getScale(scaleID)
+	sc := rt.store.GetScale(scaleID)
 	lang := "en"
 	if mode == "label_zh" {
 		lang = "zh"
 	}
 	for pid := range pidSet {
-		p := rt.store.participants[pid]
+		p := rt.store.GetParticipant(pid)
 		if p == nil || p.ConsentID == "" {
 			continue
 		}
-		c := rt.store.getConsentByID(p.ConsentID)
+		c := rt.store.GetConsentByID(p.ConsentID)
 		if c == nil || c.ScaleID != scaleID {
 			continue
 		}
@@ -739,7 +747,7 @@ func (rt *Router) mergeConsentWideNamed(mp map[string]map[string]int, rs []*Resp
 	for _, r := range rs {
 		pidSet[r.ParticipantID] = struct{}{}
 	}
-	sc := rt.store.getScale(scaleID)
+	sc := rt.store.GetScale(scaleID)
 	lang := "en"
 	if mode == "label_zh" {
 		lang = "zh"
@@ -760,11 +768,11 @@ func (rt *Router) mergeConsentWideNamed(mp map[string]map[string]int, rs []*Resp
 	}
 	// Build participant-wise
 	for pid := range pidSet {
-		p := rt.store.participants[pid]
+		p := rt.store.GetParticipant(pid)
 		if p == nil || p.ConsentID == "" {
 			continue
 		}
-		c := rt.store.getConsentByID(p.ConsentID)
+		c := rt.store.GetConsentByID(p.ConsentID)
 		if c == nil || c.ScaleID != scaleID {
 			continue
 		}
@@ -796,7 +804,7 @@ func (rt *Router) handleExportParticipant(w http.ResponseWriter, r *http.Request
 		http.Error(w, "email required", http.StatusBadRequest)
 		return
 	}
-	rs, p := rt.store.exportParticipantByEmail(email)
+	rs, p := rt.store.ExportParticipantByEmail(email)
 	if p == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -806,7 +814,7 @@ func (rt *Router) handleExportParticipant(w http.ResponseWriter, r *http.Request
 	if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
 		actor = c.Email
 	}
-	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "export_participant", Target: email})
+	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "export_participant", Target: email})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"participant": p, "responses": rs})
 }
@@ -825,7 +833,7 @@ func (rt *Router) handleDeleteParticipant(w http.ResponseWriter, r *http.Request
 		return
 	}
 	hard := r.URL.Query().Get("hard") == "true"
-	ok := rt.store.deleteParticipantByEmail(email, hard)
+	ok := rt.store.DeleteParticipantByEmail(email, hard)
 	if !ok {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -834,7 +842,7 @@ func (rt *Router) handleDeleteParticipant(w http.ResponseWriter, r *http.Request
 	if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
 		actor = c.Email
 	}
-	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "delete_participant", Target: email, Note: map[bool]string{true: "hard", false: "soft"}[hard]})
+	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "delete_participant", Target: email, Note: map[bool]string{true: "hard", false: "soft"}[hard]})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
 }
@@ -856,7 +864,7 @@ func (rt *Router) handleProjectKeys(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// Publicly list registered public keys for encryption
-		ks := rt.store.listProjectKeys(id)
+		ks := rt.store.ListProjectKeys(id)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"keys": ks})
 		return
@@ -867,7 +875,7 @@ func (rt *Router) handleProjectKeys(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		sc := rt.store.getScale(id)
+		sc := rt.store.GetScale(id)
 		if sc == nil || sc.TenantID != tid {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
@@ -883,7 +891,7 @@ func (rt *Router) handleProjectKeys(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		k := &ProjectKey{ScaleID: id, Algorithm: in.Algorithm, KDF: in.KDF, PublicKey: in.PublicKey, Fingerprint: in.Fingerprint, CreatedAt: time.Now().UTC()}
-		rt.store.addProjectKey(k)
+		rt.store.AddProjectKey(k)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		return
@@ -918,7 +926,7 @@ func (rt *Router) handleE2EEResponse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
-	if sc := rt.store.getScale(in.ScaleID); sc != nil && sc.TurnstileEnabled {
+	if sc := rt.store.GetScale(in.ScaleID); sc != nil && sc.TurnstileEnabled {
 		if ok := rt.verifyTurnstile(r, in.TurnstileToken); !ok {
 			http.Error(w, "turnstile verification failed", http.StatusBadRequest)
 			return
@@ -933,7 +941,7 @@ func (rt *Router) handleE2EEResponse(w http.ResponseWriter, r *http.Request) {
 	rb := make([]byte, 24)
 	_, _ = rand.Read(rb)
 	tok := base64.RawURLEncoding.EncodeToString(rb)
-	rt.store.addE2EEResponse(&E2EEResponse{
+	rt.store.AddE2EEResponse(&E2EEResponse{
 		ScaleID: in.ScaleID, ResponseID: rid, Ciphertext: in.Ciphertext, Nonce: in.Nonce,
 		AADHash: in.AADHash, EncDEK: in.EncDEK, PMKFingerprint: in.PMKFingerprint, CreatedAt: time.Now().UTC(),
 		SelfToken: tok,
@@ -971,12 +979,12 @@ func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "scale_id required", http.StatusBadRequest)
 			return
 		}
-		sc := rt.store.getScale(in.ScaleID)
+		sc := rt.store.GetScale(in.ScaleID)
 		if sc == nil || sc.TenantID != tid {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
-		if !rt.store.allowExport(tid, 5*time.Second) {
+		if !rt.store.AllowExport(tid, 5*time.Second) {
 			http.Error(w, "too many requests", http.StatusTooManyRequests)
 			return
 		}
@@ -984,8 +992,8 @@ func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
 		if ip == "" {
 			ip = r.RemoteAddr
 		}
-		job := rt.store.createExportJob(tid, in.ScaleID, ip, 5*time.Minute)
-		rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_request", Target: in.ScaleID, Note: job.ID})
+		job := rt.store.CreateExportJob(tid, in.ScaleID, ip, 5*time.Minute)
+		rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_request", Target: in.ScaleID, Note: job.ID})
 		url := fmt.Sprintf("/api/exports/e2ee?job=%s&token=%s", job.ID, job.Token)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"url": url, "expires_at": job.ExpiresAt.UTC().Format(time.RFC3339)})
@@ -994,17 +1002,17 @@ func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
 		// If a job token is provided, use tokenized download; else allow legacy scale_id path with step-up
 		if jobID := r.URL.Query().Get("job"); jobID != "" {
 			token := r.URL.Query().Get("token")
-			job := rt.store.getExportJob(jobID, token)
+			job := rt.store.GetExportJob(jobID, token)
 			if job == nil || job.TenantID != tid {
 				http.Error(w, "invalid or expired job", http.StatusForbidden)
 				return
 			}
-			sc := rt.store.getScale(job.ScaleID)
+			sc := rt.store.GetScale(job.ScaleID)
 			if sc == nil || sc.TenantID != tid {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
-			rs := rt.store.listE2EEResponses(job.ScaleID)
+			rs := rt.store.ListE2EEResponses(job.ScaleID)
 			manifest := map[string]any{
 				"version":    1,
 				"type":       "e2ee-bundle",
@@ -1019,7 +1027,7 @@ func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
 			}
 			// audit with manifest hash
 			h := sha256.Sum256(mb)
-			rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_download", Target: job.ScaleID, Note: base64.StdEncoding.EncodeToString(h[:])})
+			rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_download", Target: job.ScaleID, Note: base64.StdEncoding.EncodeToString(h[:])})
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Content-Disposition", "attachment; filename=e2ee_bundle.json")
 			_ = json.NewEncoder(w).Encode(map[string]any{"manifest": manifest, "signature": sig, "responses": rs})
@@ -1035,12 +1043,12 @@ func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "scale_id required", http.StatusBadRequest)
 			return
 		}
-		sc := rt.store.getScale(scaleID)
+		sc := rt.store.GetScale(scaleID)
 		if sc == nil || sc.TenantID != tid {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
-		rs := rt.store.listE2EEResponses(scaleID)
+		rs := rt.store.ListE2EEResponses(scaleID)
 		manifest := map[string]any{
 			"version":    1,
 			"type":       "e2ee-bundle",
@@ -1080,12 +1088,12 @@ func (rt *Router) handleRewrapJobs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(in.ScaleID)
+	sc := rt.store.GetScale(in.ScaleID)
 	if sc == nil || sc.TenantID != tid {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	rs := rt.store.listE2EEResponses(in.ScaleID)
+	rs := rt.store.ListE2EEResponses(in.ScaleID)
 	type item struct {
 		ResponseID string   `json:"response_id"`
 		EncDEK     []string `json:"enc_dek"`
@@ -1119,20 +1127,14 @@ func (rt *Router) handleRewrapSubmit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(in.ScaleID)
+	sc := rt.store.GetScale(in.ScaleID)
 	if sc == nil || sc.TenantID != tid {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	// append new encDEK
-	// naive O(n^2) since MVP and data size small
 	for _, it := range in.Items {
-		list := rt.store.listE2EEResponses(in.ScaleID)
-		for _, r2 := range list {
-			if r2.ResponseID == it.ResponseID {
-				r2.EncDEK = append(r2.EncDEK, it.EncDEKNew)
-			}
-		}
+		rt.store.AppendE2EEEncDEK(it.ResponseID, it.EncDEKNew)
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "to_fp": in.ToFP, "count": len(in.Items)})
 }
@@ -1148,7 +1150,7 @@ func (rt *Router) handleAdminAIConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		cfg := rt.store.getAIConfig(tid)
+		cfg := rt.store.GetAIConfig(tid)
 		if cfg == nil {
 			cfg = &TenantAIConfig{TenantID: tid, AllowExternal: false, StoreLogs: false}
 		}
@@ -1162,7 +1164,7 @@ func (rt *Router) handleAdminAIConfig(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		in.TenantID = tid
-		rt.store.upsertAIConfig(&in)
+		rt.store.UpsertAIConfig(&in)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		return
@@ -1199,12 +1201,12 @@ func (rt *Router) handleAdminAITranslatePreview(w http.ResponseWriter, r *http.R
 		http.Error(w, "scale_id and target_langs required", http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(req.ScaleID)
+	sc := rt.store.GetScale(req.ScaleID)
 	if sc == nil || sc.TenantID != tid {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	cfg := rt.store.getAIConfig(tid)
+	cfg := rt.store.GetAIConfig(tid)
 	if cfg == nil || !cfg.AllowExternal || cfg.OpenAIKey == "" {
 		http.Error(w, "external AI disabled or missing key", http.StatusBadRequest)
 		return
@@ -1213,7 +1215,7 @@ func (rt *Router) handleAdminAITranslatePreview(w http.ResponseWriter, r *http.R
 		req.Model = "gpt-4o-mini"
 	}
 	// Build source payload
-	items := rt.store.listItems(req.ScaleID)
+	items := rt.store.ListItems(req.ScaleID)
 	type srcItem struct{ ID, Text string }
 	src := struct {
 		Items       []srcItem         `json:"items"`
@@ -1299,7 +1301,7 @@ func (rt *Router) handleAdminAITranslatePreview(w http.ResponseWriter, r *http.R
 // GET /api/admin/audit
 func (rt *Router) handleAudit(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(rt.store.listAudit())
+	_ = json.NewEncoder(w).Encode(rt.store.ListAudit())
 }
 
 // GET /api/metrics/alpha?scale_id=...
@@ -1309,8 +1311,8 @@ func (rt *Router) handleAlpha(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "scale_id required", http.StatusBadRequest)
 		return
 	}
-	items := rt.store.listItems(scaleID)
-	rs := rt.store.listResponsesByScale(scaleID)
+	items := rt.store.ListItems(scaleID)
+	rs := rt.store.ListResponsesByScale(scaleID)
 	// Build matrix [participants][items] with only rows that have all items
 	// map[pid]map[itemID]score
 	mp := map[string]map[string]float64{}
@@ -1370,18 +1372,18 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": "email/password required"})
 		return
 	}
-	if rt.store.findUserByEmail(req.Email) != nil {
+	if rt.store.FindUserByEmail(req.Email) != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusConflict)
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": "email exists"})
 		return
 	}
 	tid := "t" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
-	rt.store.addTenant(&Tenant{ID: tid, Name: req.TenantName})
+	rt.store.AddTenant(&Tenant{ID: tid, Name: req.TenantName})
 	// hash password
 	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	uid := "u" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
-	rt.store.addUser(&User{ID: uid, Email: req.Email, PassHash: hash, TenantID: tid, CreatedAt: time.Now().UTC()})
+	rt.store.AddUser(&User{ID: uid, Email: req.Email, PassHash: hash, TenantID: tid, CreatedAt: time.Now().UTC()})
 	tok, _ := middleware.SignToken(uid, tid, req.Email, 30*24*time.Hour)
 	// Also set secure cookie for CSRF-safe usage
 	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
@@ -1404,7 +1406,7 @@ func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	u := rt.store.findUserByEmail(req.Email)
+	u := rt.store.FindUserByEmail(req.Email)
 	if u == nil || bcrypt.CompareHashAndPassword(u.PassHash, []byte(req.Password)) != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -1436,7 +1438,7 @@ func (rt *Router) handleAdminScales(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	list := rt.store.listScalesByTenant(tid)
+	list := rt.store.ListScalesByTenant(tid)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"scales": list})
 }
@@ -1453,12 +1455,12 @@ func (rt *Router) handleAdminStats(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "scale_id required", http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(scaleID)
+	sc := rt.store.GetScale(scaleID)
 	if sc == nil || sc.TenantID != tid {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	rs := rt.store.listResponsesByScale(scaleID)
+	rs := rt.store.ListResponsesByScale(scaleID)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"count": len(rs)})
 }
@@ -1477,12 +1479,12 @@ func (rt *Router) handleAdminAnalyticsSummary(w http.ResponseWriter, r *http.Req
 		http.Error(w, "scale_id required", http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.getScale(scaleID)
+	sc := rt.store.GetScale(scaleID)
 	if sc == nil || sc.TenantID != tid {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	items := rt.store.listItems(scaleID)
+	items := rt.store.ListItems(scaleID)
 	points := sc.Points
 	if points <= 0 {
 		points = 5
@@ -1510,7 +1512,7 @@ func (rt *Router) handleAdminAnalyticsSummary(w http.ResponseWriter, r *http.Req
 	}
 	// timeseries by day
 	countsByDay := map[string]int{}
-	rs := rt.store.listResponsesByScale(scaleID)
+	rs := rt.store.ListResponsesByScale(scaleID)
 	for _, r2 := range rs {
 		// histogram
 		if idx, ok := itemIndex[r2.ItemID]; ok {
@@ -1602,7 +1604,7 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		sc := rt.store.getScale(id)
+		sc := rt.store.GetScale(id)
 		if sc == nil || sc.TenantID != tid {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
@@ -1614,7 +1616,7 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "order required", http.StatusBadRequest)
 			return
 		}
-		if ok2 := rt.store.reorderItems(id, in.Order); !ok2 {
+		if ok2 := rt.store.ReorderItems(id, in.Order); !ok2 {
 			http.Error(w, "reorder failed", http.StatusBadRequest)
 			return
 		}
@@ -1636,12 +1638,12 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Router) adminScaleGet(w http.ResponseWriter, id string, parts []string) {
 	if len(parts) == 2 && parts[1] == "items" {
-		items := rt.store.listItems(id)
+		items := rt.store.ListItems(id)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
 		return
 	}
-	sc := rt.store.getScale(id)
+	sc := rt.store.GetScale(id)
 	if sc == nil {
 		http.NotFound(w, &http.Request{})
 		return
@@ -1657,22 +1659,22 @@ func (rt *Router) adminScaleDelete(w http.ResponseWriter, r *http.Request, id st
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		sc := rt.store.getScale(id)
+		sc := rt.store.GetScale(id)
 		if sc == nil || sc.TenantID != tid {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
-		n := rt.store.deleteResponsesByScale(id)
-		rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "purge_responses", Target: id, Note: strconv.Itoa(n)})
+		n := rt.store.DeleteResponsesByScale(id)
+		rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "purge_responses", Target: id, Note: strconv.Itoa(n)})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "removed": n})
 		return
 	}
-	if ok := rt.store.deleteScale(id); !ok {
+	if ok := rt.store.DeleteScale(id); !ok {
 		http.NotFound(w, r)
 		return
 	}
-	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "delete_scale", Target: id})
+	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "delete_scale", Target: id})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
@@ -1725,8 +1727,8 @@ func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id strin
 		}
 	}
 
-	old := rt.store.getScale(id)
-	if ok := rt.store.updateScale(&in); !ok {
+	old := rt.store.GetScale(id)
+	if ok := rt.store.UpdateScale(&in); !ok {
 		http.NotFound(w, r)
 		return
 	}
@@ -1736,7 +1738,7 @@ func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id strin
 			return
 		}
 		if in.Region != "" && in.Region != old.Region {
-			rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
+			rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -1836,7 +1838,7 @@ func (rt *Router) handleAdminItemOps(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		in.ID = id
-		if ok := rt.store.updateItem(&in); !ok {
+		if ok := rt.store.UpdateItem(&in); !ok {
 			http.NotFound(w, r)
 			return
 		}
@@ -1844,7 +1846,7 @@ func (rt *Router) handleAdminItemOps(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		return
 	case http.MethodDelete:
-		if ok := rt.store.deleteItem(id); !ok {
+		if ok := rt.store.DeleteItem(id); !ok {
 			http.NotFound(w, r)
 			return
 		}
@@ -1870,20 +1872,15 @@ func (rt *Router) handleSelfExportParticipant(w http.ResponseWriter, r *http.Req
 		http.Error(w, "pid/token required", http.StatusBadRequest)
 		return
 	}
-	p := rt.store.participants[pid]
+	p := rt.store.GetParticipant(pid)
 	if p == nil || p.SelfToken == "" || token != p.SelfToken {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	// collect responses for participant (non-E2EE)
-	rs := []*Response{}
-	for _, r2 := range rt.store.responses {
-		if r2.ParticipantID == pid {
-			rs = append(rs, r2)
-		}
-	}
+	rs := rt.store.ListResponsesByParticipant(pid)
 	// audit
-	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_export", Target: pid})
+	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_export", Target: pid})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"participant": map[string]any{"id": p.ID, "email": p.Email}, "responses": rs})
 }
@@ -1902,16 +1899,16 @@ func (rt *Router) handleSelfDeleteParticipant(w http.ResponseWriter, r *http.Req
 		http.Error(w, "pid/token required", http.StatusBadRequest)
 		return
 	}
-	p := rt.store.participants[pid]
+	p := rt.store.GetParticipant(pid)
 	if p == nil || p.SelfToken == "" || token != p.SelfToken {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	if ok := rt.store.deleteParticipantByID(pid, hard); !ok {
+	if ok := rt.store.DeleteParticipantByID(pid, hard); !ok {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: map[bool]string{true: "self_delete_hard", false: "self_delete_soft"}[hard], Target: pid})
+	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: map[bool]string{true: "self_delete_hard", false: "self_delete_soft"}[hard], Target: pid})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
 }
@@ -1929,27 +1926,12 @@ func (rt *Router) handleSelfExportE2EE(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "response_id/token required", http.StatusBadRequest)
 		return
 	}
-	var found *E2EEResponse
-	for _, e := range rt.store.listE2EEResponses("") { // we'll scan all; listE2EEResponses with empty returns none; use internal slice
-		if e.ResponseID == rid {
-			found = e
-			break
-		}
-	}
-	if found == nil {
-		// fallback: direct scan of internal slice
-		for _, e := range rt.store.e2ee {
-			if e.ResponseID == rid {
-				found = e
-				break
-			}
-		}
-	}
+	found := rt.store.GetE2EEResponse(rid)
 	if found == nil || found.SelfToken == "" || token != found.SelfToken {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_export_e2ee", Target: rid})
+	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_export_e2ee", Target: rid})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(found)
 }
@@ -1967,23 +1949,16 @@ func (rt *Router) handleSelfDeleteE2EE(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "response_id/token required", http.StatusBadRequest)
 		return
 	}
-	rt.store.mu.Lock()
-	idx := -1
-	for i, e := range rt.store.e2ee {
-		if e.ResponseID == rid {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 || rt.store.e2ee[idx].SelfToken == "" || token != rt.store.e2ee[idx].SelfToken {
-		rt.store.mu.Unlock()
+	resp := rt.store.GetE2EEResponse(rid)
+	if resp == nil || resp.SelfToken == "" || token != resp.SelfToken {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	rt.store.e2ee = append(rt.store.e2ee[:idx], rt.store.e2ee[idx+1:]...)
-	rt.store.mu.Unlock()
-	rt.store.save()
-	rt.store.addAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_delete_e2ee", Target: rid})
+	if !rt.store.DeleteE2EEResponse(rid) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_delete_e2ee", Target: rid})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
