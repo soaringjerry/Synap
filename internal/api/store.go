@@ -1054,6 +1054,29 @@ func (s *memoryStore) GetExportJob(id, token string) *ExportJob {
 	return job
 }
 
+func (s *memoryStore) FindRecentExportJob(tid, scaleID, ip string, within time.Duration) *ExportJob {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	for id, job := range s.exportJobs {
+		if now.After(job.ExpiresAt) {
+			delete(s.exportJobs, id)
+			continue
+		}
+		if job.TenantID != tid || job.ScaleID != scaleID {
+			continue
+		}
+		if ip != "" && job.RequestIP != "" && job.RequestIP != ip {
+			continue
+		}
+		if within > 0 && now.Sub(job.CreatedAt) > within {
+			continue
+		}
+		return job
+	}
+	return nil
+}
+
 func (s *memoryStore) AllowExport(tid string, minInterval time.Duration) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()

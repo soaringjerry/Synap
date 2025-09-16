@@ -11,7 +11,6 @@ export function Admin() {
   const [scales, setScales] = useState<any[]>([])
   const [nameEn, setNameEn] = useState('')
   const [nameZh, setNameZh] = useState('')
-  const [points, setPoints] = useState(5)
   const [itemsPerPage, setItemsPerPage] = useState<string>('0')
   const [e2ee, setE2ee] = useState(true)
   const [region, setRegion] = useState<'auto'|'gdpr'|'pipl'|'pdpa'|'ccpa'>('auto')
@@ -78,7 +77,6 @@ export function Admin() {
       ]
       const body: any = {
         name_i18n: { en: nameEn, zh: nameZh },
-        points,
         e2ee_enabled: e2ee,
         region,
         turnstile_enabled: !!turnstile,
@@ -104,7 +102,7 @@ export function Admin() {
         }
       }
       toast.success(t('create_success')||'Created successfully')
-      setNameEn(''); setNameZh(''); setPoints(5); setPub(''); setPass(''); setKeyMethod('generate'); setWarn(''); setItemsPerPage('0'); setRegion('auto'); setTurnstile(false); setE2ee(true)
+      setNameEn(''); setNameZh(''); setPub(''); setPass(''); setKeyMethod('generate'); setWarn(''); setItemsPerPage('0'); setRegion('auto'); setTurnstile(false); setE2ee(true)
       loadScales()
     } catch (e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
@@ -140,7 +138,6 @@ export function Admin() {
               <h4 style={{marginTop:0}}>Scale Basics</h4>
               <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={nameEn} onChange={e=>setNameEn(e.target.value)} /></div>
               <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={nameZh} onChange={e=>setNameZh(e.target.value)} /></div>
-              <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={2} max={9} value={points} onChange={e=>setPoints(parseInt(e.target.value||'5'))} /></div>
               <div className="item"><div className="label">Items per page</div><input className="input" type="number" min={0} max={50} value={itemsPerPage} onChange={e=> setItemsPerPage(e.target.value)} placeholder="0 = all on one page" /></div>
               <div className="item"><div className="label">{t('e2ee.region')||'Region'}</div>
                 <select className="select" value={region} onChange={e=> setRegion(e.target.value as any)}>
@@ -212,7 +209,7 @@ export function Admin() {
           )}
           {scales.map((s:any)=>(
             <div key={s.id} className="item" style={{display:'flex',justifyContent:'space-between', alignItems:'center'}}>
-              <div><b>{s.id}</b> · {(s.name_i18n?.en||'')}{s.name_i18n?.zh?` / ${s.name_i18n.zh}`:''} · {s.points} {t('points')}</div>
+              <div><b>{s.id}</b> · {(s.name_i18n?.en||'')}{s.name_i18n?.zh?` / ${s.name_i18n.zh}`:''}</div>
               <div style={{display:'flex',gap:8}}>
                 {!s.e2ee_enabled ? (
                   <>

@@ -38,7 +38,7 @@ function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
     const priv = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, enc)
     return new Uint8Array(priv)
   }
-  async function decryptCurrentBundle(): Promise<{ out:any[]; enMap: Record<string,string>; zhMap: Record<string,string> }>{
+  async function decryptCurrentBundle(): Promise<{ out:any[]; enMap: Record<string,string>; zhMap: Record<string,string>; consentCols: { key:string; en:string; zh:string }[] }>{
     if (!scale) throw new Error('No scale loaded')
     const exp = await adminCreateE2EEExport(id)
     const bundle:any = await (await fetch(exp.url)).json()
@@ -55,7 +55,19 @@ function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
       } catch {}
     }
     if (out.length===0) throw new Error(t('e2ee.no_decrypted'))
-    return { out, enMap, zhMap }
+    const consentOpts = Array.isArray(scale?.consent_config?.options) ? scale.consent_config.options : []
+    const consentCols = consentOpts.map((opt:any) => {
+      const fbEn = t(`survey.consent_opt.${opt.key}`, { lng: 'en' }) as string
+      const fbZh = t(`survey.consent_opt.${opt.key}`, { lng: 'zh' }) as string
+      const fallbackEn = fbEn && !fbEn.startsWith('survey.consent_opt.') ? fbEn : opt.key
+      const fallbackZhSrc = fbZh && !fbZh.startsWith('survey.consent_opt.') ? fbZh : fallbackEn
+      return {
+        key: opt.key,
+        en: opt.label_i18n?.en || fallbackEn,
+        zh: opt.label_i18n?.zh || opt.label_i18n?.en || fallbackZhSrc,
+      }
+    })
+    return { out, enMap, zhMap, consentCols }
   }
   if (isE2EE) {
     return (
@@ -70,10 +82,10 @@ function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
                 try { setStatus(''); const { out } = await decryptCurrentBundle(); const lines = out.map((x:any)=> JSON.stringify(x)); const blob = new Blob([lines.join('\n')+'\n'], { type:'application/jsonl' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`e2ee_${id}.jsonl`; a.click(); URL.revokeObjectURL(a.href); setStatus(t('e2ee.local_plain_ready')) } catch(err:any) { setStatus(err.message||String(err)) }
               }}>{t('e2ee.local_decrypt_button')}</button>
               <button className="btn" type="button" onClick={async()=>{
-                try { setStatus(''); const { out, zhMap } = await decryptCurrentBundle(); const order = items.map((it:any)=> it.id); const header = ['response_index','email', ...order.map(key=> zhMap[key] || key)]; const lines = [header.map(csvEsc).join(',')]; out.forEach((entry:any, idx:number)=>{ const answers = entry.answers || {}; const email = entry.email || ''; const row = [csvEsc(idx+1), csvEsc(email)]; for (const key of order) row.push(csvEsc((answers as any)[key])); lines.push(row.join(',')) }); const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'; const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`e2ee_${id}_long.csv`; a.click(); URL.revokeObjectURL(a.href); setStatus(t('e2ee.local_csv_long_ready')) } catch(err:any) { setStatus(err.message||String(err)) }
+                try { setStatus(''); const { out, zhMap, consentCols } = await decryptCurrentBundle(); const order = items.map((it:any)=> it.id); const consentHeaders = consentCols.map(col=> col.zh || col.en || col.key); const header = ['response_index','email', ...order.map(key=> zhMap[key] || key), ...consentHeaders]; const lines = [header.map(csvEsc).join(',')]; out.forEach((entry:any, idx:number)=>{ const answers = entry.answers || {}; const email = entry.email || ''; const consent = entry.consent?.options || entry.consent_options || {}; const row = [csvEsc(idx+1), csvEsc(email)]; for (const key of order) row.push(csvEsc((answers as any)[key])); consentCols.forEach(col=> { row.push(csvEsc(consent[col.key] ? 1 : 0)) }); lines.push(row.join(',')) }); const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'; const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`e2ee_${id}_long.csv`; a.click(); URL.revokeObjectURL(a.href); setStatus(t('e2ee.local_csv_long_ready')) } catch(err:any) { setStatus(err.message||String(err)) }
               }}>{t('e2ee.local_decrypt_csv_long')}</button>
               <button className="btn" type="button" onClick={async()=>{
-                try { setStatus(''); const { out, enMap } = await decryptCurrentBundle(); const order = items.map((it:any)=> it.id); const header = ['response_index','email', ...order.map(key=> enMap[key] || key)]; const lines = [header.map(csvEsc).join(',')]; out.forEach((entry:any, idx:number)=>{ const answers = entry.answers || {}; const email = entry.email || ''; const row = [csvEsc(idx+1), csvEsc(email)]; for (const key of order) row.push(csvEsc((answers as any)[key])); lines.push(row.join(',')) }); const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'; const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`e2ee_${id}_wide_en.csv`; a.click(); URL.revokeObjectURL(a.href); setStatus(t('e2ee.local_csv_wide_ready')) } catch(err:any) { setStatus(err.message||String(err)) }
+                try { setStatus(''); const { out, enMap, consentCols } = await decryptCurrentBundle(); const order = items.map((it:any)=> it.id); const consentHeaders = consentCols.map(col=> col.en || col.zh || col.key); const header = ['response_index','email', ...order.map(key=> enMap[key] || key), ...consentHeaders]; const lines = [header.map(csvEsc).join(',')]; out.forEach((entry:any, idx:number)=>{ const answers = entry.answers || {}; const email = entry.email || ''; const consent = entry.consent?.options || entry.consent_options || {}; const row = [csvEsc(idx+1), csvEsc(email)]; for (const key of order) row.push(csvEsc((answers as any)[key])); consentCols.forEach(col=> { row.push(csvEsc(consent[col.key] ? 1 : 0)) }); lines.push(row.join(',')) }); const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'; const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`e2ee_${id}_wide_en.csv`; a.click(); URL.revokeObjectURL(a.href); setStatus(t('e2ee.local_csv_wide_ready')) } catch(err:any) { setStatus(err.message||String(err)) }
               }}>{t('e2ee.local_decrypt_csv_wide')}</button>
             </div>
             {status && <div className="muted" style={{marginTop:8}}>{status}</div>}
@@ -150,7 +162,6 @@ const SettingsView = React.memo(function SettingsView({
 
   const [localNameEn, setLocalNameEn] = useState('')
   const [localNameZh, setLocalNameZh] = useState('')
-  const [localPoints, setLocalPoints] = useState('5')
   const [localCollectEmail, setLocalCollectEmail] = useState<'off'|'optional'|'required'>('off')
   const [localRegion, setLocalRegion] = useState('auto')
   const [localTurnstile, setLocalTurnstile] = useState(false)
@@ -178,7 +189,6 @@ const SettingsView = React.memo(function SettingsView({
     if (!scale) return
     setLocalNameEn(scale.name_i18n?.en || '')
     setLocalNameZh(scale.name_i18n?.zh || '')
-    setLocalPoints(String(scale.points ?? 5))
     setLocalCollectEmail((scale.collect_email as 'off'|'optional'|'required') || 'off')
     setLocalRegion(scale.region || 'auto')
     setLocalTurnstile(!!scale.turnstile_enabled)
@@ -254,13 +264,10 @@ const SettingsView = React.memo(function SettingsView({
       const likert_labels_i18n: Record<string, string[]> = {}
       if (labsEn.length) likert_labels_i18n.en = labsEn
       if (labsZh.length) likert_labels_i18n.zh = labsZh
-      const parsedPoints = parseInt(localPoints || '', 10)
-      const points = Number.isNaN(parsedPoints) ? (scale.points || 0) : parsedPoints
       const parsedIpp = parseInt(localItemsPerPage || '0', 10)
       const itemsPerPageNumber = Number.isNaN(parsedIpp) ? 0 : parsedIpp
       await adminUpdateScale(scaleId, {
         name_i18n: { ...(scale.name_i18n || {}), en: localNameEn, zh: localNameZh },
-        points,
         randomize: !!scale.randomize,
         consent_i18n: scale.consent_i18n,
         collect_email: localCollectEmail,
@@ -277,7 +284,6 @@ const SettingsView = React.memo(function SettingsView({
         return {
           ...prev,
           name_i18n: { ...(prev.name_i18n || {}), en: localNameEn, zh: localNameZh },
-          points,
           collect_email: localCollectEmail,
           region: localRegion,
           turnstile_enabled: !!localTurnstile,
@@ -297,7 +303,7 @@ const SettingsView = React.memo(function SettingsView({
     } catch (e:any) {
       toast.error(e.message || String(e))
     }
-  }, [localLikertLabelsEn, localLikertLabelsZh, scale, scaleId, localPoints, localCollectEmail, localRegion, localTurnstile, localItemsPerPage, localLikertShowNumbers, localLikertPreset, localNameEn, localNameZh, onScaleUpdated, onLikertDefaultsSaved, t, toast])
+  }, [localLikertLabelsEn, localLikertLabelsZh, scale, scaleId, localCollectEmail, localRegion, localTurnstile, localItemsPerPage, localLikertShowNumbers, localLikertPreset, localNameEn, localNameZh, onScaleUpdated, onLikertDefaultsSaved, t, toast])
 
   const saveConsentConfig = useCallback(async () => {
     if (!scale) return
@@ -453,7 +459,6 @@ const SettingsView = React.memo(function SettingsView({
           <h4 className="section-title" style={{marginTop:0}}>{t('editor.basic_info')}</h4>
           <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={localNameEn} onChange={e=> setLocalNameEn(e.target.value)} /></div>
           <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={localNameZh} onChange={e=> setLocalNameZh(e.target.value)} /></div>
-          <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" value={localPoints} onChange={e=> setLocalPoints(e.target.value)} /></div>
           <div className="item">
             <div className="label">{t('likert.defaults')}</div>
             <div className="muted" style={{marginBottom:6}}>{t('likert.presets.title')}</div>

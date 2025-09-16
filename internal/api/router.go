@@ -399,7 +399,11 @@ func (rt *Router) handleConsentSign(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	id := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
-	rt.store.AddConsentRecord(&ConsentRecord{ID: id, ScaleID: in.ScaleID, Version: in.Version, Choices: in.Choices, Locale: in.Locale, SignedAt: ts, Hash: hash})
+	choices := in.Choices
+	if sc != nil && sc.E2EEEnabled {
+		choices = nil
+	}
+	rt.store.AddConsentRecord(&ConsentRecord{ID: id, ScaleID: in.ScaleID, Version: in.Version, Choices: choices, Locale: in.Locale, SignedAt: ts, Hash: hash})
 	// audit
 	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "consent_sign", Target: in.ScaleID, Note: id})
 	w.Header().Set("Content-Type", "application/json")
@@ -984,13 +988,20 @@ func (rt *Router) handleExportE2EE(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
-		if !rt.store.AllowExport(tid, 5*time.Second) {
-			http.Error(w, "too many requests", http.StatusTooManyRequests)
-			return
-		}
 		ip := r.Header.Get("X-Forwarded-For")
 		if ip == "" {
 			ip = r.RemoteAddr
+		}
+		if job := rt.store.FindRecentExportJob(tid, in.ScaleID, ip, 30*time.Second); job != nil {
+			rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_reuse", Target: in.ScaleID, Note: job.ID})
+			url := fmt.Sprintf("/api/exports/e2ee?job=%s&token=%s", job.ID, job.Token)
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"url": url, "expires_at": job.ExpiresAt.UTC().Format(time.RFC3339)})
+			return
+		}
+		if !rt.store.AllowExport(tid, 5*time.Second) {
+			http.Error(w, "too many requests", http.StatusTooManyRequests)
+			return
 		}
 		job := rt.store.CreateExportJob(tid, in.ScaleID, ip, 5*time.Minute)
 		rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "export_e2ee_request", Target: in.ScaleID, Note: job.ID})
@@ -1685,64 +1696,116 @@ func (rt *Router) adminScalePut(w http.ResponseWriter, r *http.Request, id strin
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	in := Scale{ID: id}
-	if v, ok := raw["name_i18n"]; ok {
-		if m, ok2 := v.(map[string]any); ok2 {
-			in.NameI18n = map[string]string{}
-			for k, vv := range m {
-				in.NameI18n[k] = toString(vv)
-			}
-		}
-	}
-	if v, ok := raw["points"].(float64); ok {
-		in.Points = int(v)
-	}
-	if v, ok := raw["randomize"].(bool); ok {
-		in.Randomize = v
-	}
-	if v, ok := raw["consent_i18n"]; ok {
-		if m, ok2 := v.(map[string]any); ok2 {
-			in.ConsentI18n = map[string]string{}
-			for k, vv := range m {
-				in.ConsentI18n[k] = toString(vv)
-			}
-		}
-	}
-	if v, ok := raw["collect_email"].(string); ok {
-		in.CollectEmail = v
-	}
-	if v, ok := raw["region"].(string); ok {
-		in.Region = v
-	}
-	if v, ok := raw["items_per_page"].(float64); ok {
-		in.ItemsPerPage = int(v)
-	}
-	if v, ok := raw["turnstile_enabled"].(bool); ok {
-		in.TurnstileEnabled = v
-	}
-	// Parse consent_config if provided (use helper to reduce complexity)
-	if v, ok := raw["consent_config"]; ok && v != nil {
-		if m, ok2 := v.(map[string]any); ok2 {
-			in.ConsentConfig = rt.parseConsentCfg(m)
-		}
-	}
-
 	old := rt.store.GetScale(id)
-	if ok := rt.store.UpdateScale(&in); !ok {
+	if old == nil {
 		http.NotFound(w, r)
 		return
 	}
-	if old != nil {
-		if v, ok := raw["e2ee_enabled"].(bool); ok && v != old.E2EEEnabled {
+	updated := *old
+	if v, ok := raw["e2ee_enabled"]; ok {
+		if vb, ok2 := v.(bool); ok2 && vb != old.E2EEEnabled {
 			http.Error(w, "e2ee_enabled cannot be modified after creation", http.StatusBadRequest)
 			return
 		}
-		if in.Region != "" && in.Region != old.Region {
-			rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: in.Region})
+	}
+	rt.applyScaleName(&updated, raw["name_i18n"])
+	if v, ok := raw["points"].(float64); ok {
+		updated.Points = int(v)
+	}
+	if v, ok := raw["randomize"].(bool); ok {
+		updated.Randomize = v
+	}
+	rt.applyConsentCopy(&updated, raw["consent_i18n"])
+	if v, ok := raw["collect_email"].(string); ok {
+		updated.CollectEmail = v
+	}
+	if v, ok := raw["region"].(string); ok && strings.TrimSpace(v) != "" {
+		updated.Region = v
+	}
+	if v, ok := raw["items_per_page"].(float64); ok {
+		updated.ItemsPerPage = int(v)
+	}
+	if v, ok := raw["turnstile_enabled"].(bool); ok {
+		updated.TurnstileEnabled = v
+	}
+	rt.applyLikertLabels(&updated, raw["likert_labels_i18n"])
+	if v, ok := raw["likert_show_numbers"].(bool); ok {
+		updated.LikertShowNumbers = v
+	}
+	if v, ok := raw["likert_preset"].(string); ok {
+		updated.LikertPreset = v
+	}
+	if v, ok := raw["consent_config"]; ok && v != nil {
+		if m, ok2 := v.(map[string]any); ok2 {
+			updated.ConsentConfig = rt.parseConsentCfg(m)
 		}
+	}
+	updated.E2EEEnabled = old.E2EEEnabled
+	if ok := rt.store.UpdateScale(&updated); !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if updated.Region != "" && updated.Region != old.Region {
+		rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actorEmail(r), Action: "region_change", Target: id, Note: updated.Region})
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
+func (rt *Router) applyScaleName(updated *Scale, raw any) {
+	m, ok := raw.(map[string]any)
+	if !ok {
+		return
+	}
+	name := make(map[string]string, len(m))
+	for k, v := range m {
+		name[k] = toString(v)
+	}
+	updated.NameI18n = name
+}
+
+func (rt *Router) applyConsentCopy(updated *Scale, raw any) {
+	m, ok := raw.(map[string]any)
+	if !ok {
+		return
+	}
+	copy := make(map[string]string, len(m))
+	for k, v := range m {
+		copy[k] = toString(v)
+	}
+	updated.ConsentI18n = copy
+}
+
+func (rt *Router) applyLikertLabels(updated *Scale, raw any) {
+	m, ok := raw.(map[string]any)
+	if !ok {
+		return
+	}
+	labels := make(map[string][]string, len(m))
+	for lang, payload := range m {
+		slice := rt.parseStringSlice(payload)
+		if len(slice) > 0 {
+			labels[lang] = slice
+		}
+	}
+	if len(labels) > 0 {
+		updated.LikertLabelsI18n = labels
+	}
+}
+
+func (rt *Router) parseStringSlice(raw any) []string {
+	arr, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(arr))
+	for _, item := range arr {
+		val := strings.TrimSpace(toString(item))
+		if val != "" {
+			out = append(out, val)
+		}
+	}
+	return out
 }
 
 func actorEmail(r *http.Request) string {

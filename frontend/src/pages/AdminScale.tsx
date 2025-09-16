@@ -90,7 +90,7 @@ export function AdminScale() {
     highlight(key)
   }
   // Helper: decrypt current export bundle into plain objects
-  async function decryptCurrentBundle(): Promise<{ out: any[], enMap: Record<string,string>, zhMap: Record<string,string> }> {
+  async function decryptCurrentBundle(): Promise<{ out: any[], enMap: Record<string,string>, zhMap: Record<string,string>, consentCols: { key:string; en:string; zh:string }[] }> {
     const priv = await unlockLocalPriv()
     const { url } = await adminCreateE2EEExport(id)
     const res = await fetch(url)
@@ -111,7 +111,19 @@ export function AdminScale() {
       enMap[it.id] = (it.stem_i18n?.en || it.stem || it.id)
       zhMap[it.id] = (it.stem_i18n?.zh || it.stem_i18n?.en || it.stem || it.id)
     }
-    return { out, enMap, zhMap }
+    const consentOpts = Array.isArray(scale?.consent_config?.options) ? scale.consent_config.options : []
+    const consentCols = consentOpts.map((opt:any) => {
+      const fbEn = i18n.t(`survey.consent_opt.${opt.key}`, { lng: 'en' }) as string
+      const fbZh = i18n.t(`survey.consent_opt.${opt.key}`, { lng: 'zh' }) as string
+      const fallbackEn = fbEn && !fbEn.startsWith('survey.consent_opt.') ? fbEn : opt.key
+      const fallbackZhSrc = fbZh && !fbZh.startsWith('survey.consent_opt.') ? fbZh : fallbackEn
+      return {
+        key: opt.key,
+        en: opt.label_i18n?.en || fallbackEn,
+        zh: opt.label_i18n?.zh || opt.label_i18n?.en || fallbackZhSrc,
+      }
+    })
+    return { out, enMap, zhMap, consentCols }
   }
 
   function csvEsc(v: any): string {
@@ -225,7 +237,7 @@ export function AdminScale() {
       if (labsEn.length) likert_labels_i18n.en = labsEn
       if (labsZh.length) likert_labels_i18n.zh = labsZh
       const ipp = parseInt(itemsPerPage||'0')
-      await adminUpdateScale(id, { name_i18n: scale.name_i18n, points: scale.points, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto', items_per_page: isNaN(ipp)? 0 : ipp, turnstile_enabled: !!turnstile, likert_labels_i18n, likert_show_numbers: likertShowNumbers, likert_preset: likertPreset } as any)
+      await adminUpdateScale(id, { name_i18n: scale.name_i18n, randomize: !!scale.randomize, consent_i18n: scale.consent_i18n, collect_email: scale.collect_email, e2ee_enabled: !!scale.e2ee_enabled, region: scale.region||'auto', items_per_page: isNaN(ipp)? 0 : ipp, turnstile_enabled: !!turnstile, likert_labels_i18n, likert_show_numbers: likertShowNumbers, likert_preset: likertPreset } as any)
       setMsg(t('saved'))
       toast.success(t('save_success')||t('saved')||'Saved')
     } catch(e:any) { setMsg(e.message||String(e)) } finally { setSaving(false) }
@@ -681,7 +693,7 @@ export function AdminScale() {
                   <button className="btn" onClick={async()=>{
                     setDecMsg('')
                     try {
-                      const { out, enMap, zhMap } = await decryptCurrentBundle()
+                      const { out, enMap, zhMap, consentCols } = await decryptCurrentBundle()
                       const outReadable = out.map((o:any)=>{
                         const a = o.answers || {}
                         const readable_en: Record<string, any> = {}
@@ -692,7 +704,14 @@ export function AdminScale() {
                           readable_en[keyEn] = v
                           readable_zh[keyZh] = v
                         }
-                        return { ...o, answers_readable_en: readable_en, answers_readable_zh: readable_zh }
+                        const consent = o.consent?.options || o.consent_options || {}
+                        const consentReadableEn: Record<string, any> = {}
+                        const consentReadableZh: Record<string, any> = {}
+                        consentCols.forEach(col => {
+                          consentReadableEn[col.en || col.key] = consent[col.key] ? 1 : 0
+                          consentReadableZh[col.zh || col.en || col.key] = consent[col.key] ? 1 : 0
+                        })
+                        return { ...o, answers_readable_en: readable_en, answers_readable_zh: readable_zh, consent_readable_en: consentReadableEn, consent_readable_zh: consentReadableZh }
                       })
                       const blob = new Blob([outReadable.map(o=> JSON.stringify(o)).join('\n')+"\n"], { type: 'application/jsonl' })
                       const a = document.createElement('a')
@@ -705,7 +724,7 @@ export function AdminScale() {
                   <button className="btn" onClick={async()=>{
                     setDecMsg('')
                     try {
-                      const { out, enMap, zhMap } = await decryptCurrentBundle()
+                      const { out, enMap, zhMap, consentCols } = await decryptCurrentBundle()
                       // Long CSV: response_index, email, item_id, stem_en, stem_zh, value
                       const header = ['response_index','email','item_id','stem_en','stem_zh','value']
                       const lines = [header.map(csvEsc).join(',')]
@@ -722,6 +741,17 @@ export function AdminScale() {
                             csvEsc(v)
                           ].join(','))
                         }
+                        const consent = o.consent?.options || o.consent_options || {}
+                        consentCols.forEach(col => {
+                          lines.push([
+                            csvEsc(idx+1),
+                            csvEsc(email),
+                            csvEsc(`consent.${col.key}`),
+                            csvEsc(col.en || col.key),
+                            csvEsc(col.zh || col.en || col.key),
+                            csvEsc(consent[col.key] ? 1 : 0)
+                          ].join(','))
+                        })
                       })
                       const csvText = '\uFEFF' + lines.join('\r\n')+'\r\n'
                       const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8' })
@@ -735,16 +765,19 @@ export function AdminScale() {
                   <button className="btn" onClick={async()=>{
                     setDecMsg('')
                     try {
-                      const { out, enMap } = await decryptCurrentBundle()
+                      const { out, enMap, consentCols } = await decryptCurrentBundle()
                       // Wide CSV (EN headers): response_index, email, ...stems_en in item order
                       const order = items.map((it:any)=> it.id)
-                      const header = ['response_index','email', ...order.map((id:string)=> enMap[id] || id)]
+                      const consentHeaders = consentCols.map(col=> col.en || col.zh || col.key)
+                      const header = ['response_index','email', ...order.map((id:string)=> enMap[id] || id), ...consentHeaders]
                       const lines = [header.map(csvEsc).join(',')]
                       out.forEach((o:any, idx:number)=>{
                         const email = o.email || ''
                         const a = o.answers || {}
+                        const consent = o.consent?.options || o.consent_options || {}
                         const row = [csvEsc(idx+1), csvEsc(email)]
                         for (const id of order) row.push(csvEsc((a as any)[id]))
+                        consentCols.forEach(col=> { row.push(csvEsc(consent[col.key] ? 1 : 0)) })
                         lines.push(row.join(','))
                       })
                       const csvText = '\uFEFF' + lines.join('\r\n')+'\r\n'
@@ -789,9 +822,6 @@ export function AdminScale() {
               </div>
               <div className="item"><div className="label">{t('name_zh')}</div>
                 <input className="input" value={scale.name_i18n?.zh||''} onChange={e=> setScale((s:any)=> ({...s, name_i18n: {...(s.name_i18n||{}), zh: e.target.value }}))} />
-              </div>
-              <div className="item"><div className="label">{t('points')}</div>
-                <input className="input" type="number" min={2} max={9} value={scale.points||5} onChange={e=> setScale((s:any)=> ({...s, points: parseInt(e.target.value||'5')}))} />
               </div>
               <div className="item"><div className="label">Items per page</div>
                 <input className="input" type="number" min={0} max={50} value={itemsPerPage} onChange={e=> setItemsPerPageState(e.target.value)} placeholder="0 = all on one page" />

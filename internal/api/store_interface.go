@@ -47,6 +47,7 @@ type Store interface {
 	AllowExport(tid string, minInterval time.Duration) bool
 	CreateExportJob(tid, scaleID, ip string, ttl time.Duration) *ExportJob
 	GetExportJob(id, token string) *ExportJob
+	FindRecentExportJob(tid, scaleID, ip string, within time.Duration) *ExportJob
 
 	GetAIConfig(tenantID string) *TenantAIConfig
 	UpsertAIConfig(cfg *TenantAIConfig)

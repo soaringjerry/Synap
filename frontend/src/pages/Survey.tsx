@@ -738,6 +738,19 @@ export function Survey() {
               await e2eeInit()
               const payload: any = { scale_id: scaleId, answers }
               if (collectEmail !== 'off') payload.email = email.trim()
+              if (consentEvidence) {
+                payload.consent = {
+                  version: consentEvidence.version || consentConfig?.version || 'v1',
+                  options: consentEvidence.options || consentChoices,
+                  signed_at: consentEvidence.ts,
+                  signature_kind: consentEvidence.signature?.kind || undefined,
+                }
+              } else if (Object.keys(consentChoices).length) {
+                payload.consent = {
+                  version: consentConfig?.version || 'v1',
+                  options: consentChoices,
+                }
+              }
               const enc = await encryptForProject(payload, scaleId, keys as any)
               const res = await submitE2EE({ scale_id: scaleId, ciphertext: enc.ciphertext, nonce: enc.nonce, enc_dek: enc.encDEK, aad_hash: enc.aad_hash, pmk_fingerprint: enc.pmk_fingerprint, turnstile_token: turnstileToken || undefined })
               setMsg(t('submit_success')||'Submitted successfully')
