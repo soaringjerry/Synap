@@ -64,7 +64,7 @@ docker compose up -d
 - `SYNAP_DB_PATH`（可选，一次性迁移旧版 JSON 快照时使用）
 - `SYNAP_STATIC_DIR`（一体化镜像用于前端静态资源，默认 `/public`）
 
-> 首次启动时若 `SYNAP_SQLITE_PATH` 不存在且指定了 `SYNAP_DB_PATH`，服务会自动读取旧快照并迁移到 SQLite。迁移成功后只需保留新的 `.sqlite` 文件。
+> 首次启动时若 `SYNAP_SQLITE_PATH` 不存在且指定了 `SYNAP_DB_PATH`，服务会自动读取旧快照并迁移到 SQLite。迁移成功后只需保留新的 `.sqlite` 文件。迁移脚本使用内置的迁移文件，除非设置 `SYNAP_MIGRATIONS_DIR` 指向自定义目录。
 
 ## 使用自有 Nginx（双层反代或仅 Nginx）
 

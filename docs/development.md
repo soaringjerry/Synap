@@ -25,6 +25,7 @@ Dev convenience:
 
 - Primary storage lives at `SYNAP_SQLITE_PATH` (defaults to `./data/synap.sqlite`). Delete the file to reset local data.
 - If `SYNAP_DB_PATH` points to an encrypted snapshot, the next server start will migrate it into SQLite and continue on the new database.
+- Migrations are embedded in the binary; override `SYNAP_MIGRATIONS_DIR` only when testing alternate migration sets.
 - Migration verification tips:
   1. Create sample data with the legacy build (or an older commit) using only `SYNAP_DB_PATH` + `SYNAP_ENC_KEY`.
   2. Switch to the current build, remove any `.sqlite` file, keep the snapshot, and start the server with both `SYNAP_SQLITE_PATH` and `SYNAP_DB_PATH` set. Watch logs for “First run detected…” and inspect the new DB (`sqlite3 $SYNAP_SQLITE_PATH 'SELECT COUNT(*) FROM scales;'`).

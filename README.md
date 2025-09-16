@@ -85,6 +85,8 @@ export SYNAP_SQLITE_PATH=./data/synap.sqlite   # primary database (auto-migrates
 export SYNAP_DB_PATH=./data/synap.db          # optional: legacy encrypted snapshot for one-time migration
 export SYNAP_ENC_KEY=$(openssl rand -base64 32) # required only when reading legacy snapshot
 export SYNAP_ADDR=:8080
+# Optional: point to an external migrations directory; otherwise embedded migrations are used
+# export SYNAP_MIGRATIONS_DIR=/app/migrations
 ```
 
 On first launch, Synap checks `SYNAP_SQLITE_PATH`. If the file is absent and a legacy snapshot (`SYNAP_DB_PATH`) is available, the server clones all data into SQLite and continues using the new store.
