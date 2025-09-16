@@ -17,7 +17,12 @@ export type ItemOut = {
 const base = '' // relative to same origin
 
 async function j<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const message = await res.text()
+    const err = new Error(message || res.statusText)
+    ;(err as any).status = res.status
+    throw err
+  }
   return res.json() as Promise<T>
 }
 

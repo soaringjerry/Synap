@@ -727,6 +727,7 @@ function ExistingScaleEditor({ id }: { id: string }) {
 
   // New item form state (when adding)
   const [newOpen, setNewOpen] = useState(false)
+  const newStemEnRef = useRef<HTMLInputElement | null>(null)
   const [newStemEn, setNewStemEn] = useState('')
   const [newStemZh, setNewStemZh] = useState('')
   const [newReverse, setNewReverse] = useState(false)
@@ -773,6 +774,15 @@ function ExistingScaleEditor({ id }: { id: string }) {
     showNumbers: likertShowNumbers,
     preset: likertPreset,
   }), [likertLabelsEn, likertLabelsZh, likertShowNumbers, likertPreset])
+
+  useEffect(() => {
+    if (!newOpen) return
+    const el = newStemEnRef.current
+    if (!el) return
+    const pos = el.value.length
+    el.focus()
+    try { el.setSelectionRange(pos, pos) } catch {}
+  }, [newOpen, newStemEn])
 
   const handleLikertDefaultsSaved = useCallback((next: { en: string; zh: string; showNumbers: boolean; preset: string }) => {
     setLikertLabelsEn(next.en)
@@ -974,7 +984,7 @@ function ExistingScaleEditor({ id }: { id: string }) {
         <div className="card span-8">
           <div className="item-editor-grid">
             <div className="item span-12"><h4 style={{margin:0}}>{t('add_item')}</h4></div>
-            <div className="item span-6"><div className="label">{t('stem_en')}</div><input className="input" value={newStemEn} onChange={e=> setNewStemEn(e.target.value)} /></div>
+            <div className="item span-6"><div className="label">{t('stem_en')}</div><input ref={newStemEnRef} className="input" value={newStemEn} onChange={e=> setNewStemEn(e.target.value)} /></div>
             <div className="item span-6"><div className="label">{t('stem_zh')}</div><input className="input" value={newStemZh} onChange={e=> setNewStemZh(e.target.value)} /></div>
             <div className="item span-4"><div className="label">{t('label.type')}</div>
               <select className="select" value={newType} onChange={e=> setNewType(e.target.value as any)}>

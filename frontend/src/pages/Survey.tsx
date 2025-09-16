@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { listItems, submitBulk, seedSample, getScaleMeta, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign, participantSelfDelete, e2eeSelfDelete } from '../api/client'
+import { listItems, submitBulk, seedSample, ItemOut, listProjectKeysPublic, submitE2EE, postConsentSign, participantSelfDelete, e2eeSelfDelete } from '../api/client'
 import { e2eeInit, encryptForProject } from '../crypto/e2ee'
 import { mdToHtml } from '../utils/markdown'
 import { useTranslation } from 'react-i18next'
@@ -142,55 +142,85 @@ export function Survey() {
     return toks
   }
 
+  async function fetchMetaFresh(): Promise<any> {
+    const res = await fetch(`/api/scale/${encodeURIComponent(scaleId)}?ts=${Date.now()}`, { cache: 'no-store' })
+    if (!res.ok) {
+      const msg = await res.text()
+      const err = new Error(msg || res.statusText)
+      ;(err as any).status = res.status
+      throw err
+    }
+    return res.json()
+  }
+
+  function applyMeta(meta: any) {
+    setTurnstileEnabled(!!meta?.turnstile_enabled)
+    setTurnstileSitekey(meta?.turnstile_sitekey || '')
+    const c = (meta?.consent_i18n && (meta.consent_i18n[lang] || meta.consent_i18n['en'])) || ''
+    setConsentCustom(c || '')
+    setPoints(meta?.points || 5)
+    setCollectEmail((meta?.collect_email as any) || 'optional')
+    setE2ee(!!meta?.e2ee_enabled)
+    const cc = meta?.consent_config || null
+    if (cc) {
+      const sr = typeof cc.signature_required !== 'undefined' ? !!cc.signature_required : false
+      setConsentConfig({ ...cc, signature_required: sr })
+    } else {
+      setConsentConfig(null)
+    }
+    const labs = (meta?.likert_labels_i18n || {}) as Record<string, string[]>
+    const arr = (labs[lang] || labs['en'] || []) as string[]
+    setLikertLabels(Array.isArray(arr) ? arr : [])
+    setLikertShowNumbers(!!meta?.likert_show_numbers)
+    setItemsPerPage(Number(meta?.items_per_page || 0) || 0)
+    setPage(1)
+  }
+
   async function loadMeta() {
+    setMetaReady(false)
+    const upper = scaleId.toUpperCase()
     try {
-      setMetaReady(false)
-      // Force fresh meta to avoid stale cache after admin changes
-      let meta: any
-      try {
-        const res = await fetch(`/api/scale/${encodeURIComponent(scaleId)}?ts=${Date.now()}`, { cache: 'no-store' })
-        if (!res.ok) throw new Error(await res.text())
-        meta = await res.json()
-      } catch {
-        meta = await getScaleMeta(scaleId)
-      }
-      // Turnstile flags (sitekey public)
-      setTurnstileEnabled(!!(meta as any).turnstile_enabled)
-      setTurnstileSitekey((meta as any).turnstile_sitekey || '')
-      const c = (meta.consent_i18n && (meta.consent_i18n[lang] || meta.consent_i18n['en'])) || ''
-      setConsentCustom(c || '')
-      setPoints(meta.points || 5)
-      setCollectEmail((meta.collect_email as any) || 'optional')
-      setE2ee(!!(meta as any).e2ee_enabled)
-      const cc = meta.consent_config || null
-      if (cc) {
-        const sr = typeof cc.signature_required !== 'undefined' ? !!cc.signature_required : false
-        setConsentConfig({ ...cc, signature_required: sr })
+      const meta = await fetchMetaFresh()
+      applyMeta(meta)
+    } catch (err:any) {
+      if (upper === 'SAMPLE' && err?.status === 404) {
+        try {
+          await seedSample()
+          const meta = await fetchMetaFresh()
+          applyMeta(meta)
+        } catch (inner:any) {
+          setMsg(inner?.message || String(inner))
+        }
       } else {
-        setConsentConfig(null)
+        setMsg(err?.message || String(err))
       }
-      const labs = (meta as any).likert_labels_i18n || {}
-      const arr = (labs[lang] || labs['en'] || []) as string[]
-      setLikertLabels(Array.isArray(arr) ? arr : [])
-      setLikertShowNumbers(!!(meta as any).likert_show_numbers)
-      setItemsPerPage(Number((meta as any).items_per_page||0) || 0)
-      setPage(1)
-    } catch {}
+    }
     setMetaReady(true)
   }
   async function loadOrSeed() {
     setLoading(true)
     setMsg('')
     try {
-      const d = await listItems(scaleId, lang)
-      if (d.items.length === 0 && scaleId.toUpperCase() === 'SAMPLE') {
+      const upper = scaleId.toUpperCase()
+      let data = await listItems(scaleId, lang)
+      if (data.items.length === 0 && upper === 'SAMPLE') {
         await seedSample()
-        const s = await listItems(scaleId, lang)
-        setItems(s.items)
-      } else {
-        setItems(d.items)
+        data = await listItems(scaleId, lang)
       }
-    } catch (e:any) { setMsg(e.message||String(e)) }
+      setItems(data.items)
+    } catch (e:any) {
+      if (scaleId.toUpperCase() === 'SAMPLE' && e?.status === 404) {
+        try {
+          await seedSample()
+          const data = await listItems(scaleId, lang)
+          setItems(data.items)
+        } catch (inner:any) {
+          setMsg(inner?.message || String(inner))
+        }
+      } else {
+        setMsg(e?.message || String(e))
+      }
+    }
     setLoading(false)
   }
 

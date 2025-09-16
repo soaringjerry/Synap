@@ -11,7 +11,7 @@ All new development and bug fixes should be applied to:
 Reason for deprecation: Poor UX, high complexity, and difficult maintenance.
 ================================================================================
 */
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { adminGetScale, adminGetScaleItems, adminUpdateScale, adminDeleteScale, adminUpdateItem, adminDeleteItem, adminCreateItem, adminAnalyticsSummary, adminAITranslatePreview, adminListProjectKeys, adminAddProjectKey, adminCreateE2EEExport, adminPurgeResponses, adminGetAIConfig, adminReorderItems } from '../api/client'
@@ -27,6 +27,7 @@ export function AdminScale() {
   const [saving, setSaving] = useState(false)
   const [newStemEn, setNewStemEn] = useState('')
   const [newStemZh, setNewStemZh] = useState('')
+  const newStemEnRef = useRef<HTMLInputElement|null>(null)
   const [newReverse, setNewReverse] = useState(false)
   const [newType, setNewType] = useState<'likert'|'single'|'multiple'|'dropdown'|'rating'|'short_text'|'long_text'|'numeric'|'date'|'time'|'slider'>('likert')
   const [newRequired, setNewRequired] = useState(false)
@@ -227,6 +228,13 @@ export function AdminScale() {
     } catch (e:any) { setMsg(e.message||String(e)) }
   }
   useEffect(()=>{ load() }, [id])
+  useEffect(() => {
+    const el = newStemEnRef.current
+    if (!el) return
+    const pos = el.value.length
+    el.focus()
+    try { el.setSelectionRange(pos, pos) } catch {}
+  }, [newStemEn])
 
   async function saveScale() {
     try {
@@ -843,9 +851,9 @@ export function AdminScale() {
             </div>
             <div className="card span-6">
               <h4 style={{marginTop:0}}>{t('add_item')}</h4>
-              <div className="item"><div className="label">{t('stem_en')}</div>
-                <input className="input" value={newStemEn} onChange={e=>setNewStemEn(e.target.value)} />
-              </div>
+                <div className="item"><div className="label">{t('stem_en')}</div>
+                  <input ref={newStemEnRef} className="input" value={newStemEn} onChange={e=>setNewStemEn(e.target.value)} />
+                </div>
               <div className="item"><div className="label">{t('stem_zh')}</div>
                 <input className="input" value={newStemZh} onChange={e=>setNewStemZh(e.target.value)} />
               </div>
