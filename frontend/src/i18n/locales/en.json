@@ -139,8 +139,8 @@
     "consent_zh": "Consent (ZH)",
     "consent_hint": "Optional, leave blank to use default consent text. Newlines preserved.",
     "consent_md_hint": "Markdown supported: headings, lists, links, bold/italic, code.",
-    "consent_inline_hint": "Tip: Insert [[CONSENT]] (or <interactive-consent/> / <context/>) to place the interactive confirmations (options + signature) inline. If not present, it appears after the text.",
-    "consent_group_hint": "You can set a Group number for each confirmation, then place them separately with [[CONSENT1]], [[CONSENT2]], etc. Or use [[CONSENT:options=withdrawal,data_use]] for explicit keys.",
+    "consent_inline_hint": "Insert [[CONSENT]] to render all interactive confirmations (options + signature) at the chosen position. If omitted, they appear after the text.",
+    "consent_group_hint": "Assign a Group number to each confirmation below. Example: [[CONSENT1]] renders the items in group 1, [[CONSENT2]] renders group 2; keep using [[CONSENT]] to show every group together.",
     "consent_override_hint": "If provided, the default sections are hidden in the survey.",
     "ai": {
       "title": "AI Translation"
@@ -318,6 +318,7 @@
         "required": "Required",
         "label_en": "Label (EN)",
         "label_zh": "Label (ZH)",
+        "group": "Group",
         "add_option": "Add option",
         "reset_rec": "Reset to Recommended",
         "save_first_error": "Please fix highlighted fields",

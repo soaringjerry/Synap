@@ -55,7 +55,7 @@ const SettingsView = React.memo(function SettingsView({
   const [localLikertShowNumbers, setLocalLikertShowNumbers] = useState(likertDefaults.showNumbers)
   const [localConsentVersion, setLocalConsentVersion] = useState('v1')
   const [localSignatureRequired, setLocalSignatureRequired] = useState(true)
-  const [localConsentOptions, setLocalConsentOptions] = useState<{ key:string; required:boolean; en?:string; zh?:string }[]>([])
+  const [localConsentOptions, setLocalConsentOptions] = useState<{ key:string; required:boolean; en?:string; zh?:string; group?: number }[]>([])
   const [localConsentEn, setLocalConsentEn] = useState('')
   const [localConsentZh, setLocalConsentZh] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -85,7 +85,16 @@ const SettingsView = React.memo(function SettingsView({
     const cc = scale.consent_config || {}
     setLocalConsentVersion(cc.version || 'v1')
     setLocalSignatureRequired(!!(cc.signature_required ?? true))
-    setLocalConsentOptions((cc.options || []).map((o:any) => ({ key: o.key, required: !!o.required, en: o.label_i18n?.en, zh: o.label_i18n?.zh })))
+    setLocalConsentOptions((cc.options || []).map((o:any) => {
+      let group: number | undefined
+      if (typeof o.group === 'number') {
+        group = o.group
+      } else if (typeof o.group === 'string' && o.group.trim() !== '') {
+        const parsed = Number(o.group)
+        if (!Number.isNaN(parsed)) group = parsed
+      }
+      return { key: o.key, required: !!o.required, en: o.label_i18n?.en, zh: o.label_i18n?.zh, group }
+    }))
     setLocalConsentEn(scale.consent_i18n?.en || '')
     setLocalConsentZh(scale.consent_i18n?.zh || '')
     setAdvancedOpen(false)
@@ -187,14 +196,22 @@ const SettingsView = React.memo(function SettingsView({
         toast.error(t('consent.advanced.save_first_error'))
         return
       }
-      const options = localConsentOptions.map(o => ({
-        key: o.key.trim(),
-        required: !!o.required,
-        label_i18n: {
-          en: o.en?.trim() || undefined,
-          zh: o.zh?.trim() || undefined,
-        },
-      }))
+      const optionsPayload = localConsentOptions.map(o => {
+        const trimmedKey = o.key.trim()
+        const trimmedEn = o.en?.trim() || ''
+        const trimmedZh = o.zh?.trim() || ''
+        const opt: any = { key: trimmedKey, required: !!o.required }
+        if (trimmedEn || trimmedZh) {
+          opt.label_i18n = {
+            ...(trimmedEn ? { en: trimmedEn } : {}),
+            ...(trimmedZh ? { zh: trimmedZh } : {}),
+          }
+        }
+        if (typeof o.group === 'number' && !Number.isNaN(o.group)) {
+          opt.group = o.group
+        }
+        return opt
+      })
       const consentText = {
         en: localConsentEn.trim() ? localConsentEn : undefined,
         zh: localConsentZh.trim() ? localConsentZh : undefined,
@@ -203,7 +220,7 @@ const SettingsView = React.memo(function SettingsView({
         consent_i18n: consentText,
         consent_config: {
           version: localConsentVersion || 'v1',
-          options,
+          options: optionsPayload,
           signature_required: !!localSignatureRequired,
         },
       } as any)
@@ -220,7 +237,7 @@ const SettingsView = React.memo(function SettingsView({
           consent_config: {
             version: localConsentVersion || 'v1',
             signature_required: !!localSignatureRequired,
-            options: options.map(opt => ({ key: opt.key, required: opt.required, label_i18n: opt.label_i18n })),
+            options: optionsPayload,
           },
         }
       })
@@ -267,6 +284,7 @@ const SettingsView = React.memo(function SettingsView({
                 <tr>
                   <th>{t('consent.advanced.label_en')}</th>
                   <th>{t('consent.advanced.label_zh')}</th>
+                  <th>{t('consent.advanced.group')}</th>
                   <th>{t('consent.advanced.required')}</th>
                   <th>{t('actions')}</th>
                 </tr>
@@ -274,13 +292,23 @@ const SettingsView = React.memo(function SettingsView({
               <tbody>
                 {localConsentOptions.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="muted">{t('consent.advanced.empty')}</td>
+                    <td colSpan={5} className="muted">{t('consent.advanced.empty')}</td>
                   </tr>
                 )}
                 {localConsentOptions.map((o, idx) => (
                   <tr key={o.key || idx}>
                     <td data-label={t('consent.advanced.label_en')}><input className="input" value={o.en||''} onChange={e=> setLocalConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder={t('optional')} /></td>
                     <td data-label={t('consent.advanced.label_zh')}><input className="input" value={o.zh||''} onChange={e=> setLocalConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder={t('optional')} /></td>
+                    <td data-label={t('consent.advanced.group')}><input className="input" type="number" value={o.group ?? ''} onChange={e=> {
+                      const raw = e.target.value
+                      setLocalConsentOptions(list=> list.map((x,i)=> {
+                        if (i !== idx) return x
+                        if (raw === '') return { ...x, group: undefined }
+                        const parsed = parseInt(raw, 10)
+                        if (Number.isNaN(parsed)) return { ...x, group: undefined }
+                        return { ...x, group: parsed }
+                      }))
+                    }} placeholder={t('optional')} /></td>
                     <td data-label={t('consent.advanced.required')}><label style={{display:'inline-flex',alignItems:'center',gap:6}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setLocalConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} />{t('required')}</label></td>
                     <td data-label={t('actions')}>
                       <div className="consent-table-actions">
@@ -1013,8 +1041,6 @@ function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
   const { t } = useTranslation()
   const { id='' } = useParams()
   const isE2EE = !!scale?.e2ee_enabled
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [consentHeader, setConsentHeader] = useState<'key'|'label_en'|'label_zh'>('key')
   const [pkPass, setPkPass] = useState('')
   const [status, setStatus] = useState('')
   const fileInputRef = useRef<HTMLInputElement|null>(null)
@@ -1190,23 +1216,9 @@ function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
     <>
       <h4 className="section-title" style={{marginTop:0}}>{t('export')}</h4>
       <div className="muted" style={{marginBottom:8}}>{t('export_panel.csv_bom_hint')}</div>
-      <button className="btn btn-ghost" type="button" onClick={()=> setAdvancedOpen(o=> !o)}>{advancedOpen ? t('hide_advanced') : t('show_advanced')}</button>
-      {advancedOpen && (
-        <div className="tile" style={{padding:12, marginTop:8}}>
-          <div className="item" style={{display:'grid', gap:6}}>
-            <div className="label">{t('export_panel.consent_header')}</div>
-            <select className="select" value={consentHeader} onChange={e=> setConsentHeader(e.target.value as any)}>
-              <option value="key">{t('export_panel.consent_header_key')}</option>
-              <option value="label_en">{t('export_panel.consent_header_label_en')}</option>
-              <option value="label_zh">{t('export_panel.consent_header_label_zh')}</option>
-            </select>
-            <div className="muted">{t('export_panel.consent_header_help')}</div>
-          </div>
-        </div>
-      )}
       <div className="cta-row" style={{marginTop:12}}>
-        <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank" rel="noreferrer">{t('export_long_csv')}</a>
-        <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(id)}&consent_header=${encodeURIComponent(consentHeader)}`} target="_blank" rel="noreferrer">{t('export_wide_csv')}</a>
+        <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_long_csv')}</a>
+        <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_wide_csv')}</a>
         <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_score_csv')}</a>
       </div>
     </>
