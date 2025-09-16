@@ -18,6 +18,112 @@ import {
 } from '../api/client'
 import { decryptSingleWithX25519 } from '../crypto/e2ee'
 
+// Standalone components (avoid nested hooks inside conditional renders)
+function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
+  const { t } = useTranslation()
+  const { id='' } = useParams()
+  const isE2EE = !!scale?.e2ee_enabled
+  const [pkPass, setPkPass] = useState('')
+  const [status, setStatus] = useState('')
+
+  function fromB64(s: string) { const bin = atob(s); const out = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out }
+  function csvEsc(v: any): string { const s = v==null ? '' : (Array.isArray(v)? v.join(', ') : (typeof v==='object'? JSON.stringify(v) : String(v))); return '"'+s.replace(/"/g,'""')+'"' }
+  async function unlockLocalPriv(): Promise<Uint8Array> {
+    const blobStr = localStorage.getItem('synap_pmk'); if (!blobStr) throw new Error(t('e2ee.import_required'))
+    if (!pkPass) throw new Error(t('e2ee.passphrase_needed'))
+    const blob = JSON.parse(blobStr)
+    const salt = fromB64(blob.salt); const iv = fromB64(blob.iv); const enc = fromB64(blob.enc_priv)
+    const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(pkPass), 'PBKDF2', false, ['deriveKey'])
+    const key = await crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:120000, hash:'SHA-256' }, keyMaterial, { name:'AES-GCM', length:256 }, false, ['decrypt'])
+    const priv = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, enc)
+    return new Uint8Array(priv)
+  }
+  async function decryptCurrentBundle(): Promise<{ out:any[]; enMap: Record<string,string>; zhMap: Record<string,string> }>{
+    if (!scale) throw new Error('No scale loaded')
+    const exp = await adminCreateE2EEExport(id)
+    const bundle:any = await (await fetch(exp.url)).json()
+    const entries:any[] = bundle.entries || bundle.responses || []
+    const priv = await unlockLocalPriv()
+    const privB64 = btoa(String.fromCharCode(...priv))
+    const out:any[] = []
+    const enMap:Record<string,string> = {}; const zhMap:Record<string,string> = {}
+    for (const it of items) { enMap[it.id] = it.stem_i18n?.en || it.stem || it.id; zhMap[it.id] = it.stem_i18n?.zh || it.stem_i18n?.en || it.stem || it.id }
+    for (const entry of entries) {
+      try {
+        const plain = await decryptSingleWithX25519(privB64, { ciphertext: entry.ciphertext, nonce: entry.nonce, enc_dek: entry.enc_dek || entry.EncDEK || [] })
+        out.push(plain)
+      } catch {}
+    }
+    if (out.length===0) throw new Error(t('e2ee.no_decrypted'))
+    return { out, enMap, zhMap }
+  }
+  if (isE2EE) {
+    return (
+      <>
+        <h4 className="section-title" style={{marginTop:0}}>{t('e2ee.export_title')}</h4>
+        <div className="muted" style={{marginBottom:8}}>{t('e2ee.local_export_desc')}</div>
+        <div className="row" style={{marginTop:8}}>
+          <div className="card span-12">
+            <div className="item"><div className="label">{t('e2ee.passphrase')}</div><input className="input" type="password" value={pkPass} onChange={e=> setPkPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')||''} /></div>
+            <div className="cta-row" style={{marginTop:8, gap:8, flexWrap:'wrap'}}>
+              <button className="btn" type="button" onClick={async()=>{
+                try { setStatus(''); const { out } = await decryptCurrentBundle(); const lines = out.map((x:any)=> JSON.stringify(x)); const blob = new Blob([lines.join('\n')+'\n'], { type:'application/jsonl' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`e2ee_${id}.jsonl`; a.click(); URL.revokeObjectURL(a.href); setStatus(t('e2ee.local_plain_ready')) } catch(err:any) { setStatus(err.message||String(err)) }
+              }}>{t('e2ee.local_decrypt_button')}</button>
+              <button className="btn" type="button" onClick={async()=>{
+                try { setStatus(''); const { out, zhMap } = await decryptCurrentBundle(); const order = items.map((it:any)=> it.id); const header = ['response_index','email', ...order.map(key=> zhMap[key] || key)]; const lines = [header.map(csvEsc).join(',')]; out.forEach((entry:any, idx:number)=>{ const answers = entry.answers || {}; const email = entry.email || ''; const row = [csvEsc(idx+1), csvEsc(email)]; for (const key of order) row.push(csvEsc((answers as any)[key])); lines.push(row.join(',')) }); const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'; const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`e2ee_${id}_long.csv`; a.click(); URL.revokeObjectURL(a.href); setStatus(t('e2ee.local_csv_long_ready')) } catch(err:any) { setStatus(err.message||String(err)) }
+              }}>{t('e2ee.local_decrypt_csv_long')}</button>
+              <button className="btn" type="button" onClick={async()=>{
+                try { setStatus(''); const { out, enMap } = await decryptCurrentBundle(); const order = items.map((it:any)=> it.id); const header = ['response_index','email', ...order.map(key=> enMap[key] || key)]; const lines = [header.map(csvEsc).join(',')]; out.forEach((entry:any, idx:number)=>{ const answers = entry.answers || {}; const email = entry.email || ''; const row = [csvEsc(idx+1), csvEsc(email)]; for (const key of order) row.push(csvEsc((answers as any)[key])); lines.push(row.join(',')) }); const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'; const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`e2ee_${id}_wide_en.csv`; a.click(); URL.revokeObjectURL(a.href); setStatus(t('e2ee.local_csv_wide_ready')) } catch(err:any) { setStatus(err.message||String(err)) }
+              }}>{t('e2ee.local_decrypt_csv_wide')}</button>
+            </div>
+            {status && <div className="muted" style={{marginTop:8}}>{status}</div>}
+            <div className="muted" style={{marginTop:8}}>
+              {t('e2ee.csv_notice')} <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap/blob/main/docs/e2ee.md" target="_blank" rel="noreferrer">{t('learn_more')}</a>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+  return (
+    <>
+      <h4 className="section-title" style={{marginTop:0}}>{t('export')}</h4>
+      <div className="muted" style={{marginBottom:8}}>{t('export_panel.csv_bom_hint')}</div>
+      <div className="cta-row" style={{marginTop:12}}>
+        <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_long_csv')}</a>
+        <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_wide_csv')}</a>
+        <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_score_csv')}</a>
+      </div>
+    </>
+  )
+}
+
+function DangerZone({ scaleId }: { scaleId: string }) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const onPurge = async () => {
+    try {
+      const warn = t('confirm_delete_responses') || 'Delete ALL responses for this scale? This cannot be undone.'
+      const promptMsg = `${warn}\n\nType the scale ID to confirm: ${scaleId}`
+      const input = window.prompt(promptMsg)
+      if (!input || input.trim() !== scaleId) return
+      await adminPurgeResponses(scaleId)
+      toast.success(t('delete_success'))
+    } catch (e:any) {
+      toast.error(e.message||String(e))
+    }
+  }
+  return (
+    <div className="row" style={{marginTop:16}}>
+      <div className="card span-12" style={{borderColor:'rgba(248,113,113,0.45)'}}>
+        <h4 className="section-title" style={{marginTop:0}}>{t('danger_zone')}</h4>
+        <div className="muted" style={{marginBottom:8}}>{t('confirm_delete_responses')}</div>
+        <button type="button" className="btn" onClick={onPurge}>{t('delete_all_responses')}</button>
+      </div>
+    </div>
+  )
+}
+
 type View = 'editor' | 'settings' | 'share'
 
 type SettingsViewProps = {
@@ -1041,219 +1147,8 @@ function ExistingScaleEditor({ id }: { id: string }) {
   )
 }
 
-function ExportPanel({ scale, items }: { scale: any; items: any[] }) {
-  const { t } = useTranslation()
-  const { id='' } = useParams()
-  const isE2EE = !!scale?.e2ee_enabled
-  const [pkPass, setPkPass] = useState('')
-  const [status, setStatus] = useState('')
-  const fileInputRef = useRef<HTMLInputElement|null>(null)
+// (removed duplicate inline ExportPanel & DangerZone; see top-level versions)
 
-  function fromB64(s: string) {
-    const bin = atob(s)
-    const out = new Uint8Array(bin.length)
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
-    return out
-  }
-  function csvEsc(v: any): string {
-    const s = v === null || v === undefined ? '' : (Array.isArray(v) ? v.join(', ') : (typeof v === 'object' ? JSON.stringify(v) : String(v)))
-    return '"' + s.replace(/"/g, '""') + '"'
-  }
-  async function unlockLocalPriv(): Promise<Uint8Array> {
-    const blobStr = localStorage.getItem('synap_pmk')
-    if (!blobStr) throw new Error(t('e2ee.import_required'))
-    if (!pkPass) throw new Error(t('e2ee.passphrase_needed'))
-    const blob = JSON.parse(blobStr)
-    const salt = fromB64(blob.salt)
-    const iv = fromB64(blob.iv)
-    const enc = fromB64(blob.enc_priv)
-    const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(pkPass), 'PBKDF2', false, ['deriveKey'])
-    const key = await crypto.subtle.deriveKey({ name:'PBKDF2', salt: salt.buffer, iterations: 120000, hash: 'SHA-256' }, keyMaterial, { name:'AES-GCM', length:256 }, false, ['decrypt'])
-    const privAb = await crypto.subtle.decrypt({ name:'AES-GCM', iv: iv.buffer }, key, enc.buffer)
-    return new Uint8Array(privAb)
-  }
-  async function decryptCurrentBundle(): Promise<{ out:any[]; enMap: Record<string,string>; zhMap: Record<string,string> }> {
-    const priv = await unlockLocalPriv()
-    const { url } = await adminCreateE2EEExport(id)
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(await res.text())
-    const bundle = await res.json()
-    const privB64 = btoa(String.fromCharCode(...priv))
-    const out:any[] = []
-    for (const entry of bundle.responses || []) {
-      try {
-        const plain = await decryptSingleWithX25519(privB64, { ciphertext: entry.ciphertext, nonce: entry.nonce, enc_dek: entry.enc_dek || entry.EncDEK || [] })
-        out.push(plain)
-      } catch {
-        // skip
-      }
-    }
-    if (out.length === 0) throw new Error(t('e2ee.no_decrypted'))
-    const enMap: Record<string,string> = {}
-    const zhMap: Record<string,string> = {}
-    for (const it of items) {
-      enMap[it.id] = it.stem_i18n?.en || it.stem || it.id
-      zhMap[it.id] = it.stem_i18n?.zh || it.stem_i18n?.en || it.stem || it.id
-    }
-    return { out, enMap, zhMap }
-  }
-
-  if (isE2EE) {
-    return (
-      <>
-        <h4 className="section-title" style={{marginTop:0}}>{t('export')}</h4>
-        <div className="muted" style={{marginBottom:8}}>{t('e2ee.csv_disabled_title')}</div>
-        <div className="row" style={{gap:12}}>
-          <div className="item span-6">
-            <div className="label">{t('e2ee.passphrase')}</div>
-            <input className="input" type="password" value={pkPass} onChange={e=> setPkPass(e.target.value)} placeholder={t('e2ee.passphrase_placeholder')} />
-            <div className="muted" style={{marginTop:6}}>{t('e2ee.passphrase_help')}</div>
-          </div>
-          <div className="item span-6">
-            <div className="label">{t('e2ee.import_priv_title')}</div>
-            <div className="cta-row" style={{marginTop:6}}>
-              <button className="btn" type="button" onClick={()=> fileInputRef.current?.click()}>{t('e2ee.import_button')}</button>
-              <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={async(e)=>{
-                try {
-                  setStatus('')
-                  const f = e.target.files?.[0]
-                  if (!f) return
-                  const text = await f.text()
-                  const obj = JSON.parse(text)
-                  if (!obj || !obj.enc_priv || !obj.iv || !obj.salt || !obj.pub) throw new Error(t('e2ee.invalid_key_file'))
-                  localStorage.setItem('synap_pmk', JSON.stringify(obj))
-                  setStatus(t('e2ee.import_ok'))
-                  e.currentTarget.value = ''
-                } catch(err:any) {
-                  setStatus(err.message||String(err))
-                }
-              }} />
-            </div>
-            <div className="muted" style={{marginTop:6}}>{t('e2ee.import_priv_desc')}</div>
-          </div>
-        </div>
-        <div className="tile" style={{padding:12, marginTop:12, display:'grid', gap:8}}>
-          <button className="btn" type="button" onClick={async()=>{
-            try {
-              setStatus('')
-              const { out, enMap, zhMap } = await decryptCurrentBundle()
-              const augmented = out.map((entry:any)=>{
-                const answers = entry.answers || {}
-                const readableEn: Record<string, any> = {}
-                const readableZh: Record<string, any> = {}
-                for (const [k, v] of Object.entries(answers)) {
-                  readableEn[enMap[k] || k] = v
-                  readableZh[zhMap[k] || k] = v
-                }
-                return { ...entry, answers_readable_en: readableEn, answers_readable_zh: readableZh }
-              })
-              const blob = new Blob([augmented.map(o=> JSON.stringify(o)).join('\n') + '\n'], { type:'application/jsonl' })
-              const anchor = document.createElement('a')
-              anchor.href = URL.createObjectURL(blob)
-              anchor.download = `e2ee_${id}_plaintext.jsonl`
-              anchor.click(); URL.revokeObjectURL(anchor.href)
-              setStatus(t('e2ee.local_plain_ready'))
-            } catch(err:any) { setStatus(err.message||String(err)) }
-          }}>{t('e2ee.local_decrypt_button')}</button>
-          <button className="btn" type="button" onClick={async()=>{
-            try {
-              setStatus('')
-              const { out, enMap, zhMap } = await decryptCurrentBundle()
-              const header = ['response_index','email','item_id','stem_en','stem_zh','value']
-              const lines = [header.map(csvEsc).join(',')]
-              out.forEach((entry:any, idx:number)=>{
-                const answers = entry.answers || {}
-                const email = entry.email || ''
-                for (const [k, v] of Object.entries(answers)) {
-                  lines.push([
-                    csvEsc(idx+1),
-                    csvEsc(email),
-                    csvEsc(k),
-                    csvEsc(enMap[k] || k),
-                    csvEsc(zhMap[k] || k),
-                    csvEsc(v)
-                  ].join(','))
-                }
-              })
-              const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'
-              const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' })
-              const anchor = document.createElement('a')
-              anchor.href = URL.createObjectURL(blob)
-              anchor.download = `e2ee_${id}_long.csv`
-              anchor.click(); URL.revokeObjectURL(anchor.href)
-              setStatus(t('e2ee.local_csv_long_ready'))
-            } catch(err:any) { setStatus(err.message||String(err)) }
-          }}>{t('e2ee.local_decrypt_csv_long')}</button>
-          <button className="btn" type="button" onClick={async()=>{
-            try {
-              setStatus('')
-              const { out, enMap } = await decryptCurrentBundle()
-              const order = items.map((it:any)=> it.id)
-              const header = ['response_index','email', ...order.map(key=> enMap[key] || key)]
-              const lines = [header.map(csvEsc).join(',')]
-              out.forEach((entry:any, idx:number)=>{
-                const answers = entry.answers || {}
-                const email = entry.email || ''
-                const row = [csvEsc(idx+1), csvEsc(email)]
-                for (const key of order) row.push(csvEsc((answers as any)[key]))
-                lines.push(row.join(','))
-              })
-              const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'
-              const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' })
-              const anchor = document.createElement('a')
-              anchor.href = URL.createObjectURL(blob)
-              anchor.download = `e2ee_${id}_wide_en.csv`
-              anchor.click(); URL.revokeObjectURL(anchor.href)
-              setStatus(t('e2ee.local_csv_wide_ready'))
-            } catch(err:any) { setStatus(err.message||String(err)) }
-          }}>{t('e2ee.local_decrypt_csv_wide')}</button>
-        </div>
-        {status && <div className="muted" style={{marginTop:8}}>{status}</div>}
-        <div className="muted" style={{marginTop:8}}>
-          {t('e2ee.csv_notice')} <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap/blob/main/docs/e2ee.md" target="_blank" rel="noreferrer">{t('learn_more')}</a>
-        </div>
-      </>
-    )
-  }
-
-  return (
-    <>
-      <h4 className="section-title" style={{marginTop:0}}>{t('export')}</h4>
-      <div className="muted" style={{marginBottom:8}}>{t('export_panel.csv_bom_hint')}</div>
-      <div className="cta-row" style={{marginTop:12}}>
-        <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_long_csv')}</a>
-        <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_wide_csv')}</a>
-        <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">{t('export_score_csv')}</a>
-      </div>
-    </>
-  )
-}
-
-function DangerZone({ scaleId }: { scaleId: string }) {
-  const { t } = useTranslation()
-  const toast = useToast()
-  const onPurge = async () => {
-    try {
-      const warn = t('confirm_delete_responses') || 'Delete ALL responses for this scale? This cannot be undone.'
-      const promptMsg = `${warn}\n\nType the scale ID to confirm: ${scaleId}`
-      const input = window.prompt(promptMsg)
-      if (!input || input.trim() !== scaleId) return
-      await adminPurgeResponses(scaleId)
-      toast.success(t('delete_success'))
-    } catch (e:any) {
-      toast.error(e.message||String(e))
-    }
-  }
-  return (
-    <div className="row" style={{marginTop:16}}>
-      <div className="card span-12" style={{borderColor:'rgba(248,113,113,0.45)'}}>
-        <h4 className="section-title" style={{marginTop:0}}>{t('danger_zone')}</h4>
-        <div className="muted" style={{marginBottom:8}}>{t('confirm_delete_responses')}</div>
-        <button type="button" className="btn" onClick={onPurge}>{t('delete_all_responses')}</button>
-      </div>
-    </div>
-  )
-}
 const LIKERT_PRESETS: Record<string, { en: string[]; zh: string[] }> = {
   numeric: { en: ['1','2','3','4','5'], zh: ['1','2','3','4','5'] },
   agree5: { en: ['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'], zh: ['非常不同意','不同意','中立','同意','非常同意'] },
