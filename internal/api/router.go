@@ -3,7 +3,6 @@ package api
 import (
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -11,11 +10,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
 )
@@ -30,6 +27,8 @@ type Router struct {
 	participantSvc *services.ParticipantDataService
 	translationSvc *services.TranslationService
 	e2eeSvc        *services.E2EEService
+	analyticsSvc   *services.AnalyticsService
+	consentSvc     *services.ConsentService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -53,6 +52,8 @@ func NewRouterWithStore(store Store) *Router {
 			return base64.StdEncoding.EncodeToString(ed25519.Sign(ert.signPriv, data)), nil
 		})
 	}
+	ert.analyticsSvc = services.NewAnalyticsService(newAnalyticsStoreAdapter(store))
+	ert.consentSvc = services.NewConsentService(newConsentStoreAdapter(store))
 	return ert
 }
 
@@ -218,71 +219,13 @@ func (rt *Router) handleScaleScoped(w http.ResponseWriter, r *http.Request) {
 	}
 	id := parts[0]
 	lang := r.URL.Query().Get("lang")
-	if lang == "" {
-		lang = "en"
-	}
-	items := rt.store.ListItems(id)
-	type outItem struct {
-		ID            string   `json:"id"`
-		ReverseScored bool     `json:"reverse_scored"`
-		Stem          string   `json:"stem"`
-		Type          string   `json:"type,omitempty"`
-		Options       []string `json:"options,omitempty"`
-		Min           int      `json:"min,omitempty"`
-		Max           int      `json:"max,omitempty"`
-		Step          int      `json:"step,omitempty"`
-		Required      bool     `json:"required,omitempty"`
-		Placeholder   string   `json:"placeholder,omitempty"`
-		LikertLabels  []string `json:"likert_labels,omitempty"`
-		LikertShowNum bool     `json:"likert_show_numbers,omitempty"`
-	}
-	out := make([]outItem, 0, len(items))
-	for _, it := range items {
-		stem := it.StemI18n[lang]
-		if stem == "" {
-			stem = it.StemI18n["en"]
-		}
-		opts := []string(nil)
-		if it.OptionsI18n != nil {
-			if v := it.OptionsI18n[lang]; len(v) > 0 {
-				opts = v
-			} else if v := it.OptionsI18n["en"]; len(v) > 0 {
-				opts = v
-			}
-		}
-		ph := ""
-		if it.PlaceholderI18n != nil {
-			ph = it.PlaceholderI18n[lang]
-			if ph == "" {
-				ph = it.PlaceholderI18n["en"]
-			}
-		}
-		// Likert labels (per-item, fallback handled client-side using scale meta)
-		var likertLabels []string
-		if it.Type == "likert" && it.LikertLabelsI18n != nil {
-			if v := it.LikertLabelsI18n[lang]; len(v) > 0 {
-				likertLabels = v
-			} else if v := it.LikertLabelsI18n["en"]; len(v) > 0 {
-				likertLabels = v
-			}
-		}
-		out = append(out, outItem{
-			ID:            it.ID,
-			ReverseScored: it.ReverseScored,
-			Stem:          stem,
-			Type:          it.Type,
-			Options:       opts,
-			Min:           it.Min,
-			Max:           it.Max,
-			Step:          it.Step,
-			Required:      it.Required,
-			Placeholder:   ph,
-			LikertLabels:  likertLabels,
-			LikertShowNum: it.LikertShowNumbers,
-		})
+	views, err := rt.scaleSvc.BuildItemViews(id, lang)
+	if err != nil {
+		rt.writeServiceError(w, err)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": id, "items": out})
+	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": id, "items": views})
 }
 
 // GET /api/scale/{id} -> public scale metadata (name_i18n, points, consent_i18n, randomize)
@@ -292,7 +235,11 @@ func (rt *Router) handleScaleMeta(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	sc := rt.store.GetScale(id)
+	sc, err := rt.scaleSvc.GetScaleMeta(id)
+	if err != nil {
+		rt.writeServiceError(w, err)
+		return
+	}
 	if sc == nil {
 		http.NotFound(w, r)
 		return
@@ -385,31 +332,21 @@ func (rt *Router) handleConsentSign(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.GetScale(in.ScaleID)
-	if sc == nil {
-		http.Error(w, "scale not found", http.StatusNotFound)
+	res, err := rt.consentSvc.Sign(services.ConsentSignRequest{
+		ScaleID:       in.ScaleID,
+		Version:       in.Version,
+		Locale:        in.Locale,
+		Choices:       in.Choices,
+		SignedAt:      in.SignedAt,
+		SignatureKind: in.SignatureKind,
+		Evidence:      in.Evidence,
+	})
+	if err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	// compute sha256 of evidence
-	sum := sha256.Sum256([]byte(in.Evidence))
-	hash := base64.StdEncoding.EncodeToString(sum[:])
-	// parse time if provided
-	ts := time.Now().UTC()
-	if in.SignedAt != "" {
-		if t2, err := time.Parse(time.RFC3339, in.SignedAt); err == nil {
-			ts = t2
-		}
-	}
-	id := strings.ReplaceAll(uuid.NewString(), "-", "")[:12]
-	choices := in.Choices
-	if sc != nil && sc.E2EEEnabled {
-		choices = nil
-	}
-	rt.store.AddConsentRecord(&ConsentRecord{ID: id, ScaleID: in.ScaleID, Version: in.Version, Choices: choices, Locale: in.Locale, SignedAt: ts, Hash: hash})
-	// audit
-	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "consent_sign", Target: in.ScaleID, Note: id})
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "id": id, "hash": hash})
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "id": res.ID, "hash": res.Hash})
 }
 
 // POST /api/responses/bulk
@@ -845,43 +782,13 @@ func (rt *Router) handleAlpha(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "scale_id required", http.StatusBadRequest)
 		return
 	}
-	items := rt.store.ListItems(scaleID)
-	rs := rt.store.ListResponsesByScale(scaleID)
-	// Build matrix [participants][items] with only rows that have all items
-	// map[pid]map[itemID]score
-	mp := map[string]map[string]float64{}
-	for _, r := range rs {
-		if mp[r.ParticipantID] == nil {
-			mp[r.ParticipantID] = map[string]float64{}
-		}
-		mp[r.ParticipantID][r.ItemID] = float64(r.ScoreValue)
+	alpha, n, err := rt.analyticsSvc.Alpha(scaleID)
+	if err != nil {
+		rt.writeServiceError(w, err)
+		return
 	}
-	// item order
-	iids := make([]string, 0, len(items))
-	for _, it := range items {
-		iids = append(iids, it.ID)
-	}
-	sort.Strings(iids)
-	matrix := make([][]float64, 0, len(mp))
-	for pid, m := range mp {
-		row := make([]float64, 0, len(iids))
-		complete := true
-		for _, iid := range iids {
-			v, ok := m[iid]
-			if !ok {
-				complete = false
-				break
-			}
-			row = append(row, v)
-		}
-		if complete {
-			matrix = append(matrix, row)
-		}
-		_ = pid
-	}
-	alpha := services.CronbachAlpha(matrix)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": scaleID, "alpha": alpha, "n": len(matrix)})
+	_ = json.NewEncoder(w).Encode(map[string]any{"scale_id": scaleID, "alpha": alpha, "n": n})
 }
 
 // --- Auth & Admin ---
@@ -997,109 +904,13 @@ func (rt *Router) handleAdminAnalyticsSummary(w http.ResponseWriter, r *http.Req
 		http.Error(w, "scale_id required", http.StatusBadRequest)
 		return
 	}
-	sc := rt.store.GetScale(scaleID)
-	if sc == nil || sc.TenantID != tid {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	summary, err := rt.analyticsSvc.Summary(tid, scaleID)
+	if err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	items := rt.store.ListItems(scaleID)
-	points := sc.Points
-	if points <= 0 {
-		points = 5
-	}
-	// histograms per item
-	type itemOut struct {
-		ID        string            `json:"id"`
-		StemI18n  map[string]string `json:"stem_i18n,omitempty"`
-		Reverse   bool              `json:"reverse_scored"`
-		Histogram []int             `json:"histogram"`
-		Total     int               `json:"total"`
-	}
-	itemIndex := map[string]int{}
-	outItems := make([]itemOut, 0, len(items))
-	// Only include Likert-type items for histograms/alpha
-	filtered := make([]*Item, 0, len(items))
-	for _, it := range items {
-		if it.Type == "" || it.Type == "likert" {
-			filtered = append(filtered, it)
-		}
-	}
-	for i, it := range filtered {
-		outItems = append(outItems, itemOut{ID: it.ID, StemI18n: it.StemI18n, Reverse: it.ReverseScored, Histogram: make([]int, points)})
-		itemIndex[it.ID] = i
-	}
-	// timeseries by day
-	countsByDay := map[string]int{}
-	rs := rt.store.ListResponsesByScale(scaleID)
-	for _, r2 := range rs {
-		// histogram
-		if idx, ok := itemIndex[r2.ItemID]; ok {
-			v := r2.ScoreValue
-			if v >= 1 && v <= points {
-				outItems[idx].Histogram[v-1]++
-				outItems[idx].Total++
-			}
-		}
-		// timeseries (UTC day)
-		day := r2.SubmittedAt.UTC().Format("2006-01-02")
-		countsByDay[day]++
-	}
-	// Build alpha matrix (participants with complete rows)
-	// map[pid]map[itemID]score
-	mp := map[string]map[string]float64{}
-	for _, r2 := range rs {
-		if mp[r2.ParticipantID] == nil {
-			mp[r2.ParticipantID] = map[string]float64{}
-		}
-		mp[r2.ParticipantID][r2.ItemID] = float64(r2.ScoreValue)
-	}
-	iids := make([]string, 0, len(filtered))
-	for _, it := range filtered {
-		iids = append(iids, it.ID)
-	}
-	sort.Strings(iids)
-	matrix := make([][]float64, 0, len(mp))
-	for _, m := range mp {
-		row := make([]float64, 0, len(iids))
-		complete := true
-		for _, id := range iids {
-			v, ok := m[id]
-			if !ok {
-				complete = false
-				break
-			}
-			row = append(row, v)
-		}
-		if complete {
-			matrix = append(matrix, row)
-		}
-	}
-	alpha := services.CronbachAlpha(matrix)
-	// timeseries array sorted by day
-	days := make([]string, 0, len(countsByDay))
-	for d := range countsByDay {
-		days = append(days, d)
-	}
-	sort.Strings(days)
-	type ts struct {
-		Date  string `json:"date"`
-		Count int    `json:"count"`
-	}
-	series := make([]ts, 0, len(days))
-	for _, d := range days {
-		series = append(series, ts{Date: d, Count: countsByDay[d]})
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"scale_id":        scaleID,
-		"points":          points,
-		"total_responses": len(rs),
-		"items":           outItems,
-		"timeseries":      series,
-		"alpha":           alpha,
-		"n":               len(matrix),
-	})
+	_ = json.NewEncoder(w).Encode(summary)
 }
 
 // --- Admin scale/item ops ---

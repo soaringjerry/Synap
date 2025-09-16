@@ -238,3 +238,35 @@ func TestParseConsentCfg(t *testing.T) {
 		t.Fatalf("unexpected label map: %+v", cfg.Options[0].LabelI18n)
 	}
 }
+
+func TestBuildItemViews(t *testing.T) {
+	store := newStubScaleStore()
+	store.items["I1"] = &Item{ID: "I1", ScaleID: "S1", StemI18n: map[string]string{"en": "Hello", "zh": "你好"}, OptionsI18n: map[string][]string{"en": {"A"}, "zh": {"甲"}}, LikertLabelsI18n: map[string][]string{"en": {"a"}}, Type: "likert", LikertShowNumbers: true}
+	svc := NewScaleService(store)
+	views, err := svc.BuildItemViews("S1", "zh")
+	if err != nil {
+		t.Fatalf("BuildItemViews error: %v", err)
+	}
+	if len(views) != 1 {
+		t.Fatalf("expected 1 view")
+	}
+	if views[0].Stem != "你好" || views[0].Options[0] != "甲" {
+		t.Fatalf("unexpected view: %+v", views[0])
+	}
+}
+
+func TestGetScaleMetaCopy(t *testing.T) {
+	store := newStubScaleStore()
+	store.scales["S1"] = &Scale{ID: "S1", NameI18n: map[string]string{"en": "Name"}}
+	svc := NewScaleService(store)
+	meta, err := svc.GetScaleMeta("S1")
+	if err != nil {
+		t.Fatalf("GetScaleMeta error: %v", err)
+	}
+	if meta == store.scales["S1"] {
+		t.Fatalf("expected copy")
+	}
+	if meta.NameI18n["en"] != "Name" {
+		t.Fatalf("unexpected meta")
+	}
+}

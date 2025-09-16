@@ -99,8 +99,11 @@ type Response struct {
 type ConsentRecord struct {
 	ID       string
 	ScaleID  string
+	Version  string
+	Locale   string
 	Choices  map[string]bool
 	SignedAt time.Time
+	Hash     string
 }
 
 type ProjectKey struct {

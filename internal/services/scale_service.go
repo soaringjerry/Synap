@@ -70,6 +70,21 @@ type ScaleService struct {
 	now   func() time.Time
 }
 
+type ScaleItemView struct {
+	ID                string   `json:"id"`
+	ReverseScored     bool     `json:"reverse_scored"`
+	Stem              string   `json:"stem"`
+	Type              string   `json:"type,omitempty"`
+	Options           []string `json:"options,omitempty"`
+	Min               int      `json:"min,omitempty"`
+	Max               int      `json:"max,omitempty"`
+	Step              int      `json:"step,omitempty"`
+	Required          bool     `json:"required,omitempty"`
+	Placeholder       string   `json:"placeholder,omitempty"`
+	LikertLabels      []string `json:"likert_labels,omitempty"`
+	LikertShowNumbers bool     `json:"likert_show_numbers,omitempty"`
+}
+
 func NewScaleService(store ScaleStore) *ScaleService {
 	return &ScaleService{
 		store: store,
@@ -208,6 +223,73 @@ func (s *ScaleService) DeleteScale(id, actor string) error {
 	}
 	s.store.AddAudit(AuditEntry{Time: s.now(), Actor: actor, Action: "delete_scale", Target: id})
 	return nil
+}
+
+func (s *ScaleService) GetScaleMeta(id string) (*Scale, error) {
+	sc, err := s.store.GetScale(id)
+	if err != nil {
+		return nil, err
+	}
+	if sc == nil {
+		return nil, nil
+	}
+	copy := *sc
+	return &copy, nil
+}
+
+func (s *ScaleService) BuildItemViews(scaleID, lang string) ([]ScaleItemView, error) {
+	items, err := s.store.ListItems(scaleID)
+	if err != nil {
+		return nil, err
+	}
+	if lang == "" {
+		lang = "en"
+	}
+	out := make([]ScaleItemView, 0, len(items))
+	for _, it := range items {
+		stem := it.StemI18n[lang]
+		if stem == "" {
+			stem = it.StemI18n["en"]
+		}
+		options := []string(nil)
+		if it.OptionsI18n != nil {
+			if v := it.OptionsI18n[lang]; len(v) > 0 {
+				options = v
+			} else if v := it.OptionsI18n["en"]; len(v) > 0 {
+				options = v
+			}
+		}
+		placeholder := ""
+		if it.PlaceholderI18n != nil {
+			placeholder = it.PlaceholderI18n[lang]
+			if placeholder == "" {
+				placeholder = it.PlaceholderI18n["en"]
+			}
+		}
+		likertLabels := []string(nil)
+		if it.Type == "likert" && it.LikertLabelsI18n != nil {
+			if v := it.LikertLabelsI18n[lang]; len(v) > 0 {
+				likertLabels = v
+			} else if v := it.LikertLabelsI18n["en"]; len(v) > 0 {
+				likertLabels = v
+			}
+		}
+		out = append(out, ScaleItemView{
+			ID:                it.ID,
+			ReverseScored:     it.ReverseScored,
+			Stem:              stem,
+			Type:              it.Type,
+			Options:           options,
+			Min:               it.Min,
+			Max:               it.Max,
+			Step:              it.Step,
+			Required:          it.Required,
+			Placeholder:       placeholder,
+			LikertLabels:      likertLabels,
+			LikertShowNumbers: it.LikertShowNumbers,
+		})
+	}
+	return out, nil
 }
 
 func (s *ScaleService) UpdateScale(id string, raw map[string]any, actor string) error {
