@@ -42,25 +42,46 @@ function RootLayout() {
   const { authed, setAuthed } = useAuthStatus()
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [menuOpen, setMenuOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
+
+  const closeMenu = React.useCallback(() => setMenuOpen(false), [])
   return (
     <>
       <header className="app-header">
         <div className="left-actions">
-          <div className="brand">Synap</div>
-          <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap" target="_blank" rel="noreferrer">{t('nav.github')}</a>
+          <Link className="brand" to="/">Synap</Link>
         </div>
         <div className="nav-actions">
-          <Link className="btn btn-ghost" to="/">{t('nav.home')}</Link>
-          <Link className="btn btn-ghost" to="/admin">{t('nav.admin')}</Link>
-          <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap" target="_blank" rel="noreferrer">{t('nav.github')}</a>
-          {/* Moved Privacy / Terms / Cookies to footer for cleaner header */}
-          {authed ? (
-            <button className="btn" onClick={()=>logout(setAuthed, navigate)}>{t('nav.logout')}</button>
-          ) : (
-            <Link className="btn" to="/auth">{t('nav.auth')}</Link>
-          )}
-          <LanguageSwitcher />
-          <VersionBadge />
+          <button
+            className={`menu-toggle ${menuOpen ? 'open' : ''}`}
+            type="button"
+            aria-label={menuOpen ? t('nav.close_menu') || 'Close menu' : t('nav.open_menu') || 'Open menu'}
+            aria-expanded={menuOpen}
+            onClick={()=> setMenuOpen(o => !o)}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div className={`nav-menu ${menuOpen ? 'open' : ''}`}>
+            <Link className="btn btn-ghost" to="/" onClick={closeMenu}>{t('nav.home')}</Link>
+            <Link className="btn btn-ghost" to="/admin" onClick={closeMenu}>{t('nav.admin')}</Link>
+            <a className="btn btn-ghost" href="https://github.com/soaringjerry/Synap" target="_blank" rel="noreferrer" onClick={closeMenu}>{t('nav.github')}</a>
+            <LanguageSwitcher />
+            <VersionBadge />
+          </div>
+          <div className="primary-action">
+            {authed ? (
+              <button className="btn" onClick={()=>logout(setAuthed, navigate)}>{t('nav.logout')}</button>
+            ) : (
+              <Link className="btn" to="/auth" onClick={closeMenu}>{t('nav.auth')}</Link>
+            )}
+          </div>
         </div>
       </header>
       <main className="page">

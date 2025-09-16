@@ -71,7 +71,9 @@
       "admin": "Admin",
       "auth": "Auth",
       "logout": "Logout",
-      "github": "GitHub"
+      "github": "GitHub",
+      "open_menu": "Open menu",
+      "close_menu": "Close menu"
     },
     "survey": {
       "title": "Survey",

@@ -70,7 +70,9 @@
       "admin": "管理",
       "auth": "登录/注册",
       "logout": "退出登录",
-      "github": "GitHub"
+      "github": "GitHub",
+      "open_menu": "展开菜单",
+      "close_menu": "收起菜单"
     },
     
     "survey": {
