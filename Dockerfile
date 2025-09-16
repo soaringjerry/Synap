@@ -21,6 +21,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM scratch AS final
 WORKDIR /
 COPY --from=build /out/synap /synap
+COPY --from=build /app/internal/db/migrations /migrations
 
 EXPOSE 8080
 ENV SYNAP_ADDR=:8080
