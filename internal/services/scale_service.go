@@ -18,6 +18,7 @@ const (
 	ErrorNotFound     ErrorCode = "not_found"
 	ErrorConflict     ErrorCode = "conflict"
 	ErrorUnauthorized ErrorCode = "unauthorized"
+	ErrorBadGateway   ErrorCode = "bad_gateway"
 )
 
 type ServiceError struct {
@@ -34,6 +35,8 @@ func NewConflictError(msg string) error  { return &ServiceError{Code: ErrorConfl
 func NewUnauthorizedError(msg string) error {
 	return &ServiceError{Code: ErrorUnauthorized, Message: msg}
 }
+
+func NewBadGatewayError(msg string) error { return &ServiceError{Code: ErrorBadGateway, Message: msg} }
 
 func AsServiceError(err error) (*ServiceError, bool) {
 	var se *ServiceError

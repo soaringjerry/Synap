@@ -72,6 +72,14 @@ type User struct {
 	CreatedAt time.Time
 }
 
+type TenantAIConfig struct {
+	TenantID     string
+	OpenAIKey    string
+	OpenAIBase   string
+	AllowExternal bool
+	StoreLogs    bool
+}
+
 type Participant struct {
 	ID        string
 	Email     string

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
@@ -9,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -23,13 +21,14 @@ import (
 )
 
 type Router struct {
-	store       Store
-	signPriv    ed25519.PrivateKey
-	responseSvc *services.ResponseService
-	scaleSvc    *services.ScaleService
-	authSvc     *services.AuthService
-	exportSvc   *services.ExportService
+	store          Store
+	signPriv       ed25519.PrivateKey
+	responseSvc    *services.ResponseService
+	scaleSvc       *services.ScaleService
+	authSvc        *services.AuthService
+	exportSvc      *services.ExportService
 	participantSvc *services.ParticipantDataService
+	translationSvc *services.TranslationService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -38,13 +37,14 @@ func NewRouterWithStore(store Store) *Router {
 		store = newMemoryStore("")
 	}
 	return &Router{
-		store:       store,
-		signPriv:    deriveSignKey(),
+		store:          store,
+		signPriv:       deriveSignKey(),
 		responseSvc:    services.NewResponseService(newResponseStoreAdapter(store)),
 		scaleSvc:       services.NewScaleService(newScaleStoreAdapter(store)),
 		authSvc:        services.NewAuthService(newAuthStoreAdapter(store), middleware.SignToken),
 		exportSvc:      services.NewExportService(newExportStoreAdapter(store)),
 		participantSvc: services.NewParticipantDataService(newParticipantStoreAdapter(store)),
+		translationSvc: services.NewTranslationService(newTranslationStoreAdapter(store), http.DefaultClient),
 	}
 }
 
@@ -893,105 +893,18 @@ func (rt *Router) handleAdminAITranslatePreview(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if req.ScaleID == "" || len(req.TargetLangs) == 0 {
-		http.Error(w, "scale_id and target_langs required", http.StatusBadRequest)
-		return
-	}
-	sc := rt.store.GetScale(req.ScaleID)
-	if sc == nil || sc.TenantID != tid {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	cfg := rt.store.GetAIConfig(tid)
-	if cfg == nil || !cfg.AllowExternal || cfg.OpenAIKey == "" {
-		http.Error(w, "external AI disabled or missing key", http.StatusBadRequest)
-		return
-	}
-	if req.Model == "" {
-		req.Model = "gpt-4o-mini"
-	}
-	// Build source payload
-	items := rt.store.ListItems(req.ScaleID)
-	type srcItem struct{ ID, Text string }
-	src := struct {
-		Items       []srcItem         `json:"items"`
-		NameI18n    map[string]string `json:"name_i18n,omitempty"`
-		ConsentI18n map[string]string `json:"consent_i18n,omitempty"`
-		Targets     []string          `json:"targets"`
-	}{Items: []srcItem{}, NameI18n: sc.NameI18n, ConsentI18n: sc.ConsentI18n, Targets: req.TargetLangs}
-	for _, it := range items {
-		text := it.StemI18n["en"]
-		if text == "" {
-			// pick any available
-			for _, v := range it.StemI18n {
-				text = v
-				break
-			}
-		}
-		src.Items = append(src.Items, srcItem{ID: it.ID, Text: text})
-	}
-	body, _ := json.Marshal(src)
-	prompt := "Translate the following JSON payload into the target languages. Return ONLY a JSON object with fields: items (map of item_id to {lang:text}), name_i18n (map), consent_i18n (map). Keep placeholders and numeric scales intact."
-	// Call OpenAI Chat Completions
-	endpoint := strings.TrimRight(cfg.OpenAIBase, "/")
-	if endpoint == "" {
-		endpoint = "https://api.openai.com"
-	}
-	if strings.HasSuffix(endpoint, "/chat/completions") {
-		// ok
-	} else if strings.HasSuffix(endpoint, "/v1") {
-		endpoint = endpoint + "/chat/completions"
-	} else if strings.HasSuffix(endpoint, "/v1/") {
-		endpoint = strings.TrimRight(endpoint, "/") + "/chat/completions"
-	} else {
-		endpoint = endpoint + "/v1/chat/completions"
-	}
-	pay := map[string]any{
-		"model":       req.Model,
-		"temperature": 0.2,
-		"messages": []map[string]string{
-			{"role": "system", "content": prompt},
-			{"role": "user", "content": string(body)},
-		},
-		"response_format": map[string]string{"type": "json_object"},
-	}
-	pb, _ := json.Marshal(pay)
-	httpReq, _ := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(pb))
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+cfg.OpenAIKey)
-	resp, err := http.DefaultClient.Do(httpReq)
+	res, err := rt.translationSvc.PreviewScaleTranslation(tid, services.TranslationPreviewRequest{
+		ScaleID:     req.ScaleID,
+		TargetLangs: req.TargetLangs,
+		Model:       req.Model,
+		Scope:       req.Scope,
+	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
-		http.Error(w, string(b), http.StatusBadGateway)
-		return
-	}
-	var cc struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&cc); err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	if len(cc.Choices) == 0 {
-		http.Error(w, "no choices", http.StatusBadGateway)
-		return
-	}
-	var out map[string]any
-	if err := json.Unmarshal([]byte(cc.Choices[0].Message.Content), &out); err != nil {
-		http.Error(w, "invalid JSON from model", http.StatusBadGateway)
+		rt.writeServiceError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 // GET /api/admin/audit
@@ -1383,6 +1296,8 @@ func (rt *Router) writeServiceError(w http.ResponseWriter, err error) {
 			status = http.StatusUnauthorized
 		case services.ErrorConflict:
 			status = http.StatusConflict
+		case services.ErrorBadGateway:
+			status = http.StatusBadGateway
 		}
 		http.Error(w, se.Message, status)
 		return
