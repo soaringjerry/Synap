@@ -29,6 +29,7 @@ type Router struct {
 	scaleSvc    *services.ScaleService
 	authSvc     *services.AuthService
 	exportSvc   *services.ExportService
+	participantSvc *services.ParticipantDataService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -39,10 +40,11 @@ func NewRouterWithStore(store Store) *Router {
 	return &Router{
 		store:       store,
 		signPriv:    deriveSignKey(),
-		responseSvc: services.NewResponseService(newResponseStoreAdapter(store)),
-		scaleSvc:    services.NewScaleService(newScaleStoreAdapter(store)),
-		authSvc:     services.NewAuthService(newAuthStoreAdapter(store), middleware.SignToken),
-		exportSvc:   services.NewExportService(newExportStoreAdapter(store)),
+		responseSvc:    services.NewResponseService(newResponseStoreAdapter(store)),
+		scaleSvc:       services.NewScaleService(newScaleStoreAdapter(store)),
+		authSvc:        services.NewAuthService(newAuthStoreAdapter(store), middleware.SignToken),
+		exportSvc:      services.NewExportService(newExportStoreAdapter(store)),
+		participantSvc: services.NewParticipantDataService(newParticipantStoreAdapter(store)),
 	}
 }
 
@@ -1462,21 +1464,13 @@ func (rt *Router) handleSelfExportParticipant(w http.ResponseWriter, r *http.Req
 	}
 	pid := strings.TrimSpace(r.URL.Query().Get("pid"))
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
-	if pid == "" || token == "" {
-		http.Error(w, "pid/token required", http.StatusBadRequest)
+	res, err := rt.participantSvc.ExportParticipant(pid, token)
+	if err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	p := rt.store.GetParticipant(pid)
-	if p == nil || p.SelfToken == "" || token != p.SelfToken {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	// collect responses for participant (non-E2EE)
-	rs := rt.store.ListResponsesByParticipant(pid)
-	// audit
-	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_export", Target: pid})
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"participant": map[string]any{"id": p.ID, "email": p.Email}, "responses": rs})
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 // --- GDPR self-service: participant non-E2EE delete ---
@@ -1489,20 +1483,10 @@ func (rt *Router) handleSelfDeleteParticipant(w http.ResponseWriter, r *http.Req
 	pid := strings.TrimSpace(r.URL.Query().Get("pid"))
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
 	hard := r.URL.Query().Get("hard") == "true"
-	if pid == "" || token == "" {
-		http.Error(w, "pid/token required", http.StatusBadRequest)
+	if err := rt.participantSvc.DeleteParticipant(pid, token, hard); err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	p := rt.store.GetParticipant(pid)
-	if p == nil || p.SelfToken == "" || token != p.SelfToken {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	if ok := rt.store.DeleteParticipantByID(pid, hard); !ok {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: map[bool]string{true: "self_delete_hard", false: "self_delete_soft"}[hard], Target: pid})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
 }
@@ -1516,18 +1500,13 @@ func (rt *Router) handleSelfExportE2EE(w http.ResponseWriter, r *http.Request) {
 	}
 	rid := strings.TrimSpace(r.URL.Query().Get("response_id"))
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
-	if rid == "" || token == "" {
-		http.Error(w, "response_id/token required", http.StatusBadRequest)
+	resp, err := rt.participantSvc.ExportE2EE(rid, token)
+	if err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	found := rt.store.GetE2EEResponse(rid)
-	if found == nil || found.SelfToken == "" || token != found.SelfToken {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_export_e2ee", Target: rid})
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(found)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // --- GDPR self-service: E2EE single-response delete ---
@@ -1539,20 +1518,10 @@ func (rt *Router) handleSelfDeleteE2EE(w http.ResponseWriter, r *http.Request) {
 	}
 	rid := strings.TrimSpace(r.URL.Query().Get("response_id"))
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
-	if rid == "" || token == "" {
-		http.Error(w, "response_id/token required", http.StatusBadRequest)
+	if err := rt.participantSvc.DeleteE2EE(rid, token); err != nil {
+		rt.writeServiceError(w, err)
 		return
 	}
-	resp := rt.store.GetE2EEResponse(rid)
-	if resp == nil || resp.SelfToken == "" || token != resp.SelfToken {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	if !rt.store.DeleteE2EEResponse(rid) {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: "self_delete_e2ee", Target: rid})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
