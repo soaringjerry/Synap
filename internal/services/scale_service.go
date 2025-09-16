@@ -13,9 +13,11 @@ import (
 type ErrorCode string
 
 const (
-	ErrorInvalid   ErrorCode = "invalid"
-	ErrorForbidden ErrorCode = "forbidden"
-	ErrorNotFound  ErrorCode = "not_found"
+	ErrorInvalid      ErrorCode = "invalid"
+	ErrorForbidden    ErrorCode = "forbidden"
+	ErrorNotFound     ErrorCode = "not_found"
+	ErrorConflict     ErrorCode = "conflict"
+	ErrorUnauthorized ErrorCode = "unauthorized"
 )
 
 type ServiceError struct {
@@ -28,6 +30,10 @@ func (e *ServiceError) Error() string { return e.Message }
 func NewInvalidError(msg string) error   { return &ServiceError{Code: ErrorInvalid, Message: msg} }
 func NewForbiddenError(msg string) error { return &ServiceError{Code: ErrorForbidden, Message: msg} }
 func NewNotFoundError(msg string) error  { return &ServiceError{Code: ErrorNotFound, Message: msg} }
+func NewConflictError(msg string) error  { return &ServiceError{Code: ErrorConflict, Message: msg} }
+func NewUnauthorizedError(msg string) error {
+	return &ServiceError{Code: ErrorUnauthorized, Message: msg}
+}
 
 func AsServiceError(err error) (*ServiceError, bool) {
 	var se *ServiceError

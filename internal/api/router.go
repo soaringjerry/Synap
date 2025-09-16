@@ -20,7 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/soaringjerry/Synap/internal/middleware"
 	"github.com/soaringjerry/Synap/internal/services"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type Router struct {
@@ -28,6 +27,7 @@ type Router struct {
 	signPriv    ed25519.PrivateKey
 	responseSvc *services.ResponseService
 	scaleSvc    *services.ScaleService
+	authSvc     *services.AuthService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -40,6 +40,7 @@ func NewRouterWithStore(store Store) *Router {
 		signPriv:    deriveSignKey(),
 		responseSvc: services.NewResponseService(newResponseStoreAdapter(store)),
 		scaleSvc:    services.NewScaleService(newScaleStoreAdapter(store)),
+		authSvc:     services.NewAuthService(newAuthStoreAdapter(store), middleware.SignToken),
 	}
 }
 
@@ -1304,29 +1305,15 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	if req.Email == "" || req.Password == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]any{"error": "email/password required"})
+	res, err := rt.authSvc.Register(req.Email, req.Password, req.TenantName)
+	if err != nil {
+		rt.writeAuthJSONError(w, err)
 		return
 	}
-	if rt.store.FindUserByEmail(req.Email) != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusConflict)
-		_ = json.NewEncoder(w).Encode(map[string]any{"error": "email exists"})
-		return
-	}
-	tid := "t" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
-	rt.store.AddTenant(&Tenant{ID: tid, Name: req.TenantName})
-	// hash password
-	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	uid := "u" + strings.ReplaceAll(uuid.NewString(), "-", "")[:7]
-	rt.store.AddUser(&User{ID: uid, Email: req.Email, PassHash: hash, TenantID: tid, CreatedAt: time.Now().UTC()})
-	tok, _ := middleware.SignToken(uid, tid, req.Email, 30*24*time.Hour)
-	// Also set secure cookie for CSRF-safe usage
-	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
+	maxAge := int(rt.authSvc.TokenTTL().Seconds())
+	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: res.Token, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: maxAge})
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": tid, "user_id": uid})
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": res.Token, "tenant_id": res.TenantID, "user_id": res.UserID})
 }
 
 // POST /api/auth/login {email,password}
@@ -1344,17 +1331,15 @@ func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	u := rt.store.FindUserByEmail(req.Email)
-	if u == nil || bcrypt.CompareHashAndPassword(u.PassHash, []byte(req.Password)) != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(map[string]any{"error": "invalid credentials"})
+	res, err := rt.authSvc.Login(req.Email, req.Password)
+	if err != nil {
+		rt.writeAuthJSONError(w, err)
 		return
 	}
-	tok, _ := middleware.SignToken(u.ID, u.TenantID, u.Email, 30*24*time.Hour)
-	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: tok, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: int((30 * 24 * time.Hour).Seconds())})
+	maxAge := int(rt.authSvc.TokenTTL().Seconds())
+	http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: res.Token, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: maxAge})
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"token": tok, "tenant_id": u.TenantID, "user_id": u.ID})
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": res.Token, "tenant_id": res.TenantID, "user_id": res.UserID})
 }
 
 // POST /api/auth/logout — expire auth cookie; frontend should also clear token
@@ -1637,11 +1622,43 @@ func (rt *Router) writeServiceError(w http.ResponseWriter, err error) {
 			status = http.StatusForbidden
 		case services.ErrorNotFound:
 			status = http.StatusNotFound
+		case services.ErrorUnauthorized:
+			status = http.StatusUnauthorized
+		case services.ErrorConflict:
+			status = http.StatusConflict
 		}
 		http.Error(w, se.Message, status)
 		return
 	}
 	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+func (rt *Router) writeJSONError(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]any{"error": msg})
+}
+
+func (rt *Router) writeAuthJSONError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+	if se, ok := services.AsServiceError(err); ok {
+		status := http.StatusBadRequest
+		switch se.Code {
+		case services.ErrorForbidden:
+			status = http.StatusForbidden
+		case services.ErrorNotFound:
+			status = http.StatusNotFound
+		case services.ErrorUnauthorized:
+			status = http.StatusUnauthorized
+		case services.ErrorConflict:
+			status = http.StatusConflict
+		}
+		rt.writeJSONError(w, status, se.Message)
+		return
+	}
+	rt.writeJSONError(w, http.StatusInternalServerError, err.Error())
 }
 
 // PUT /api/admin/items/{id}  -> update item (stem_i18n, reverse_scored)

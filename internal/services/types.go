@@ -58,3 +58,16 @@ type AuditEntry struct {
 	Target string
 	Note   string
 }
+
+type Tenant struct {
+	ID   string
+	Name string
+}
+
+type User struct {
+	ID        string
+	Email     string
+	PassHash  []byte
+	TenantID  string
+	CreatedAt time.Time
+}
