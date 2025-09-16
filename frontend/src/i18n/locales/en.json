@@ -91,6 +91,7 @@
       "consent_rights": "Rights: access / rectification / deletion / portability.",
       "consent_agree": "Agree and continue",
       "consent_decline": "Decline",
+      "required_warning": "Please complete all required items before continuing.",
       "yes": "Yes",
       "no": "No",
       "signature_title": "Signature",

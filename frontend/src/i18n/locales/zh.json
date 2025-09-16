@@ -91,6 +91,7 @@
       "consent_rights": "权利：查阅/更正/删除/可携。",
       "consent_agree": "同意并继续",
       "consent_decline": "不同意",
+      "required_warning": "请先完成本页所有必填题目。",
       "yes": "同意",
       "no": "不同意",
       "signature_title": "签名确认",

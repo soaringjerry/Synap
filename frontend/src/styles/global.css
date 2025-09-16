@@ -286,11 +286,12 @@ a:hover, a:focus { text-decoration: none; }
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease;
   box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  white-space: nowrap;
 }
 .scale .bubble { flex: 1 0 56px; }
 @media (max-width: 560px) {
   /* cap 5 per row on narrow screens for better tapping */
-  .scale .bubble { flex: 1 0 calc(20% - 8px); min-width: 40px; height: 40px; }
+  .scale .bubble { flex: 1 1 auto; min-width: 48px; height: 40px; }
 }
 .bubble:hover { transform: translateY(-1px); background: rgba(255,255,255,0.08); }
 .bubble:active { transform: translateY(0); }
@@ -300,6 +301,12 @@ a:hover, a:focus { text-decoration: none; }
   color: #0b0f1d;
   border-color: transparent;
   box-shadow: 0 10px 28px rgba(125,211,252,0.25), 0 2px 0 rgba(255,255,255,0.35) inset;
+}
+
+.item.item-error {
+  border: 1px solid rgba(248, 113, 113, 0.65);
+  border-radius: var(--radius-md);
+  padding: calc(var(--space-3) + 2px);
 }
 
 .label { font-size: 14px; opacity: 0.9; }

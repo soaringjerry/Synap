@@ -20,6 +20,7 @@ export function Survey() {
   const sigCanvasRef = useRef<HTMLCanvasElement|null>(null)
   const [items, setItems] = useState<ItemOut[]>([])
   const [answers, setAnswers] = useState<Record<string, any>>({})
+  const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({})
   const [email, setEmail] = useState('')
   const [msg, setMsg] = useState('')
   const [selfManage, setSelfManage] = useState<{exportUrl?: string; deleteUrl?: string; pid?: string; token?: string; rid?: string} | null>(null)
@@ -553,7 +554,27 @@ export function Survey() {
   const startIdx = itemsPerPage && itemsPerPage > 0 ? (page-1) * itemsPerPage : 0
   const endIdx = itemsPerPage && itemsPerPage > 0 ? Math.min(totalItems, startIdx + itemsPerPage) : totalItems
   const visible = items.slice(startIdx, endIdx)
-  const pageHasUnansweredRequired = visible.some(it => it.required && (answers[it.id]===undefined || answers[it.id]===null || String(answers[it.id]).length===0))
+  const validateCurrentPage = React.useCallback(() => {
+    const missing: Record<string, boolean> = {}
+    const isAnswered = (item: ItemOut, value: any) => {
+      if (value === undefined || value === null) return false
+      const type = item.type || 'likert'
+      if (type === 'multiple') return Array.isArray(value) && value.length > 0
+      if (type === 'single' || type === 'dropdown' || type === 'short_text' || type === 'long_text' || type === 'date' || type === 'time') return String(value).trim().length > 0
+      return String(value).length > 0
+    }
+    for (const item of visible) {
+      if (item.required && !isAnswered(item, answers[item.id])) {
+        missing[item.id] = true
+      }
+    }
+    setValidationErrors(missing)
+    if (Object.keys(missing).length > 0) {
+      toast.error(t('survey.required_warning') || 'Please complete all required items')
+      return false
+    }
+    return true
+  }, [answers, toast, t, visible])
 
   return (
     <div className="card span-12">
@@ -589,9 +610,17 @@ export function Survey() {
       {!loading && visible.map(it=> {
         const t = it.type || 'likert'
         const v = answers[it.id]
-        const set = (val:any)=> setAnswers(a=> ({...a,[it.id]: val}))
+        const set = (val:any)=> {
+          setAnswers(a=> ({...a,[it.id]: val}))
+          setValidationErrors(err => {
+            if (!err[it.id]) return err
+            const next = { ...err }
+            delete next[it.id]
+            return next
+          })
+        }
         return (
-          <div key={it.id} className="item">
+          <div key={it.id} className={`item ${validationErrors[it.id] ? 'item-error' : ''}`}>
             <div className="label">{it.stem}{it.required?' *':''}</div>
             {/* Likert-like (per-item anchors override scale defaults) */}
             {t==='likert' && (
@@ -688,10 +717,14 @@ export function Survey() {
           <>
             <button className="btn btn-ghost" onClick={()=> setPage(p=> Math.max(1, p-1))} disabled={page<=1}>{t('survey.prev')||'Previous'}</button>
             <span className="muted">{t('survey.page_status', { n: page, m: pages }) || `Page ${page} / ${pages}`}</span>
-            <button className="btn" onClick={()=> setPage(p=> Math.min(pages, p+1))} disabled={page>=pages || pageHasUnansweredRequired}>{t('survey.next')||'Next'}</button>
+            <button className="btn" onClick={()=> {
+              if (!validateCurrentPage()) return
+              setPage(p=> Math.min(pages, p+1))
+            }} disabled={page>=pages}>{t('survey.next')||'Next'}</button>
           </>
         )}
         <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim()) || (turnstileEnabled && !!turnstileSitekey && !turnstileToken) || (pages>1 && page<pages)} onClick={async()=>{
+          if (!validateCurrentPage()) return
           try {
             if (e2ee) {
               const { keys } = await listProjectKeysPublic(scaleId)
