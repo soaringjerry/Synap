@@ -82,16 +82,17 @@ prepare_files() {
     dev_front_url="http://127.0.0.1:5173"
   fi
 
-  # Generate encryption key for at-rest storage (AES-256-GCM)
-  local enc_key
-  if command -v openssl >/dev/null 2>&1; then
-    enc_key=$(openssl rand -base64 32)
-  else
-    echo "[synap] openssl not found; generating placeholder encryption key. Please replace SYNAP_ENC_KEY in .env." >&2
-    enc_key="CHANGE-ME-BASE64-32"
-  fi
+  if [[ ! -f ".env" ]]; then
+    echo "[synap] .env file not found, generating a new one with a fresh encryption key..."
+    local enc_key
+    if command -v openssl >/dev/null 2>&1; then
+      enc_key=$(openssl rand -base64 32)
+    else
+      echo "[synap] openssl not found; generating placeholder encryption key. Please replace SYNAP_ENC_KEY in .env." >&2
+      enc_key="CHANGE-ME-BASE64-32"
+    fi
 
-  cat > .env <<EOF
+    cat > .env <<EOF
 GHCR_OWNER=${OWNER}
 SYNAP_IMAGE=${image}
 SYNAP_TAG=${synap_tag}
@@ -103,6 +104,9 @@ FRONT_PORT=${FRONT_PORT}
 DEV_FRONTEND_URL=${dev_front_url}
 SYNAP_ENC_KEY=${enc_key}
 EOF
+  else
+    echo "[synap] existing .env file detected, skipping regeneration to preserve encryption key."
+  fi
 
   # Write compose file
   if [[ "$EDGE" == "caddy" ]]; then
