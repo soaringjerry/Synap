@@ -20,39 +20,8 @@ export function Admin() {
   const [pub, setPub] = useState('')
   const [pass, setPass] = useState('')
   const [warn, setWarn] = useState('')
-  // Consent settings at creation
-  const [consentVersion, setConsentVersion] = useState('v1')
-  const [consentTextEn, setConsentTextEn] = useState('')
-  const [consentTextZh, setConsentTextZh] = useState('')
-  const [signatureRequired, setSignatureRequired] = useState(true)
-  const [consentOptions, setConsentOptions] = useState<{ key:string; required:boolean; en?:string; zh?:string }[]>([
-    { key:'recording', required:false },
-    { key:'withdrawal', required:true },
-    { key:'data_use', required:true },
-  ])
 
   function toAB(x: Uint8Array | ArrayBuffer) { return x instanceof Uint8Array ? x.slice(0).buffer : (x as ArrayBuffer).slice(0) }
-  const [showAdvancedConsent, setShowAdvancedConsent] = useState(false)
-  function getOpt(key:string){ return consentOptions.find(o=> o.key===key) }
-  function setOptRequired(key:string, v:boolean){
-    setConsentOptions(list=> {
-      const idx = list.findIndex(o=> o.key===key)
-      if (idx===-1) return [...list, { key, required: v }]
-      const a=[...list]; a[idx] = { ...a[idx], required: v }; return a
-    })
-  }
-  function applyConsentPreset(preset: 'minimal'|'recommended'|'strict'){
-    if (preset==='minimal'){
-      setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}])
-      setSignatureRequired(false)
-    } else if (preset==='recommended'){
-      setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:false}])
-      setSignatureRequired(true)
-    } else {
-      setConsentOptions([{key:'withdrawal',required:true},{key:'data_use',required:true},{key:'recording',required:true}])
-      setSignatureRequired(true)
-    }
-  }
   async function deriveKey(pass: string, salt: Uint8Array) {
     const enc = new TextEncoder()
     const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pass).buffer, 'PBKDF2', false, ['deriveKey'])
@@ -102,11 +71,24 @@ export function Admin() {
           prepared = { algorithm, public_key, fingerprint }
         }
       }
-      const options = consentOptions.map(o=> ({ key:o.key.trim(), required: !!o.required, label_i18n: { en: o.en || undefined, zh: o.zh || undefined } }))
-      const body: any = { name_i18n: { en: nameEn, zh: nameZh }, points, e2ee_enabled: e2ee, region, turnstile_enabled: !!turnstile }
+      const defaultConsentOptions = [
+        { key: 'withdrawal', required: true },
+        { key: 'data_use', required: true },
+        { key: 'recording', required: false },
+      ]
+      const body: any = {
+        name_i18n: { en: nameEn, zh: nameZh },
+        points,
+        e2ee_enabled: e2ee,
+        region,
+        turnstile_enabled: !!turnstile,
+        consent_config: {
+          version: 'v1',
+          options: defaultConsentOptions,
+          signature_required: true,
+        },
+      }
       const ipp = parseInt(itemsPerPage||'0'); if (!Number.isNaN(ipp)) body.items_per_page = ipp
-      if (consentTextEn || consentTextZh) body.consent_i18n = { en: consentTextEn || undefined, zh: consentTextZh || undefined }
-      body.consent_config = { version: consentVersion, options, signature_required: !!signatureRequired }
       const created = await adminCreateScale(body as any)
       if (e2ee && prepared) {
         try {
@@ -122,9 +104,7 @@ export function Admin() {
         }
       }
       toast.success(t('create_success')||'Created successfully')
-      setNameEn(''); setNameZh(''); setPoints(5); setPub(''); setPass(''); setKeyMethod('generate'); setWarn('');
-      setConsentVersion('v1'); setConsentTextEn(''); setConsentTextZh(''); setSignatureRequired(true);
-      setConsentOptions([{key:'recording',required:false},{key:'withdrawal',required:true},{key:'data_use',required:true}])
+      setNameEn(''); setNameZh(''); setPoints(5); setPub(''); setPass(''); setKeyMethod('generate'); setWarn(''); setItemsPerPage('0'); setRegion('auto'); setTurnstile(false); setE2ee(true)
       loadScales()
     } catch (e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
   }
@@ -200,60 +180,14 @@ export function Admin() {
               )}
             </div>
             <div className="card span-6">
-              <h4 style={{marginTop:0}}>{t('consent_settings')||'Consent Settings'}</h4>
-              <div className="row">
-                <div className="card span-6"><div className="label">Version</div><input className="input" value={consentVersion} onChange={e=> setConsentVersion(e.target.value)} /></div>
-                <div className="card span-6"><div className="label">{t('consent_en')||'Consent (EN)'}</div><textarea className="input" rows={3} value={consentTextEn} onChange={e=> setConsentTextEn(e.target.value)} placeholder="Optional additional text" /></div>
-                <div className="card span-6"><div className="label">{t('consent_zh')||'Consent (ZH)'}</div><textarea className="input" rows={3} value={consentTextZh} onChange={e=> setConsentTextZh(e.target.value)} placeholder="可选补充文本" /></div>
-              </div>
-              <div className="label" style={{marginTop:8}}>{t('survey.consent_options')||'Interactive confirmations'}</div>
-              <div className="tile" style={{padding:10, marginBottom:8}}>
-                <div className="muted" style={{marginBottom:6}}>{t('consent.presets_title')||'Pick a preset (you can still tweak below):'}</div>
-                <div className="cta-row">
-                  <button className="btn" onClick={()=> applyConsentPreset('minimal')}>{t('consent.preset_min')||'Minimal'}</button>
-                  <button className="btn" onClick={()=> applyConsentPreset('recommended')}>{t('consent.preset_rec')||'Recommended'}</button>
-                  <button className="btn" onClick={()=> applyConsentPreset('strict')}>{t('consent.preset_strict')||'Strict'}</button>
-                </div>
-              </div>
-              <div className="tile" style={{padding:10}}>
-                <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')||'Ask participants to confirm:'}</div>
-                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('withdrawal')?.required} onChange={e=> setOptRequired('withdrawal', e.target.checked)} /> {t('survey.consent_opt.withdrawal')||'I understand I can withdraw at any time.'}
-                </label>
-                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('data_use')?.required} onChange={e=> setOptRequired('data_use', e.target.checked)} /> {t('survey.consent_opt.data_use')||'I understand my data is for academic/aggregate use only.'}
-                </label>
-                <label className="item" style={{display:'flex',alignItems:'center',gap:8}}>
-                  <input className="checkbox" type="checkbox" checked={!!getOpt('recording')?.required} onChange={e=> setOptRequired('recording', e.target.checked)} /> {t('survey.consent_opt.recording')||'I consent to audio/video recording where applicable.'}
-                </label>
-                <label className="item" style={{display:'flex',alignItems:'center',gap:8, marginTop:6}}>
-                  <input className="checkbox" type="checkbox" checked={signatureRequired} onChange={e=> setSignatureRequired(e.target.checked)} /> {t('consent.require_signature')||'Require signature'}
-                </label>
-                <div className="muted" style={{marginTop:6}}>{t('consent.simple_hint')||'These are the common confirmations. Click “Advanced” to add your own items.'}</div>
-                <div className="cta-row" style={{marginTop:6}}>
-                  <button className="btn btn-ghost" onClick={()=> setShowAdvancedConsent(s=> !s)}>{showAdvancedConsent? (t('consent.hide_advanced')||'Hide Advanced') : (t('consent.show_advanced')||'Show Advanced')}</button>
-                </div>
-              </div>
-              {showAdvancedConsent && (
-                <>
-                  {consentOptions.map((o, idx)=> (
-                    <div key={idx} className="row" style={{marginTop:8}}>
-                      <div className="card span-3"><div className="label">Key</div><input className="input" value={o.key} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, key: e.target.value}:x))} /></div>
-                      <div className="card span-3"><div className="label">Required</div><label style={{display:'inline-flex',gap:6,alignItems:'center'}}><input className="checkbox" type="checkbox" checked={o.required} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, required: e.target.checked}:x))} /> required</label></div>
-                      <div className="card span-3"><div className="label">EN</div><input className="input" value={o.en||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, en: e.target.value}:x))} placeholder="Optional"/></div>
-                      <div className="card span-3"><div className="label">中文</div><input className="input" value={o.zh||''} onChange={e=> setConsentOptions(list=> list.map((x,i)=> i===idx? {...x, zh: e.target.value}:x))} placeholder="可选"/></div>
-                      <div className="cta-row" style={{marginTop:6}}>
-                        <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> list.filter((_,i)=> i!==idx))}>Remove</button>
-                        <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.max(0,idx-1)]; a[Math.max(0,idx-1)]=t; return a })}>Up</button>
-                        <button className="btn btn-ghost" onClick={()=> setConsentOptions(list=> { const a=[...list]; const t=a[idx]; a[idx]=a[Math.min(list.length-1,idx+1)]; a[Math.min(list.length-1,idx+1)]=t; return a })}>Down</button>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="cta-row" style={{marginTop:8}}>
-                    <button className="btn" onClick={()=> setConsentOptions(list=> [...list, { key:'custom_'+(list.length+1), required:false }])}>Add option</button>
-                  </div>
-                </>
-              )}
+              <h4 style={{marginTop:0}}>{t('admin.create_after_title')||'After creation'}</h4>
+              <div className="muted" style={{marginBottom:8}}>{t('admin.create_after_hint')||'Advanced consent text, interactive confirmations, and pagination now reside in the new editor. Finish creation here, then open Settings → Consent/Security to customise.'}</div>
+              <ul className="kv-list">
+                <li>👉 {t('admin.after_consent')||'Consent text & interactive confirmations: Settings → Consent'}</li>
+                <li>👉 {t('admin.after_security')||'Turnstile, region, email collection: Settings → Security'}</li>
+                <li>👉 {t('admin.after_likert')||'Likert defaults & AI translation live in the editor tabs'}</li>
+              </ul>
+              <div className="muted" style={{marginTop:12}}>{t('admin.after_tip')||'You can still preview or export immediately from Share & Results after creating the scale.'}</div>
             </div>
           </div>
           <div className="cta-row" style={{marginTop:12, justifyContent:'flex-end'}}>
@@ -269,11 +203,10 @@ export function Admin() {
               <div className="muted" style={{marginBottom:8}}>{t('no_scales')}</div>
               <div className="label">Checklist</div>
               <ul className="kv-list">
-                <li>✅ Create your first scale (E2EE recommended)</li>
-                <li>✅ Set Consent version and interactive options</li>
-                <li>✅ Optional: Enable Cloudflare Turnstile</li>
-                <li>✅ Share the link and submit a test response</li>
-                <li>✅ Try export: E2EE ON → local CSV; E2EE OFF → server CSV</li>
+                <li>✅ {t('admin.checklist_create')||'Create your first scale (keep E2EE enabled if you need encryption)'}</li>
+                <li>✅ {t('admin.checklist_settings')||'Open Settings to adjust consent, email collection, pagination'}</li>
+                <li>✅ {t('admin.checklist_share')||'Share the participant link and collect a test response'}</li>
+                <li>✅ {t('admin.checklist_export')||'Visit Share & Results for analytics and exports'}</li>
               </ul>
             </div>
           )}

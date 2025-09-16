@@ -195,6 +195,18 @@
     },
     
     "consent_settings": "Consent Settings",
+    "admin": {
+      "create_after_title": "After creation",
+      "create_after_hint": "Advanced consent text, interactive confirmations, pagination, and email collection now live in the new editor. Finish the basics here, then open Settings → Consent/Security to customise.",
+      "after_consent": "Consent text & confirmations: Settings → Consent",
+      "after_security": "Region, email collection, Turnstile: Settings → Security",
+      "after_likert": "Likert defaults & AI translation live under the editor tabs",
+      "after_tip": "You can immediately preview or export from Share & Results once the scale is created.",
+      "checklist_create": "Create your first scale (keep end‑to‑end encryption ON unless you need server CSV)",
+      "checklist_settings": "Open Settings to adjust consent, email collection, pagination",
+      "checklist_share": "Share the participant link and submit a test response",
+      "checklist_export": "Visit Share & Results for analytics and exports"
+    },
     "admin_console": "Admin Console",
     "admin_console_sub": "Publish surveys · Manage items · Export data",
     "ai": {

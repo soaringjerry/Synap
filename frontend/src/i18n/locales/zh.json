@@ -228,6 +228,18 @@
       }
     },
     "consent_settings": "知情同意设置",
+    "admin": {
+      "create_after_title": "创建完成后",
+      "create_after_hint": "知情同意文本、交互确认、分页、收集邮箱等高级设置，已迁移到新版编辑器的“设置”→“知情同意/安全”中。请先完成基础信息，再进入设置页细调。",
+      "after_consent": "知情同意文本与确认项：设置 → 知情同意",
+      "after_security": "地区、收集邮箱、Turnstile：设置 → 安全",
+      "after_likert": "Likert 默认值与 AI 翻译在各个标签页中配置",
+      "after_tip": "创建完成后，可立即在“分享与结果”中查看链接、分析与导出。",
+      "checklist_create": "先创建你的第一个问卷（如需加密请保持端到端加密开启）",
+      "checklist_settings": "进入“设置”页调整知情同意、收集邮箱、分页等",
+      "checklist_share": "分享参与链接并完成一次测试提交",
+      "checklist_export": "在“分享与结果”中查看分析与导出"
+    },
     "admin_console": "管理控制台",
     "admin_console_sub": "发布问卷 · 管理题目 · 导出数据",
     "ai": {
