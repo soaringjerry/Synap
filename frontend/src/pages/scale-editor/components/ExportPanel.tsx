@@ -207,13 +207,13 @@ export const ExportPanel: React.FC = () => {
               onClick={async () => {
                 try {
                   setStatus('')
-                  const { out, zhMap, consentCols } = await decryptCurrentBundle()
-                  const order = items.map((it: any) => it.id)
-                  const consentHeaders = consentCols.map(col => col.zh || col.en || col.key)
+    const { out, enMap, consentCols } = await decryptCurrentBundle()
+    const order = items.map((it: any) => it.id)
+    const consentHeaders = consentCols.map(col => col.en || col.zh || col.key)
                   const header = [
                     'response_index',
                     'email',
-                    ...order.map(key => zhMap[key] || key),
+      ...order.map(key => enMap[key] || key),
                     ...consentHeaders,
                   ]
                   const lines = [header.map(csvEsc).join(',')]
@@ -244,9 +244,9 @@ export const ExportPanel: React.FC = () => {
               onClick={async () => {
                 try {
                   setStatus('')
-                  const { out, enMap, consentCols } = await decryptCurrentBundle()
-                  const order = items.map((it: any) => it.id)
-                  const consentHeaders = consentCols.map(col => col.en || col.zh || col.key)
+    const { out, enMap, consentCols } = await decryptCurrentBundle()
+    const order = items.map((it: any) => it.id)
+    const consentHeaders = consentCols.map(col => col.en || col.zh || col.key)
                   const header = [
                     'response_index',
                     'email',
