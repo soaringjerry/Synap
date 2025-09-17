@@ -195,7 +195,7 @@ export const ExportPanel: React.FC = () => {
                 }
               }}
             >
-              {t('e2ee.local_csv_long')}
+              {t('e2ee.local_decrypt_csv_long')}
             </button>
             <button
               className="btn"
@@ -232,7 +232,7 @@ export const ExportPanel: React.FC = () => {
                 }
               }}
             >
-              {t('e2ee.local_csv_wide_en')}
+              {t('e2ee.local_decrypt_csv_wide')}
             </button>
           </div>
           {status && <div className="muted" style={{ marginTop: 8 }}>{status}</div>}
