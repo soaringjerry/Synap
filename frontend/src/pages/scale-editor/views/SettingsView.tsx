@@ -299,203 +299,7 @@ const SettingsView: React.FC = () => {
     }
   }, [consent, dispatch, scale, scaleId, t, toast])
 
-  const AdvancedConsent = useCallback(({ open }: { open: boolean }) => {
-    const moveRow = (idx: number, delta: number) => {
-      if (!delta) return
-      updateConsentOptions(list => {
-        const target = idx + delta
-        if (target < 0 || target >= list.length) return list
-        const next = [...list]
-        const temp = next[idx]
-        next[idx] = next[target]
-        next[target] = temp
-        return next
-      })
-    }
-
-    const removeRow = (idx: number) => {
-      updateConsentOptions(list => list.filter((_, i) => i !== idx))
-    }
-
-    return (
-      <>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => updateConsent({ advancedOpen: !open })}
-        >
-          {open ? t('consent.hide_advanced') : t('consent.show_advanced')}
-        </button>
-        {open && (
-          <div className="tile" style={{ padding: 16, marginTop: 8 }}>
-            <div className="row">
-              <div className="card span-6">
-                <div className="label">{t('consent_en')}</div>
-                <textarea
-                  className="input"
-                  rows={4}
-                  value={consent.textEn}
-                  onChange={e => updateConsent({ textEn: e.target.value })}
-                  placeholder={t('consent_hint') as string}
-                />
-              </div>
-              <div className="card span-6">
-                <div className="label">{t('consent_zh')}</div>
-                <textarea
-                  className="input"
-                  rows={4}
-                  value={consent.textZh}
-                  onChange={e => updateConsent({ textZh: e.target.value })}
-                  placeholder={t('consent_hint') as string}
-                />
-              </div>
-            </div>
-            <div className="muted" style={{ marginTop: 8 }}>{t('consent.inline_hint')}</div>
-            <div className="muted" style={{ marginBottom: 12 }}>{t('consent.group_hint')}</div>
-            <div className="muted" style={{ marginBottom: 12 }}>{t('consent_md_hint')}</div>
-            <table className="consent-table">
-              <thead>
-                <tr>
-                  <th>{t('consent.advanced.label_en')}</th>
-                  <th>{t('consent.advanced.label_zh')}</th>
-                  <th>{t('consent.advanced.group')}</th>
-                  <th>{t('consent.advanced.required')}</th>
-                  <th>{t('actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {consent.options.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="muted">
-                      {t('consent.advanced.empty')}
-                    </td>
-                  </tr>
-                )}
-                {consent.options.map((option, idx) => (
-                  <tr key={option.key || idx}>
-                    <td data-label={t('consent.advanced.label_en')}>
-                      <input
-                        className="input"
-                        value={option.en || ''}
-                        onChange={e =>
-                          updateConsentOptions(list =>
-                            list.map((entry, i) =>
-                              i === idx ? { ...entry, en: e.target.value } : entry,
-                            ),
-                          )
-                        }
-                        placeholder={t('optional')}
-                      />
-                    </td>
-                    <td data-label={t('consent.advanced.label_zh')}>
-                      <input
-                        className="input"
-                        value={option.zh || ''}
-                        onChange={e =>
-                          updateConsentOptions(list =>
-                            list.map((entry, i) =>
-                              i === idx ? { ...entry, zh: e.target.value } : entry,
-                            ),
-                          )
-                        }
-                        placeholder={t('optional')}
-                      />
-                    </td>
-                    <td data-label={t('consent.advanced.group')}>
-                      <input
-                        className="input"
-                        type="number"
-                        value={option.group ?? ''}
-                        onChange={e => {
-                          const raw = e.target.value
-                          updateConsentOptions(list =>
-                            list.map((entry, i) => {
-                              if (i !== idx) return entry
-                              if (!raw.trim()) return { ...entry, group: undefined }
-                              const parsed = Number(raw)
-                              if (Number.isNaN(parsed)) return entry
-                              return { ...entry, group: parsed }
-                            }),
-                          )
-                        }}
-                      />
-                    </td>
-                    <td data-label={t('consent.advanced.required')}>
-                      <label className="toggle">
-                        <input
-                          className="checkbox"
-                          type="checkbox"
-                          checked={!!option.required}
-                          onChange={e =>
-                            updateConsentOptions(list =>
-                              list.map((entry, i) =>
-                                i === idx ? { ...entry, required: e.target.checked } : entry,
-                              ),
-                            )
-                          }
-                        />
-                      </label>
-                    </td>
-                    <td>
-                      <div className="cta-row" style={{ gap: 6, justifyContent: 'flex-end' }}>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => moveRow(idx, -1)}
-                          disabled={idx === 0}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => moveRow(idx, 1)}
-                          disabled={idx === consent.options.length - 1}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => removeRow(idx)}
-                        >
-                          {t('delete')}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="cta-row" style={{ marginTop: 12 }}>
-              <button
-                className="btn"
-                type="button"
-                onClick={() =>
-                  updateConsentOptions(list => [
-                    ...list,
-                    {
-                      key: `custom_${Date.now()}_${Math.floor(Math.random() * 1_000)}`,
-                      required: false,
-                    },
-                  ])
-                }
-              >
-                {t('consent.advanced.add_option')}
-              </button>
-              <button
-                className="btn btn-primary"
-                type="button"
-                onClick={saveConsentConfig}
-              >
-                {t('save')}
-              </button>
-            </div>
-          </div>
-        )}
-      </>
-    )
-  }, [consent.options, consent.textEn, consent.textZh, saveConsentConfig, t, updateConsent, updateConsentOptions])
+  // Removed AdvancedConsent component to avoid remount-induced focus loss
 
   const handleAiPreviewChange = useCallback(
     (
@@ -765,12 +569,192 @@ const SettingsView: React.FC = () => {
                 {consentModeButtons(row.key)}
               </div>
             ))}
-            <div className="cta-row" style={{ marginTop: 8 }}>
+            <div className="cta-row" style={{ marginTop: 8, gap: 8 }}>
               <button type="button" className="btn btn-primary" onClick={saveConsentConfig}>
                 {t('save')}
               </button>
-              <AdvancedConsent open={consent.advancedOpen} />
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => updateConsent({ advancedOpen: !consent.advancedOpen })}
+              >
+                {consent.advancedOpen ? t('consent.hide_advanced') : t('consent.show_advanced')}
+              </button>
             </div>
+            {consent.advancedOpen && (
+              <div className="tile" style={{ padding: 16, marginTop: 8 }}>
+                <div className="row">
+                  <div className="card span-6">
+                    <div className="label">{t('consent_en')}</div>
+                    <textarea
+                      className="input"
+                      rows={4}
+                      value={consent.textEn}
+                      onChange={e => updateConsent({ textEn: e.target.value })}
+                      placeholder={t('consent_hint') as string}
+                    />
+                  </div>
+                  <div className="card span-6">
+                    <div className="label">{t('consent_zh')}</div>
+                    <textarea
+                      className="input"
+                      rows={4}
+                      value={consent.textZh}
+                      onChange={e => updateConsent({ textZh: e.target.value })}
+                      placeholder={t('consent_hint') as string}
+                    />
+                  </div>
+                </div>
+                <div className="muted" style={{ marginTop: 8 }}>{t('consent.inline_hint')}</div>
+                <div className="muted" style={{ marginBottom: 12 }}>{t('consent.group_hint')}</div>
+                <div className="muted" style={{ marginBottom: 12 }}>{t('consent_md_hint')}</div>
+                <table className="consent-table">
+                  <thead>
+                    <tr>
+                      <th>{t('consent.advanced.label_en')}</th>
+                      <th>{t('consent.advanced.label_zh')}</th>
+                      <th>{t('consent.advanced.group')}</th>
+                      <th>{t('consent.advanced.required')}</th>
+                      <th>{t('actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {consent.options.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="muted">
+                          {t('consent.advanced.empty')}
+                        </td>
+                      </tr>
+                    )}
+                    {consent.options.map((option, idx) => (
+                      <tr key={option.key || idx}>
+                        <td data-label={t('consent.advanced.label_en')}>
+                          <input
+                            className="input"
+                            value={option.en || ''}
+                            onChange={e =>
+                              updateConsentOptions(list =>
+                                list.map((entry, i) => (i === idx ? { ...entry, en: e.target.value } : entry)),
+                              )
+                            }
+                            placeholder={t('optional')}
+                          />
+                        </td>
+                        <td data-label={t('consent.advanced.label_zh')}>
+                          <input
+                            className="input"
+                            value={option.zh || ''}
+                            onChange={e =>
+                              updateConsentOptions(list =>
+                                list.map((entry, i) => (i === idx ? { ...entry, zh: e.target.value } : entry)),
+                              )
+                            }
+                            placeholder={t('optional')}
+                          />
+                        </td>
+                        <td data-label={t('consent.advanced.group')}>
+                          <input
+                            className="input"
+                            type="number"
+                            value={option.group ?? ''}
+                            onChange={e => {
+                              const raw = e.target.value
+                              updateConsentOptions(list =>
+                                list.map((entry, i) => {
+                                  if (i !== idx) return entry
+                                  if (!raw.trim()) return { ...entry, group: undefined }
+                                  const parsed = Number(raw)
+                                  if (Number.isNaN(parsed)) return entry
+                                  return { ...entry, group: parsed }
+                                }),
+                              )
+                            }}
+                          />
+                        </td>
+                        <td data-label={t('consent.advanced.required')}>
+                          <label className="toggle">
+                            <input
+                              className="checkbox"
+                              type="checkbox"
+                              checked={!!option.required}
+                              onChange={e =>
+                                updateConsentOptions(list =>
+                                  list.map((entry, i) => (i === idx ? { ...entry, required: e.target.checked } : entry)),
+                                )
+                              }
+                            />
+                          </label>
+                        </td>
+                        <td>
+                          <div className="cta-row" style={{ gap: 6, justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              onClick={() =>
+                                updateConsentOptions(list => {
+                                  const target = idx - 1
+                                  if (target < 0) return list
+                                  const next = [...list]
+                                  const temp = next[idx]
+                                  next[idx] = next[target]
+                                  next[target] = temp
+                                  return next
+                                })
+                              }
+                              disabled={idx === 0}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              onClick={() =>
+                                updateConsentOptions(list => {
+                                  const target = idx + 1
+                                  if (target >= list.length) return list
+                                  const next = [...list]
+                                  const temp = next[idx]
+                                  next[idx] = next[target]
+                                  next[target] = temp
+                                  return next
+                                })
+                              }
+                              disabled={idx === consent.options.length - 1}
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              onClick={() => updateConsentOptions(list => list.filter((_, i) => i !== idx))}
+                            >
+                              {t('delete')}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="cta-row" style={{ marginTop: 12 }}>
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() =>
+                      updateConsentOptions(list => [
+                        ...list,
+                        { key: `custom_${Date.now()}_${Math.floor(Math.random() * 1_000)}`, required: false },
+                      ])
+                    }
+                  >
+                    {t('consent.advanced.add_option')}
+                  </button>
+                  <button className="btn btn-primary" type="button" onClick={saveConsentConfig}>
+                    {t('save')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

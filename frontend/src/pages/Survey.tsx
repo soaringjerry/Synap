@@ -786,7 +786,7 @@ export function Survey() {
             }} disabled={page>=pages}>{t('survey.next')||'Next'}</button>
           </>
         )}
-        <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim()) || (turnstileEnabled && !!turnstileSitekey && !turnstileToken) || (pages>1 && page<pages)} onClick={async()=>{
+        <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || (collectEmail==='required' && !email.trim()) || (turnstileEnabled && !!turnstileSitekey && !turnstileToken) || (pages>1 && page<pages)} onClick={async()=>{
           if (!validateAllRequired()) return
           try {
             if (e2ee) {

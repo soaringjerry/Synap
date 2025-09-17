@@ -169,6 +169,16 @@ export const deriveConsentFromScale = (
   if (!scale) return consent
 
   const config = scale.consent_config || {}
+  const parseBool = (v: any, fb: boolean): boolean => {
+    if (typeof v === 'boolean') return v
+    if (typeof v === 'number') return v !== 0
+    if (typeof v === 'string') {
+      const s = v.trim().toLowerCase()
+      if (s === 'true' || s === '1' || s === 'yes' || s === 'on') return true
+      if (s === 'false' || s === '0' || s === 'no' || s === 'off') return false
+    }
+    return fb
+  }
   const options = Array.isArray(config.options)
     ? config.options.map((option: any) => {
         let group: number | undefined
@@ -191,7 +201,7 @@ export const deriveConsentFromScale = (
   return {
     ...consent,
     version: config.version || consent.version,
-    signatureRequired: config.signature_required ?? consent.signatureRequired,
+    signatureRequired: parseBool(config.signature_required, consent.signatureRequired),
     options,
     textEn: scale.consent_i18n?.en || '',
     textZh: scale.consent_i18n?.zh || '',
