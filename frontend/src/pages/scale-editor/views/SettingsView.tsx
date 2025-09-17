@@ -44,6 +44,8 @@ const InternalSettingsView = React.memo(function SettingsView({
   const [localLikertLabelsEn, setLocalLikertLabelsEn] = useState(likertDefaults.en)
   const [localLikertLabelsZh, setLocalLikertLabelsZh] = useState(likertDefaults.zh)
   const [localLikertShowNumbers, setLocalLikertShowNumbers] = useState(likertDefaults.showNumbers)
+  const [localPoints, setLocalPoints] = useState('5')
+  const [localRandomize, setLocalRandomize] = useState(false)
   const [localConsentVersion, setLocalConsentVersion] = useState('v1')
   const [localSignatureRequired, setLocalSignatureRequired] = useState(true)
   const [localConsentOptions, setLocalConsentOptions] = useState<{ key:string; required:boolean; en?:string; zh?:string; group?: number }[]>([])
@@ -72,6 +74,8 @@ const InternalSettingsView = React.memo(function SettingsView({
     setLocalLikertLabelsZh((labs.zh || []).join('，'))
     setLocalLikertShowNumbers(!!scale.likert_show_numbers)
     setLocalLikertPreset(scale.likert_preset || likertDefaults.preset || 'numeric')
+    setLocalPoints(String(scale.points ?? 5))
+    setLocalRandomize(!!scale.randomize)
     const cc = scale.consent_config || {}
     setLocalConsentVersion(cc.version || 'v1')
     setLocalSignatureRequired(!!(cc.signature_required ?? true))
@@ -140,9 +144,11 @@ const InternalSettingsView = React.memo(function SettingsView({
       if (labsZh.length) likert_labels_i18n.zh = labsZh
       const parsedIpp = parseInt(localItemsPerPage || '0', 10)
       const itemsPerPageNumber = Number.isNaN(parsedIpp) ? 0 : parsedIpp
+      const parsedPoints = parseInt(localPoints || '0', 10)
+      const pointsNumber = Number.isNaN(parsedPoints) || parsedPoints <= 0 ? (scale.points || 5) : parsedPoints
       await adminUpdateScale(scaleId, {
         name_i18n: { ...(scale.name_i18n || {}), en: localNameEn, zh: localNameZh },
-        randomize: !!scale.randomize,
+        randomize: !!localRandomize,
         consent_i18n: scale.consent_i18n,
         collect_email: localCollectEmail,
         e2ee_enabled: !!scale.e2ee_enabled,
@@ -152,6 +158,7 @@ const InternalSettingsView = React.memo(function SettingsView({
         likert_labels_i18n,
         likert_show_numbers: !!localLikertShowNumbers,
         likert_preset: localLikertPreset,
+        points: pointsNumber,
       } as any)
       onScaleUpdated((prev: any) => {
         if (!prev) return prev
@@ -165,6 +172,8 @@ const InternalSettingsView = React.memo(function SettingsView({
           likert_labels_i18n,
           likert_show_numbers: !!localLikertShowNumbers,
           likert_preset: localLikertPreset,
+          points: pointsNumber,
+          randomize: !!localRandomize,
         }
       })
       onLikertDefaultsSaved({
@@ -173,11 +182,12 @@ const InternalSettingsView = React.memo(function SettingsView({
         showNumbers: localLikertShowNumbers,
         preset: localLikertPreset,
       })
+      setLocalPoints(String(pointsNumber))
       toast.success(t('save_success'))
     } catch (e:any) {
       toast.error(e.message || String(e))
     }
-  }, [localLikertLabelsEn, localLikertLabelsZh, scale, scaleId, localCollectEmail, localRegion, localTurnstile, localItemsPerPage, localLikertShowNumbers, localLikertPreset, localNameEn, localNameZh, onScaleUpdated, onLikertDefaultsSaved, t, toast])
+  }, [localLikertLabelsEn, localLikertLabelsZh, scale, scaleId, localCollectEmail, localRegion, localTurnstile, localItemsPerPage, localLikertShowNumbers, localLikertPreset, localNameEn, localNameZh, onScaleUpdated, onLikertDefaultsSaved, localPoints, localRandomize, t, toast])
 
   const saveConsentConfig = useCallback(async () => {
     if (!scale) return
@@ -333,6 +343,10 @@ const InternalSettingsView = React.memo(function SettingsView({
           <h4 className="section-title" style={{marginTop:0}}>{t('editor.basic_info')}</h4>
           <div className="item"><div className="label">{t('name_en')}</div><input className="input" value={localNameEn} onChange={e=> setLocalNameEn(e.target.value)} /></div>
           <div className="item"><div className="label">{t('name_zh')}</div><input className="input" value={localNameZh} onChange={e=> setLocalNameZh(e.target.value)} /></div>
+          <div className="item"><div className="label">{t('points')}</div><input className="input" type="number" min={1} value={localPoints} onChange={e=> setLocalPoints(e.target.value)} /></div>
+          <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8}}>
+            <input className="checkbox" type="checkbox" checked={localRandomize} onChange={e=> setLocalRandomize(e.target.checked)} /> {t('randomize_items')}
+          </label>
           <div className="item">
             <div className="label">{t('likert.defaults')}</div>
             <div className="muted" style={{marginBottom:6}}>{t('likert.presets.title')}</div>
@@ -404,6 +418,13 @@ const InternalSettingsView = React.memo(function SettingsView({
           </div>
           <div className="tile" style={{padding:10}}>
             <div className="muted" style={{marginBottom:6}}>{t('consent.simple_title')}</div>
+            <label className="item" style={{display:'inline-flex',alignItems:'center',gap:8, marginBottom:6}}>
+              <input className="checkbox" type="checkbox" checked={localSignatureRequired} onChange={e=> setLocalSignatureRequired(e.target.checked)} /> {t('consent.require_signature')}
+            </label>
+            <div className="item" style={{marginBottom:6}}>
+              <div className="label">{t('label.version')}</div>
+              <input className="input" value={localConsentVersion} onChange={e=> setLocalConsentVersion(e.target.value)} />
+            </div>
             {[{key:'withdrawal', label: t('survey.consent_opt.withdrawal')},
               {key:'data_use', label: t('survey.consent_opt.data_use')},
               {key:'recording', label: t('survey.consent_opt.recording')}

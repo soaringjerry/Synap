@@ -6,6 +6,9 @@
     "reload": "刷新",
     "save": "保存",
     "delete": "删除",
+    "edit": "编辑",
+    "apply": "应用",
+    "actions": "操作",
     "loading": "正在加载",
     "saved": "已保存",
     "deleted": "已删除",
@@ -146,7 +149,8 @@
     "consent_group_hint": "为每个确认项设置“分组号”后，可用 [[CONSENT1]]、[[CONSENT2]] 等分别插入对应分组；使用 [[CONSENT]] 可一次插入全部分组。",
     "consent_override_hint": "填写后，问卷中的默认分段说明将隐藏，仅显示此自定义内容。",
     "ai": {
-      "title": "AI 翻译"
+      "title": "AI 翻译",
+      "preview_title": "翻译预览"
     },
     "label": {
       "version": "版本",
@@ -159,6 +163,7 @@
       "options_en": "选项（英文）",
       "options_zh": "选项（中文）",
       "likert_anchors_item": "本题 Likert 锚点",
+      "position": "位置",
       "group": "分组",
       "placeholder_en": "占位文案（英文）",
       "placeholder_zh": "占位文案（中文）",
@@ -250,14 +255,15 @@
       "not_ready_link": "前往供应商设置",
       "include_label": "包含",
       "review": "请检查翻译，点击“应用”写入题干。",
-      "not_ready": "未配置 API Key 或未开启外部 AI。请在“供应商设置”中配置并开启。"
+      "not_ready": "未配置 API Key 或未开启外部 AI。请在“供应商设置”中配置并开启。",
+      "preview_title": "翻译预览"
     },
     "preview": "预览",
     "working": "处理中…",
     "collect_email": "收集邮箱",
     "collect_email_off": "关闭",
-    "collect_email_optional": "可选",
-    "collect_email_required": "必填",
+    "collect_email_optional": "收集邮箱（可选）",
+    "collect_email_required": "收集邮箱（必填）",
     "share": "分享",
     "export": "导出",
     "copy": "复制",
@@ -333,6 +339,7 @@
       "items_tab": "题目编辑器",
       "settings_tab": "设置",
       "share_tab": "分享与结果",
+      "your_items": "题目列表",
       "legacy_view": "旧版视图",
       "create_intro": "先填写问卷名称与分值，详细设置可在创建后调整。",
       "create_button": "创建问卷并开始编辑",
