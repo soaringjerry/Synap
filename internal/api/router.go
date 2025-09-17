@@ -24,7 +24,8 @@ type Router struct {
 	scaleSvc       *services.ScaleService
 	authSvc        *services.AuthService
 	exportSvc      *services.ExportService
-	participantSvc *services.ParticipantDataService
+    participantSvc *services.ParticipantDataService
+    aiCfgSvc       *services.AIConfigService
 	translationSvc *services.TranslationService
 	e2eeSvc        *services.E2EEService
 	analyticsSvc   *services.AnalyticsService
@@ -43,7 +44,8 @@ func NewRouterWithStore(store Store) *Router {
 		scaleSvc:       services.NewScaleService(newScaleStoreAdapter(store)),
 		authSvc:        services.NewAuthService(newAuthStoreAdapter(store), middleware.SignToken),
 		exportSvc:      services.NewExportService(newExportStoreAdapter(store)),
-		participantSvc: services.NewParticipantDataService(newParticipantStoreAdapter(store)),
+        participantSvc: services.NewParticipantDataService(newParticipantStoreAdapter(store)),
+        aiCfgSvc:       services.NewAIConfigService(newAIConfigStoreAdapter(store)),
 		translationSvc: services.NewTranslationService(newTranslationStoreAdapter(store), http.DefaultClient),
 		e2eeSvc:        services.NewE2EEService(newE2EEStoreAdapter(store), nil),
 	}
@@ -433,52 +435,48 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/admin/participant/export?email=...
 func (rt *Router) handleExportParticipant(w http.ResponseWriter, r *http.Request) {
-	email := strings.TrimSpace(r.URL.Query().Get("email"))
-	if email == "" {
-		http.Error(w, "email required", http.StatusBadRequest)
-		return
-	}
-	rs, p := rt.store.ExportParticipantByEmail(email)
-	if p == nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	// audit
-	actor := "admin"
-	if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
-		actor = c.Email
-	}
-	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "export_participant", Target: email})
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"participant": p, "responses": rs})
+    email := strings.TrimSpace(r.URL.Query().Get("email"))
+    if email == "" {
+        http.Error(w, "email required", http.StatusBadRequest)
+        return
+    }
+    actor := "admin"
+    if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
+        actor = c.Email
+    }
+    res, err := rt.participantSvc.AdminExportByEmail(email, actor)
+    if err != nil {
+        rt.writeServiceError(w, err)
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(res)
 }
 
 // (removed)
 
 // POST /api/admin/participant/delete?email=...&hard=true
 func (rt *Router) handleDeleteParticipant(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	email := strings.TrimSpace(r.URL.Query().Get("email"))
-	if email == "" {
-		http.Error(w, "email required", http.StatusBadRequest)
-		return
-	}
-	hard := r.URL.Query().Get("hard") == "true"
-	ok := rt.store.DeleteParticipantByEmail(email, hard)
-	if !ok {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	actor := "admin"
-	if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
-		actor = c.Email
-	}
-	rt.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "delete_participant", Target: email, Note: map[bool]string{true: "hard", false: "soft"}[hard]})
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
+    if r.Method != http.MethodPost {
+        http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+    email := strings.TrimSpace(r.URL.Query().Get("email"))
+    if email == "" {
+        http.Error(w, "email required", http.StatusBadRequest)
+        return
+    }
+    hard := r.URL.Query().Get("hard") == "true"
+    actor := "admin"
+    if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
+        actor = c.Email
+    }
+    if err := rt.participantSvc.AdminDeleteByEmail(email, hard, actor); err != nil {
+        rt.writeServiceError(w, err)
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "hard": hard})
 }
 
 // --- E2EE: project keys management ---
@@ -701,35 +699,39 @@ func (rt *Router) handleRewrapSubmit(w http.ResponseWriter, r *http.Request) {
 // GET -> fetch current tenant AI config
 // PUT -> update AI config { openai_key?, openai_base?, allow_external, store_logs }
 func (rt *Router) handleAdminAIConfig(w http.ResponseWriter, r *http.Request) {
-	tid, ok := middleware.TenantIDFromContext(r.Context())
-	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	switch r.Method {
-	case http.MethodGet:
-		cfg := rt.store.GetAIConfig(tid)
-		if cfg == nil {
-			cfg = &TenantAIConfig{TenantID: tid, AllowExternal: false, StoreLogs: false}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(cfg)
-		return
-	case http.MethodPut:
-		var in TenantAIConfig
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		in.TenantID = tid
-		rt.store.UpsertAIConfig(&in)
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-		return
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+    tid, ok := middleware.TenantIDFromContext(r.Context())
+    if !ok {
+        http.Error(w, "unauthorized", http.StatusUnauthorized)
+        return
+    }
+    switch r.Method {
+    case http.MethodGet:
+        cfg, err := rt.aiCfgSvc.Get(tid)
+        if err != nil {
+            rt.writeServiceError(w, err)
+            return
+        }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(cfg)
+        return
+    case http.MethodPut:
+        var in services.TenantAIConfig
+        if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+        in.TenantID = tid
+        if err := rt.aiCfgSvc.Update(&in); err != nil {
+            rt.writeServiceError(w, err)
+            return
+        }
+        w.Header().Set("Content-Type", "application/json")
+        _ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+        return
+    default:
+        http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
 }
 
 // POST /api/admin/ai/translate/preview

@@ -3,7 +3,7 @@ package api
 import "github.com/soaringjerry/Synap/internal/services"
 
 type participantStoreAdapter struct {
-	store Store
+    store Store
 }
 
 func newParticipantStoreAdapter(store Store) services.ParticipantStore {
@@ -16,6 +16,14 @@ func (a *participantStoreAdapter) GetParticipant(id string) (*services.Participa
 		return nil, nil
 	}
 	return &services.Participant{ID: p.ID, Email: p.Email, ConsentID: p.ConsentID, SelfToken: p.SelfToken}, nil
+}
+
+func (a *participantStoreAdapter) GetParticipantByEmail(email string) (*services.Participant, error) {
+    p := a.store.GetParticipantByEmail(email)
+    if p == nil {
+        return nil, nil
+    }
+    return &services.Participant{ID: p.ID, Email: p.Email, ConsentID: p.ConsentID, SelfToken: p.SelfToken}, nil
 }
 
 func (a *participantStoreAdapter) ListResponsesByParticipant(id string) ([]*services.Response, error) {

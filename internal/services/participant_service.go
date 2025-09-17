@@ -3,12 +3,13 @@ package services
 import "time"
 
 type ParticipantStore interface {
-	GetParticipant(id string) (*Participant, error)
-	ListResponsesByParticipant(id string) ([]*Response, error)
-	DeleteParticipantByID(id string, hard bool) (bool, error)
-	GetE2EEResponse(id string) (*E2EEResponse, error)
-	DeleteE2EEResponse(id string) (bool, error)
-	AddAudit(entry AuditEntry)
+    GetParticipant(id string) (*Participant, error)
+    GetParticipantByEmail(email string) (*Participant, error)
+    ListResponsesByParticipant(id string) ([]*Response, error)
+    DeleteParticipantByID(id string, hard bool) (bool, error)
+    GetE2EEResponse(id string) (*E2EEResponse, error)
+    DeleteE2EEResponse(id string) (bool, error)
+    AddAudit(entry AuditEntry)
 }
 
 type E2EEResponse struct {
@@ -75,6 +76,48 @@ func (s *ParticipantDataService) DeleteParticipant(pid, token string, hard bool)
 	}
 	s.store.AddAudit(AuditEntry{Time: time.Now(), Actor: "participant", Action: map[bool]string{true: "self_delete_hard", false: "self_delete_soft"}[hard], Target: pid})
 	return nil
+}
+
+// Admin operations (by email)
+func (s *ParticipantDataService) AdminExportByEmail(email, actor string) (*ParticipantExport, error) {
+    if email == "" {
+        return nil, NewInvalidError("email required")
+    }
+    p, err := s.store.GetParticipantByEmail(email)
+    if err != nil {
+        return nil, err
+    }
+    if p == nil {
+        return nil, NewNotFoundError("not found")
+    }
+    rs, err := s.store.ListResponsesByParticipant(p.ID)
+    if err != nil {
+        return nil, err
+    }
+    s.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "export_participant", Target: email})
+    return &ParticipantExport{Participant: map[string]any{"id": p.ID, "email": p.Email}, Responses: rs}, nil
+}
+
+func (s *ParticipantDataService) AdminDeleteByEmail(email string, hard bool, actor string) error {
+    if email == "" {
+        return NewInvalidError("email required")
+    }
+    p, err := s.store.GetParticipantByEmail(email)
+    if err != nil {
+        return err
+    }
+    if p == nil {
+        return NewNotFoundError("not found")
+    }
+    ok, err := s.store.DeleteParticipantByID(p.ID, hard)
+    if err != nil {
+        return err
+    }
+    if !ok {
+        return NewNotFoundError("not found")
+    }
+    s.store.AddAudit(AuditEntry{Time: time.Now(), Actor: actor, Action: "delete_participant", Target: email, Note: map[bool]string{true: "hard", false: "soft"}[hard]})
+    return nil
 }
 
 func (s *ParticipantDataService) ExportE2EE(responseID, token string) (*E2EEResponse, error) {

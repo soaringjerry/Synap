@@ -105,7 +105,7 @@ const createEmptySettings = (): ScaleEditorSettingsState => ({
 
 const createEmptyConsent = (): ScaleEditorConsentState => ({
   version: 'v1',
-  signatureRequired: true,
+  signatureRequired: false,
   options: [],
   textEn: '',
   textZh: '',

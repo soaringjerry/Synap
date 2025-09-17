@@ -786,8 +786,10 @@ export function Survey() {
             }} disabled={page>=pages}>{t('survey.next')||'Next'}</button>
           </>
         )}
-        <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || (collectEmail==='required' && !email.trim()) || (turnstileEnabled && !!turnstileSitekey && !turnstileToken) || (pages>1 && page<pages)} onClick={async()=>{
+        <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || (pages>1 && page<pages)} onClick={async()=>{
           if (!validateAllRequired()) return
+          if (collectEmail==='required' && !email.trim()) { toast.error(t('survey.email_required')||'Email required'); return }
+          if (turnstileEnabled && !!turnstileSitekey && !turnstileToken) { toast.error(t('survey.security_check_hint')||'Please complete verification'); return }
           try {
             if (e2ee) {
               const { keys } = await listProjectKeysPublic(scaleId)
