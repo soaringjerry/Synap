@@ -37,3 +37,11 @@ Earlier versions of Synap stored data as encrypted JSON snapshots. To migrate:
 3. The server copies data into SQLite on boot and logs the migration. After this run you can remove `SYNAP_DB_PATH`/`SYNAP_ENC_KEY`; the SQLite file becomes the source of truth.
 
 For details on how services consume the persistence layer, see `docs/architecture.md`. For local workflows, see `docs/development.md`.
+
+## CSV Exports and E2EE
+
+- Admin CSV 导出（long/wide/score）仅适用于非 E2EE 项目：当量表开启 E2EE 时，`ExportService` 会拒绝导出（返回错误）。
+- 宽表（wide）导出的列名统一为英文题干；若题干重复，会自动追加 `(2)`, `(3)` 等以保证唯一列名。知情同意列名默认使用英文标签（`consent_header=label_en`）。
+- E2EE 项目的导出通过浏览器内解密完成，不涉及服务端明文：
+  - 管理端：在编辑器的“分享与结果”页使用“导出面板”，导入本地私钥并在浏览器生成 JSON/CSV（英文表头）。
+  - 参与者自服务：提交之后，在同一会话中可下载明文 JSON；刷新或换设备后该能力不可用（不会向服务器请求明文）。

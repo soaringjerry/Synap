@@ -71,9 +71,14 @@ Future (planned):
 - Disabling E2EE triggers a red double confirmation and an audit record (`e2ee_disable`).
 - Participant notice: the survey shows a banner that answers are encrypted in the browser and only visible to survey administrators holding the decryption keys — even the platform cannot read them.
 - Export behavior:
-  - When E2EE is ON: server produces only encrypted bundle; plaintext export happens locally in the browser (JSONL/CSV long|wide) with readable EN/ZH question texts
-  - When E2EE is OFF: server CSV exports are available (`/api/export?format=long|wide|score`), UTF‑8 with BOM. Use `consent_header=label_en|label_zh` to export consent columns as human‑readable labels.
+  - When E2EE is ON: server produces only encrypted bundle; plaintext export happens locally in the browser (JSONL/CSV long|wide). CSV 列名统一为英文题干（重复题干会追加 `(2)`, `(3)`），知情同意列名使用英文标签。
+  - When E2EE is OFF: server CSV exports are available (`/api/export?format=long|wide|score`), UTF‑8 with BOM. Consent columns default to English labels (router sets `consent_header=label_en` when omitted).
 - Self‑management: after submit, a unified management link `/self?...` is shown; participants can open it anytime to export/delete their submission.
+
+## Participant self‑service (E2EE)
+
+- 提交成功后，前端会把“本次提交的明文答案 + 题干 + 元数据”暂存到 `sessionStorage`（键名包含 `response_id` 与 `token`）。
+- 自助页仅在“本次浏览器会话中”提供明文 JSON 下载；刷新或更换设备后，该能力不可用，避免向服务器请求明文。
 - Consent receipts: participants can download a PDF (browser print) as human‑readable copy. The print view opens via a blob URL for better stability; if blocked, an HTML fallback is downloaded.
 
 Planned UX:

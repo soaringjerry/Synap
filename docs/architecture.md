@@ -24,9 +24,21 @@ flowchart LR
 - Injects context (tenant, locale, auth) via middleware before calling services.
 
 ### Services (`internal/services/`)
-- Encapsulate domain rules: authentication, scales, items, responses, exports, analytics, translation, consent, E2EE, etc.
+- Encapsulate domain rules: authentication, scales, items, responses, exports, analytics, translation, consent, E2EE, participant data, AI config, etc.
 - Each service depends on a narrow **store interface** that expresses only the persistence operations it needs (e.g., `ScaleStore`, `BulkResponseStore`).
 - Services are pure Go and therefore unit-test friendly.
+
+Key services and responsibilities:
+- `ResponseService` – handles plaintext bulk responses (`/api/responses/bulk`) including Turnstile verification hook.
+- `ScaleService` – CRUD, ordering and scoped metadata for scales and items.
+- `AuthService` – register/login, password hashing and JWT signing.
+- `ExportService` – CSV (long/wide/score) for non‑E2EE projects. Wide CSV headers are normalised to English stems; consent columns default to English labels. Admin CSV exports are rejected for E2EE projects.
+- `ParticipantDataService` – participant self‑export/delete and admin export/delete via email (router delegates; no direct store access in router).
+- `TranslationService` – AI translation preview (domain orchestration; HTTP client injected).
+- `E2EEService` – encrypted intake, export bundle creation/download, project key management, rewrap orchestration.
+- `AnalyticsService` – summary and Cronbach’s alpha.
+- `ConsentService` – signing and evidence hashing.
+- `AIConfigService` – tenant AI provider config get/update.
 
 ### Adapters (`internal/api/*_adapter.go`)
 - Bridge the service store interfaces to concrete persistence implementations.
@@ -53,7 +65,9 @@ This pattern repeats for scales, items, responses, exports, analytics, etc., ens
 ## Frontend Architecture
 
 - Feature folders organise complex pages. The Scale Editor uses `ScaleEditorContext` (a reducer-provided state store) with child views (`ItemsView`, `SettingsView`, `ShareView`).
+- SettingsView 去除了本地 useState，所有输入都通过 reducer 管理，避免“失焦”与不一致状态。
 - Shared UI spans (e.g., `DangerZone`, `ExportPanel`) consume context hooks instead of lifting state to individual components, improving testability and reuse.
+- E2EE 导出面板在浏览器内解密并生成 CSV（英文表头），私钥存储按 `scaleId` 命名空间隔离（`synap_pmk_<scaleId>`）。
 - Vitest + React Testing Library cover reducers and components.
 
 ## Deployment Notes
