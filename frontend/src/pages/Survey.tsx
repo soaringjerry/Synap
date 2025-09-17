@@ -803,13 +803,14 @@ export function Survey() {
           </>
         )}
         <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || submitting} onClick={async()=>{
-          if (isSubmitLocked()) { toast.error(t('submit_success')||'Submitted successfully'); return }
           if (submitting) return
+          if (isSubmitLocked()) { toast.info(t('working')||'Working…'); return }
           setSubmitting(true)
+          // Validate before acquiring submit lock
+          if (!validateAllRequired()) { setSubmitting(false); return }
+          if (collectEmail==='required' && !email.trim()) { toast.error(t('survey.email_required')||'Email required'); setSubmitting(false); return }
+          if (turnstileEnabled && !!turnstileSitekey && !turnstileToken) { toast.error(t('survey.security_check_hint')||'Please complete verification'); setSubmitting(false); return }
           setSubmitLock()
-          if (!validateAllRequired()) return
-          if (collectEmail==='required' && !email.trim()) { toast.error(t('survey.email_required')||'Email required'); return }
-          if (turnstileEnabled && !!turnstileSitekey && !turnstileToken) { toast.error(t('survey.security_check_hint')||'Please complete verification'); return }
           try {
             if (e2ee) {
               const { keys } = await listProjectKeysPublic(scaleId)
