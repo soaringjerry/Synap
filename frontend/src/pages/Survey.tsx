@@ -40,6 +40,7 @@ export function Survey() {
   const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({})
   const [email, setEmail] = useState('')
   const [msg, setMsg] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [selfManage, setSelfManage] = useState<{exportUrl?: string; deleteUrl?: string; pid?: string; token?: string; rid?: string} | null>(null)
   const [loading, setLoading] = useState(false)
   const [consentEvidence, setConsentEvidence] = useState<any|null>(null)
@@ -104,6 +105,21 @@ export function Survey() {
     toast.error(t('survey.required_warning') || 'Please complete all required items')
     return false
   }, [answers, items, itemsPerPage, page, setPage, t, toast])
+
+  // Simple in-session duplicate submit guard
+  const submitLockKey = React.useMemo(() => `synap_submit_lock_${scaleId}`, [scaleId])
+  const isSubmitLocked = () => {
+    try {
+      const v = sessionStorage.getItem(submitLockKey)
+      if (!v) return false
+      const ts = Number(v)
+      if (Number.isNaN(ts)) return false
+      // Consider locked if within 15s window
+      return Date.now() - ts < 15_000
+    } catch { return false }
+  }
+  const setSubmitLock = () => { try { sessionStorage.setItem(submitLockKey, String(Date.now())) } catch {} }
+  const clearSubmitLock = () => { try { sessionStorage.removeItem(submitLockKey) } catch {} }
 
   // Lazy-load Turnstile JS
   function ensureTurnstile(): Promise<void> {
@@ -786,7 +802,11 @@ export function Survey() {
             }} disabled={page>=pages}>{t('survey.next')||'Next'}</button>
           </>
         )}
-        <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length} onClick={async()=>{
+        <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || submitting} onClick={async()=>{
+          if (isSubmitLocked()) { toast.error(t('submit_success')||'Submitted successfully'); return }
+          if (submitting) return
+          setSubmitting(true)
+          setSubmitLock()
           if (!validateAllRequired()) return
           if (collectEmail==='required' && !email.trim()) { toast.error(t('survey.email_required')||'Email required'); return }
           if (turnstileEnabled && !!turnstileSitekey && !turnstileToken) { toast.error(t('survey.security_check_hint')||'Please complete verification'); return }
@@ -847,7 +867,8 @@ export function Survey() {
               return
             }
             setAnswers({})
-          } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
+          } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)); clearSubmitLock() }
+          finally { setSubmitting(false) }
         }}>{t('submit')||'Submit'}</button>
         {scaleId.toUpperCase()==='SAMPLE' && (
           <button className="btn btn-ghost" onClick={loadOrSeed}>{t('survey.reload')}</button>
