@@ -61,6 +61,7 @@ export function AdminScale() {
   const [pkPass, setPkPass] = useState('')
   const [decMsg, setDecMsg] = useState('')
   const toast = useToast()
+  const storageKey = React.useMemo(() => (id ? `synap_pmk_${id}` : 'synap_pmk'), [id])
   // Debounced autosave for consent advanced edits
   const saveDebounce = React.useRef<number | undefined>(undefined)
   const autosave = (nextOpts?: typeof consentOptions, nextSig?: boolean) => {
@@ -185,7 +186,7 @@ export function AdminScale() {
   const fileInputRef = React.useRef<HTMLInputElement|null>(null)
 
   async function unlockLocalPriv(): Promise<Uint8Array> {
-    const blobStr = localStorage.getItem('synap_pmk')
+    const blobStr = localStorage.getItem(storageKey) || localStorage.getItem('synap_pmk')
     if (!blobStr) throw new Error('No local private key found. Go to Keys page to generate.')
     const blob = JSON.parse(blobStr)
     if (!pkPass) throw new Error('Enter passphrase to unlock private key')
@@ -687,7 +688,8 @@ export function AdminScale() {
                         const text = await f.text()
                         const obj = JSON.parse(text)
                         if (!obj || !obj.enc_priv || !obj.iv || !obj.salt || !obj.pub) throw new Error('Invalid key file')
-                        localStorage.setItem('synap_pmk', JSON.stringify(obj))
+                        localStorage.setItem(storageKey, JSON.stringify(obj))
+                        if (storageKey !== 'synap_pmk') localStorage.removeItem('synap_pmk')
                         setDecMsg(t('e2ee.import_ok')||'Key imported and stored locally. Not uploaded.')
                         e.currentTarget.value = ''
                       } catch(err:any) {

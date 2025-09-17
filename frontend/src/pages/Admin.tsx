@@ -19,6 +19,8 @@ export function Admin() {
   const [pub, setPub] = useState('')
   const [pass, setPass] = useState('')
   const [warn, setWarn] = useState('')
+  const storageKeyFor = (scaleId: string) => (scaleId ? `synap_pmk_${scaleId}` : 'synap_pmk')
+  const pendingKey = 'synap_pmk_pending'
 
   function toAB(x: Uint8Array | ArrayBuffer) { return x instanceof Uint8Array ? x.slice(0).buffer : (x as ArrayBuffer).slice(0) }
   async function deriveKey(pass: string, salt: Uint8Array) {
@@ -43,7 +45,7 @@ export function Admin() {
     setMsg('')
     try {
       // Pre-validate and prepare key material when E2EE is ON
-      let prepared: null | { algorithm: 'x25519+xchacha20'|'rsa+aesgcm'; public_key: string; fingerprint: string; download?: Blob } = null
+      let prepared: null | { algorithm: 'x25519+xchacha20'|'rsa+aesgcm'; public_key: string; fingerprint: string; download?: Blob; privateBlob?: any } = null
       if (e2ee) {
         let algorithm: 'x25519+xchacha20'|'rsa+aesgcm' = 'x25519+xchacha20'
         let public_key = pub.trim()
@@ -59,9 +61,9 @@ export function Admin() {
           const pubB64 = b64(kp.publicKey)
           fingerprint = await sha256b64(kp.publicKey)
           const blob = { v:1, alg:'x25519', enc_priv: b64(enc), iv: b64(iv), salt: b64(salt), pub: pubB64, fp: fingerprint }
-          localStorage.setItem('synap_pmk', JSON.stringify(blob))
+          localStorage.setItem(pendingKey, JSON.stringify(blob))
           public_key = pubB64
-          prepared = { algorithm, public_key, fingerprint, download: new Blob([JSON.stringify(blob, null, 2)], { type: 'application/json' }) }
+          prepared = { algorithm, public_key, fingerprint, download: new Blob([JSON.stringify(blob, null, 2)], { type: 'application/json' }), privateBlob: blob }
         } else {
           if (!public_key) throw new Error('Paste a public key')
           if (public_key.includes('BEGIN PUBLIC KEY')) algorithm = 'rsa+aesgcm'
@@ -91,6 +93,11 @@ export function Admin() {
       if (e2ee && prepared) {
         try {
           await adminAddProjectKey(created.id, { alg: prepared.algorithm, kdf: 'hkdf-sha256', public_key: prepared.public_key, fingerprint: prepared.fingerprint })
+          if (prepared.privateBlob) {
+            localStorage.setItem(storageKeyFor(created.id), JSON.stringify(prepared.privateBlob))
+            localStorage.removeItem(pendingKey)
+            localStorage.removeItem('synap_pmk')
+          }
           if (prepared.download) {
             const a = document.createElement('a'); a.href = URL.createObjectURL(prepared.download); a.download = `synap_pmk_${created.id}.json`; a.click(); URL.revokeObjectURL(a.href)
             setWarn('Private key encrypted and stored locally. Download and keep it safe — losing it means permanent data loss.')

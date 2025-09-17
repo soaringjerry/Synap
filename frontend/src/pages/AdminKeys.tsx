@@ -24,6 +24,7 @@ export function AdminKeys() {
   const [scales, setScales] = useState<any[]>([])
   const [sel, setSel] = useState('')
   const fileRef = React.useRef<HTMLInputElement|null>(null)
+  const storageKeyFor = (scaleId: string) => (scaleId ? `synap_pmk_${scaleId}` : 'synap_pmk')
 
   useEffect(()=>{ (async()=>{ try { const res = await adminListScales(); setScales(res.scales||[]); if (res.scales?.length) setSel(res.scales[0].id) } catch{} })() },[])
 
@@ -39,7 +40,9 @@ export function AdminKeys() {
       const pubB64 = b64(kp.publicKey)
       const fingerprint = await sha256b64(kp.publicKey)
       const blob = { v:1, alg:'x25519', enc_priv: b64(enc), iv: b64(iv), salt: b64(salt), pub: pubB64, fp: fingerprint }
-      localStorage.setItem('synap_pmk', JSON.stringify(blob))
+      const targetKey = storageKeyFor(sel)
+      localStorage.setItem(targetKey, JSON.stringify(blob))
+      if (targetKey !== 'synap_pmk') localStorage.removeItem('synap_pmk')
       setPub(pubB64); setFp(fingerprint); setMsg('Key generated and stored locally (encrypted). Keep your passphrase safe!')
       toast.success('Key generated')
     } catch(e:any) { setMsg(e.message||String(e)) }
@@ -98,7 +101,9 @@ export function AdminKeys() {
                 const text = await f.text()
                 const obj = JSON.parse(text)
                 if (!obj || !obj.enc_priv || !obj.iv || !obj.salt || !obj.pub) throw new Error('Invalid key file')
-                localStorage.setItem('synap_pmk', JSON.stringify(obj))
+                const targetKey = storageKeyFor(sel)
+                localStorage.setItem(targetKey, JSON.stringify(obj))
+                if (targetKey !== 'synap_pmk') localStorage.removeItem('synap_pmk')
                 setMsg(t('e2ee.import_ok')||'Key imported and stored locally. Not uploaded.')
                 toast.success(t('e2ee.import_ok')||'Imported')
                 e.currentTarget.value = ''

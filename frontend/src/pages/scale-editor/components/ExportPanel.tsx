@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { adminCreateE2EEExport } from '../../../api/client'
 import { decryptSingleWithX25519 } from '../../../crypto/e2ee'
@@ -34,12 +34,20 @@ export const ExportPanel: React.FC = () => {
   const { scale, items } = useScaleEditorState()
   const [passphrase, setPassphrase] = useState('')
   const [status, setStatus] = useState('')
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   if (!scale) return null
   const isE2EE = !!scale.e2ee_enabled
+  const storageKey = useMemo(() => (scaleId ? `synap_pmk_${scaleId}` : 'synap_pmk'), [scaleId])
+
+  const readStoredKey = () => localStorage.getItem(storageKey) ?? localStorage.getItem('synap_pmk')
+  const storeKey = (blob: any) => {
+    localStorage.setItem(storageKey, JSON.stringify(blob))
+    if (storageKey !== 'synap_pmk') localStorage.removeItem('synap_pmk')
+  }
 
   const unlockLocalPriv = async (): Promise<Uint8Array> => {
-    const blobStr = localStorage.getItem('synap_pmk')
+    const blobStr = readStoredKey()
     if (!blobStr) throw new Error(t('e2ee.import_required'))
     if (!passphrase) throw new Error(t('e2ee.passphrase_needed'))
     const blob = JSON.parse(blobStr)
@@ -141,6 +149,39 @@ export const ExportPanel: React.FC = () => {
               onChange={e => setPassphrase(e.target.value)}
               placeholder={t('e2ee.passphrase_placeholder') || ''}
             />
+          </div>
+          <div className="item">
+            <div className="label">{t('e2ee.import_priv_title')}</div>
+            <div className="cta-row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-ghost" type="button" onClick={() => fileInputRef.current?.click()}>
+                {t('e2ee.import_button')}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json"
+                style={{ display: 'none' }}
+                onChange={async event => {
+                  try {
+                    setStatus('')
+                    const file = event.target.files?.[0]
+                    if (!file) return
+                    const text = await file.text()
+                    const parsed = JSON.parse(text)
+                    if (!parsed || !parsed.enc_priv || !parsed.iv || !parsed.salt) {
+                      throw new Error(t('e2ee.invalid_key_file') || 'Invalid key file')
+                    }
+                    storeKey(parsed)
+                    setStatus(t('e2ee.import_ok'))
+                  } catch (err: any) {
+                    setStatus(err?.message || String(err))
+                  } finally {
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }
+                }}
+              />
+            </div>
+            <div className="muted" style={{ marginTop: 6 }}>{t('e2ee.import_priv_desc')}</div>
           </div>
           <div className="cta-row" style={{ marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
             <button
