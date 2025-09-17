@@ -57,8 +57,8 @@ func (s *ExportService) ExportCSV(params ExportParams) (*ExportResult, error) {
 		return nil, err
 	}
 
-    switch format {
-    case "long":
+	switch format {
+	case "long":
 		rows := buildLongRows(rs)
 		if err := s.appendConsentLong(&rows, rs, params.ScaleID, params.ConsentHeader); err != nil {
 			return nil, err
@@ -68,14 +68,14 @@ func (s *ExportService) ExportCSV(params ExportParams) (*ExportResult, error) {
 			return nil, err
 		}
 		return &ExportResult{Filename: "long.csv", ContentType: "text/csv; charset=utf-8", Data: b}, nil
-    case "wide":
-        mp := buildWideMap(rs)
-        // Rename item columns to English stems (fallback to item id) for analysis-friendly headers
-        applyEnglishItemHeaders(mp, items)
-        if err := s.mergeConsentWide(mp, rs, params.ScaleID, params.ConsentHeader); err != nil {
-            return nil, err
-        }
-        b, err := ExportWideCSV(mp)
+	case "wide":
+		mp := buildWideMap(rs)
+		// Rename item columns to English stems (fallback to item id) for analysis-friendly headers
+		applyEnglishItemHeaders(mp, items)
+		if err := s.mergeConsentWide(mp, rs, params.ScaleID, params.ConsentHeader); err != nil {
+			return nil, err
+		}
+		b, err := ExportWideCSV(mp)
 		if err != nil {
 			return nil, err
 		}
@@ -95,47 +95,47 @@ func (s *ExportService) ExportCSV(params ExportParams) (*ExportResult, error) {
 // applyEnglishItemHeaders renames map keys (item IDs) to English stems consistently across participants.
 // If multiple items share the same English stem, suffix " (2)", "(3)" etc. to keep headers unique.
 func applyEnglishItemHeaders(mp map[string]map[string]int, items []*Item) {
-    baseNames := make(map[string]string) // itemID -> baseName
-    counts := make(map[string]int)       // baseName -> count
-    for _, it := range items {
-        base := it.ID
-        if it.StemI18n != nil && it.StemI18n["en"] != "" {
-            base = it.StemI18n["en"]
-        }
-        baseNames[it.ID] = base
-        counts[base]++
-    }
-    // Build final unique names mapping
-    unique := make(map[string]string) // itemID -> unique name
-    // Track next index per base for deterministic suffixing
-    nextIdx := make(map[string]int)
-    for _, it := range items {
-        base := baseNames[it.ID]
-        if counts[base] <= 1 {
-            unique[it.ID] = base
-        } else {
-            nextIdx[base]++
-            idx := nextIdx[base]
-            if idx == 1 {
-                // first occurrence keeps base
-                unique[it.ID] = base
-            } else {
-                unique[it.ID] = fmt.Sprintf("%s (%d)", base, idx)
-            }
-        }
-    }
-    // Apply rename per participant map
-    for pid, row := range mp {
-        renamed := make(map[string]int, len(row))
-        for key, val := range row {
-            if newk, ok := unique[key]; ok {
-                renamed[newk] = val
-            } else {
-                renamed[key] = val
-            }
-        }
-        mp[pid] = renamed
-    }
+	baseNames := make(map[string]string) // itemID -> baseName
+	counts := make(map[string]int)       // baseName -> count
+	for _, it := range items {
+		base := it.ID
+		if it.StemI18n != nil && it.StemI18n["en"] != "" {
+			base = it.StemI18n["en"]
+		}
+		baseNames[it.ID] = base
+		counts[base]++
+	}
+	// Build final unique names mapping
+	unique := make(map[string]string) // itemID -> unique name
+	// Track next index per base for deterministic suffixing
+	nextIdx := make(map[string]int)
+	for _, it := range items {
+		base := baseNames[it.ID]
+		if counts[base] <= 1 {
+			unique[it.ID] = base
+		} else {
+			nextIdx[base]++
+			idx := nextIdx[base]
+			if idx == 1 {
+				// first occurrence keeps base
+				unique[it.ID] = base
+			} else {
+				unique[it.ID] = fmt.Sprintf("%s (%d)", base, idx)
+			}
+		}
+	}
+	// Apply rename per participant map
+	for pid, row := range mp {
+		renamed := make(map[string]int, len(row))
+		for key, val := range row {
+			if newk, ok := unique[key]; ok {
+				renamed[newk] = val
+			} else {
+				renamed[key] = val
+			}
+		}
+		mp[pid] = renamed
+	}
 }
 
 func buildLongRows(rs []*Response) []LongRow {

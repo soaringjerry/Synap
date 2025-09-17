@@ -418,11 +418,11 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	scaleID := r.URL.Query().Get("scale_id")
 	format := r.URL.Query().Get("format")
-    consentHeader := r.URL.Query().Get("consent_header")
-    if consentHeader == "" {
-        // Default to English labels for consent columns for analysis friendliness
-        consentHeader = "label_en"
-    }
+	consentHeader := r.URL.Query().Get("consent_header")
+	if consentHeader == "" {
+		// Default to English labels for consent columns for analysis friendliness
+		consentHeader = "label_en"
+	}
 	res, err := rt.exportSvc.ExportCSV(services.ExportParams{ScaleID: scaleID, Format: format, ConsentHeader: consentHeader})
 	if err != nil {
 		rt.writeServiceError(w, err)
