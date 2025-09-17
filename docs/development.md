@@ -22,15 +22,11 @@ Dev convenience:
 - `SYNAP_DEV_FRONTEND_URL` lets backend proxy `/` to Vite dev server
 - Use GHCR `synap-dev` image to run both in one container (see README)
 
-### SQLite & legacy snapshot migration
+### SQLite & migrations
 
 - Primary storage lives at `SYNAP_SQLITE_PATH` (defaults to `./data/synap.sqlite`). Delete the file to reset local data.
-- If `SYNAP_DB_PATH` points to an encrypted snapshot, the next server start will migrate it into SQLite and continue on the new database.
-- Migrations are embedded in the binary; override `SYNAP_MIGRATIONS_DIR` only when testing alternate migration sets.
-- Migration verification tips (optional — requires the `sqlite3` CLI or any SQLite viewer):
-  1. Create sample data with the legacy build (or an older commit) using only `SYNAP_DB_PATH` + `SYNAP_ENC_KEY`.
-  2. Switch to the current build, remove any `.sqlite` file, keep the snapshot, and start the server with both `SYNAP_SQLITE_PATH` and `SYNAP_DB_PATH` set. Watch logs for “First run detected…” and inspect the new DB (`sqlite3 $SYNAP_SQLITE_PATH 'SELECT COUNT(*) FROM scales;'`).
-  3. Restart without `SYNAP_DB_PATH` to ensure the idempotent path works (no duplicate migration).
+- SQL migrations in `migrations/` run automatically on startup. Override `SYNAP_MIGRATIONS_DIR` only when testing custom migration sets.
+- Legacy encrypted snapshots can be imported once by providing `SYNAP_DB_PATH` + `SYNAP_ENC_KEY`; after the migration the SQLite file becomes authoritative.
 
 ## Lint & Test
 
@@ -46,6 +42,18 @@ cd frontend && npm run typecheck && npm run lint
 - Views (`ItemsView`, `SettingsView`, `ShareView`) consume the shared hooks; keep their local state minimal and domain-specific.
 - Shared presets/utilities (e.g. Likert defaults) live beside the feature in `constants.ts` to avoid leaking business rules into global helpers.
 - Run `npm run typecheck` and `npm run build` before committing frontend refactors to catch regressions early.
+
+## Service layer guidelines
+
+- **Services** (`internal/services/`) own business rules. They should accept simple structs, return pure Go results, and depend only on store interfaces. Avoid importing `net/http` or other transport-specific packages inside services.
+- **Store interfaces** live next to the service and describe the persistence operations the service requires (e.g., `ScaleStore`, `BulkResponseStore`). These interfaces keep the service decoupled from SQLite and simplify testing with fakes.
+- **Adapters** in `internal/api/` implement the store interfaces by delegating to the concrete repositories in `internal/db/sqlite_store.go` (which are backed by `sqlc`-generated queries).
+- When adding a new feature:
+  1. Model the domain behaviour in a new or existing service. Add/extend the store interface as needed.
+  2. Update the SQLite store to implement the interface (or create a dedicated repository function).
+  3. Expose the behaviour via the API router by validating the HTTP request, calling the service, and mapping service errors to HTTP responses.
+  4. Add unit tests at the service level and, when appropriate, integration tests under `tests/integration/`.
+- Keep complex orchestration in services; routers should remain thin controllers that translate HTTP ↔ domain.
 
 ## Commits & PRs
 - Conventional Commits; small, focused PRs with screenshots for UI

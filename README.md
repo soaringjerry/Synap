@@ -52,7 +52,7 @@ Advanced/Automation: see Quick Start (API) in `docs/quick-start.md`.
 
 ## Tech Stack
 
-* **Backend:** Go
+* **Backend:** Go (net/http) with a layered service architecture and SQLite persistence (`modernc.org/sqlite` driver)
 * **Frontend:** TypeScript + React (Vite)
 * **API Contract:** OpenAPI (auto-generated SDKs)
 
@@ -75,22 +75,25 @@ cd Synap
 
 ```bash
 # Example: run the API server (adjust path if your entrypoint differs)
-# No CGO required — we ship with the pure Go driver `modernc.org/sqlite`.
+# SQLite file is created automatically; CGO is not required.
+SYNAP_SQLITE_PATH=./data/synap.sqlite \
+SYNAP_ADDR=:8080 \
 go run ./cmd/server
 ```
 
 Environment variables (examples):
 
 ```bash
-export SYNAP_SQLITE_PATH=./data/synap.sqlite   # primary database (auto-migrates if missing)
-export SYNAP_DB_PATH=./data/synap.db          # optional: legacy encrypted snapshot for one-time migration
-export SYNAP_ENC_KEY=$(openssl rand -base64 32) # required only when reading legacy snapshot
-export SYNAP_ADDR=:8080
-# Optional: point to an external migrations directory; otherwise embedded migrations are used
-# export SYNAP_MIGRATIONS_DIR=/app/migrations
+export SYNAP_SQLITE_PATH=./data/synap.sqlite   # primary SQLite database (auto-created)
+export SYNAP_ADDR=:8080                        # listen address
+export SYNAP_MIGRATIONS_DIR=./migrations       # optional override (defaults to embedded SQL)
+export SYNAP_DEV_FRONTEND_URL=http://127.0.0.1:5173  # optional: proxy Vite dev server through the API
+# Legacy migration (optional, one-time):
+# export SYNAP_DB_PATH=./data/synap.db
+# export SYNAP_ENC_KEY=$(openssl rand -base64 32)
 ```
 
-On first launch, Synap checks `SYNAP_SQLITE_PATH`. If the file is absent and a legacy snapshot (`SYNAP_DB_PATH`) is available, the server clones all data into SQLite and continues using the new store.
+On first launch Synap ensures the SQLite file exists and applies all migrations. If a legacy encrypted snapshot is supplied via `SYNAP_DB_PATH`/`SYNAP_ENC_KEY`, the server copies data into SQLite once and continues operating on SQLite thereafter.
 
 ### Frontend (TypeScript)
 
@@ -100,7 +103,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:5173](http://localhost:5173)
 
 Admin quick path:
 - Create Scale → Basics + End‑to‑end Encryption (generate or upload a public key; locked after creation) + Consent (version, interactive confirmations, optional signature). Likert anchors are configured per item (add/edit) with presets (Agree 5/7, Frequency 5, Bipolar 7, Monopolar 5) or custom labels, and a “show numbers with labels” toggle.
@@ -109,7 +112,7 @@ Admin quick path:
 
 Security & Privacy snapshot:
 - End‑to‑end encryption (E2EE) — content encrypted in browser; server stores only ciphertext.
-- Encrypted at rest — snapshots use AES‑GCM.
+- Storage — SQLite database on disk; pair with volume/disk encryption or host-level secrets for production deployments.
 - Consent evidence — hashed receipt for participants (printable PDF via browser print).
 - Anti‑abuse — Cloudflare CDN + optional Turnstile; signals used only for security.
 
@@ -167,17 +170,18 @@ More options in `docs/deploy.md`.
 
 ## Configuration
 
-* `SYNAP_DB_PATH` — Encrypted snapshot file path (default `./data/synap.db`)
-* `SYNAP_ENC_KEY` — 32‑byte encryption key (Base64 or raw; required for persistence)
-* `SYNAP_ADDR` — server listen address (default `:8080`)
-* `SYNAP_REGION_MODE` — privacy mode: `auto` (geo-aware) or `pdpa`/`gdpr`/`ccpa`/`pipl`
-* `SYNAP_STATIC_DIR` — when set, backend serves static files from this directory (used by fullstack image)
-* `SYNAP_TURNSTILE_SITEKEY` — Cloudflare Turnstile sitekey (public). When set, public scale metadata exposes it to render the widget.
-* `SYNAP_TURNSTILE_SECRET` — Cloudflare Turnstile secret key (server verification). When a scale has Turnstile enabled (opt‑in per scale), submissions must include a valid token.
+* `SYNAP_SQLITE_PATH` — Primary SQLite database file (default `./data/synap.sqlite`)
+* `SYNAP_MIGRATIONS_DIR` — Optional directory from which to load SQL migrations (otherwise embedded migrations are used)
+* `SYNAP_ADDR` — Server listen address (default `:8080`)
+* `SYNAP_REGION_MODE` — Privacy mode: `auto` (geo-aware) or `pdpa` / `gdpr` / `ccpa` / `pipl`
+* `SYNAP_STATIC_DIR` — Serve pre-built frontend assets from this directory (used by the fullstack image)
+* `SYNAP_DEV_FRONTEND_URL` — Proxy a local Vite dev server through the API process during development
+* `SYNAP_TURNSTILE_SITEKEY` / `SYNAP_TURNSTILE_SECRET` — Cloudflare Turnstile credentials (per-scale opt-in)
+* `SYNAP_DB_PATH` + `SYNAP_ENC_KEY` — Optional legacy snapshot import (one-time migration into SQLite)
 
 ## Data & Privacy
 
-- Primary storage is in Singapore. Transport is HTTPS/TLS; at‑rest encryption is required for persistence.
+- Primary storage is in Singapore. Transport is HTTPS/TLS; use disk/volume encryption or a secret manager to protect the SQLite file in production deployments.
 - We use Cloudflare CDN for performance and security. Requests may pass through edge nodes, but survey/response data resides only in our Singapore origin and is not retained at the edge. Cloudflare may temporarily process limited network metadata (e.g., IP) for routing/security; it is not used for advertising. See Privacy.
 - Raw IPs are **not stored** in content data. Only minimal technical logs may be kept for security/quality control.
 - Consent evidence is stored as a hashed record; participants receive a downloadable JSON copy.

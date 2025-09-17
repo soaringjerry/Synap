@@ -1,112 +1,39 @@
-# Persistence & Encryption (At Rest)
+# Persistence
 
-This document explains how to enable encrypted persistence for Synap and avoid data loss after restarts or upgrades while meeting privacy/compliance requirements (e.g., GDPR/PDPA).
+Synap persists all application data in a local SQLite database. The Go backend connects through the pure-Go driver (`modernc.org/sqlite`), so CGO is not required and the same binary runs across platforms.
 
-## Summary
+## Files & Environment Variables
 
-- Synap persists application data as an encrypted JSON snapshot on disk.
-- Encryption is mandatory for persistence. If an encryption key is not provided, Synap intentionally runs in memory‑only mode (no plaintext writes) to protect data.
-- If a legacy plaintext snapshot is detected and an encryption key is provided, Synap will transparently re‑save it in encrypted form on the next write.
+| Variable | Description |
+| --- | --- |
+| `SYNAP_SQLITE_PATH` | Path to the primary SQLite database file (default `./data/synap.sqlite`). A new file is created automatically if it does not exist. |
+| `SYNAP_MIGRATIONS_DIR` | Optional override for loading SQL migrations from disk. When unset, the binary uses the embedded migration assets in `migrations/`. |
+| `SYNAP_DB_PATH` + `SYNAP_ENC_KEY` | **Optional** legacy import. When provided, the server performs a one-time copy from the encrypted snapshot to SQLite and then continues using SQLite exclusively. |
 
-## Environment Variables
+## Schema Management
 
-- `SYNAP_DB_PATH` (required for persistence)
-  - Path to the on‑disk snapshot file, e.g. `/data/synap.db`.
-- `SYNAP_ENC_KEY` (required for persistence)
-  - 32‑byte key (Base64 recommended), or any string (SHA‑256 derived). Example key generation:
-    - `openssl rand -base64 32`
-- Alternatives (choose one):
-  - `SYNAP_ENC_KEY_FILE` — path to a file that contains the key (first line is read).
-  - `SYNAP_ENC_AUTOGEN_FILE` — path where Synap may auto‑generate a Base64 key on first run (writes with 0600). On subsequent runs, the same file is used to load the key. Use this only if the file is on a persistent volume.
-- `SYNAP_ADDR` (optional)
-  - Server listen address (default `:8080`).
+- SQL migrations live in `migrations/` and follow the `*.up.sql` / `*.down.sql` convention.
+- On startup `cmd/server/main.go` opens the SQLite file and calls `internal/db/RunMigrations`, ensuring all pending migrations are applied.
+- When `SYNAP_MIGRATIONS_DIR` is set, migrations are read from that directory (useful for testing alternate schemas).
 
-If `SYNAP_DB_PATH` or a usable encryption key is missing, Synap prints a warning and falls back to in‑memory storage:
+## Data Access Layer
 
-```
-persistence disabled: set SYNAP_DB_PATH and SYNAP_ENC_KEY to enable encrypted storage
-```
+- `sqlc` generates type-safe query code inside `internal/db/sqlc/` based on the SQL in `migrations/` and `internal/db/query.sql` files.
+- `internal/db/sqlite_store.go` composes the generated code into higher-level repositories (e.g., scale, items, responses) and implements the interfaces expected by the service layer.
+- Adapters in `internal/api/` map service-level store interfaces to these repositories so that business logic stays persistence-agnostic.
 
-## Docker Compose Example
+## Backups & Operations
 
-```yaml
-services:
-  synap:
-    image: ghcr.io/soaringjerry/synap:latest
-    environment:
-      - SYNAP_ADDR=:8080
-      - SYNAP_DB_PATH=/data/synap.db
-      # Choose one of the following key sources:
-      - SYNAP_ENC_KEY=${SYNAP_ENC_KEY}
-      # - SYNAP_ENC_KEY_FILE=/run/secrets/synap_enc_key
-      # - SYNAP_ENC_AUTOGEN_FILE=/data/synap.key   # persists key to volume on first run
-      - SYNAP_STATIC_DIR=/public
-    volumes:
-      - synap-data:/data
-    restart: unless-stopped
+- Back up the SQLite file at `SYNAP_SQLITE_PATH`. Consider enabling WAL mode (`PRAGMA journal_mode=WAL;`) when running in production containers to improve durability; the store enables suitable pragmas automatically.
+- Because SQLite is a single file, snapshotting the volume or copying the file during low traffic periods is often sufficient. Use the built-in `.backup` command when using the `sqlite3` CLI for online backups.
+- Always keep database backups and application migrations in sync; restoring an old database while running newer migrations can lead to missing columns.
 
-volumes:
-  synap-data:
-```
+## Legacy Snapshot Import (Optional)
 
-`.env` (example):
+Earlier versions of Synap stored data as encrypted JSON snapshots. To migrate:
 
-```
-SYNAP_ENC_KEY=$(openssl rand -base64 32)
-```
+1. Set `SYNAP_DB_PATH` to the existing snapshot and `SYNAP_ENC_KEY` to its encryption key.
+2. Start the server with a fresh `SYNAP_SQLITE_PATH` (or delete the old file).
+3. The server copies data into SQLite on boot and logs the migration. After this run you can remove `SYNAP_DB_PATH`/`SYNAP_ENC_KEY`; the SQLite file becomes the source of truth.
 
-## Kubernetes (Sketch)
-
-- Store `SYNAP_ENC_KEY` in a Secret.
-- Mount a Persistent Volume at `/data`.
-- Inject `SYNAP_DB_PATH=/data/synap.db` and `SYNAP_ENC_KEY` from Secret into the Deployment.
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata: { name: synap }
-spec:
-  template:
-    spec:
-      containers:
-      - name: synap
-        image: ghcr.io/soaringjerry/synap:latest
-        env:
-        - name: SYNAP_DB_PATH
-          value: /data/synap.db
-        - name: SYNAP_ENC_KEY
-          valueFrom:
-            secretKeyRef: { name: synap-secrets, key: enc_key }
-        volumeMounts:
-        - { name: data, mountPath: /data }
-      volumes:
-      - name: data
-        persistentVolumeClaim: { claimName: synap-pvc }
-```
-
-## Verification
-
-- On first run with both env vars set, Synap writes an encrypted file to `SYNAP_DB_PATH`.
-- The file begins with the magic header `SYNAPENC`, followed by a random nonce and ciphertext (AES‑256‑GCM).
-- To confirm encryption:
-  - `hexdump -C /data/synap.db | head` (you should not see readable JSON).
-
-## Migration from Plaintext
-
-- If an existing plaintext snapshot is detected during load and `SYNAP_ENC_KEY` is provided, Synap will re‑save the snapshot in encrypted form on the next write operation.
-- Back up before changing keys or performing migrations.
-
-## Backups
-
-- Back up the encrypted file at `SYNAP_DB_PATH` and manage `SYNAP_ENC_KEY` in a secure secret manager (K8s Secret, cloud KMS/Secrets Manager, etc.).
-- To restore, place the encrypted file back at the path and provide the same `SYNAP_ENC_KEY`.
-
-## Quick Deploy Script
-
-The repository includes `scripts/quick-deploy.sh` which generates a random encryption key (`SYNAP_ENC_KEY`) when available via `openssl` and writes it to `.env`.
-
-## Notes & Roadmap
-
-- The current persistence uses an application‑level encrypted snapshot for simplicity and portability.
-- A relational database backend (SQLite/Postgres) with transparent encryption/migrations is planned.
-- When rotating keys or switching backends, schedule a maintenance window and ensure you have verified backups.
+For details on how services consume the persistence layer, see `docs/architecture.md`. For local workflows, see `docs/development.md`.
