@@ -813,14 +813,34 @@ export function Survey() {
               setMsg(t('submit_success')||'Submitted successfully')
               toast.success(t('submit_success')||'Submitted successfully')
               const manage = `${window.location.origin}/self?response_id=${encodeURIComponent(res.response_id)}&token=${encodeURIComponent(res.self_token||'')}`
-              const ctx = { consentEvidence, stems: items.reduce((m:any,it:any)=> (m[it.id]=it.stem, m), {} as Record<string,string>), lang }
+              const stems = items.reduce((m:any,it:any)=> (m[it.id]=it.stem, m), {} as Record<string,string>)
+              const ctx = {
+                answers: JSON.parse(JSON.stringify(answers)),
+                stems,
+                lang,
+                consentEvidence,
+                scaleId,
+                submittedAt: new Date().toISOString(),
+                responseId: res.response_id,
+                participantId: (res as any)?.participant_id || null,
+              }
               storeSelfContextAndRedirect(manage, ctx)
               return
             } else {
               const arr = Object.entries(answers).map(([item_id, raw])=>({item_id, raw}))
               const res = await submitBulk(scaleId, email.trim(), arr as any, { consent_id: consentId || undefined, turnstile_token: turnstileToken || undefined })
-              const manage = `${window.location.origin}/self?pid=${encodeURIComponent((res as any).participant_id)}&token=${encodeURIComponent((res as any).self_token||'')}`
-              const ctx = { consentEvidence, stems: items.reduce((m:any,it:any)=> (m[it.id]=it.stem, m), {} as Record<string,string>), lang }
+              const participantId = (res as any).participant_id
+              const manage = `${window.location.origin}/self?pid=${encodeURIComponent(participantId)}&token=${encodeURIComponent((res as any).self_token||'')}`
+              const stems = items.reduce((m:any,it:any)=> (m[it.id]=it.stem, m), {} as Record<string,string>)
+              const ctx = {
+                answers: JSON.parse(JSON.stringify(answers)),
+                stems,
+                lang,
+                consentEvidence,
+                scaleId,
+                submittedAt: new Date().toISOString(),
+                participantId,
+              }
               storeSelfContextAndRedirect(manage, ctx)
               return
             }

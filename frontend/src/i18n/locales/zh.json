@@ -283,7 +283,8 @@
       "export": "下载（JSON）",
       "delete": "删除我的数据",
       "invalid": "参数缺失或无效。",
-      "manage_link": "打开管理页面"
+      "manage_link": "打开管理页面",
+      "e2ee_export_session_only": "仅在提交后的本次浏览器会话中，可下载明文数据。若已关闭页面，请联系研究者协助。"
     },
 
     "e2ee": {

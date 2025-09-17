@@ -1,7 +1,7 @@
 import React from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { participantSelfExport, participantSelfDelete, e2eeSelfExport, e2eeSelfDelete } from '../api/client'
+import { participantSelfExport, participantSelfDelete, e2eeSelfDelete } from '../api/client'
 import { useToast } from '../components/Toast'
 
 export function SelfManage() {
@@ -92,11 +92,26 @@ export function SelfManage() {
     setDownloading(true)
     try {
       if (e2ee) {
-        const data = await e2eeSelfExport(rid, token)
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        if (!ctx?.answers) {
+          const msgText = t('self.e2ee_export_session_only') || 'Plaintext export is only available immediately after submission in this browser session.'
+          setMsg(msgText)
+          toast.error(msgText)
+          return
+        }
+        const payload = {
+          scale_id: ctx.scaleId || undefined,
+          response_id: rid || ctx.responseId,
+          participant_id: ctx.participantId || pid || undefined,
+          submitted_at: ctx.submittedAt || undefined,
+          lang: ctx.lang || undefined,
+          answers: ctx.answers,
+          stems: ctx.stems,
+          consent: ctx.consentEvidence,
+        }
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
         const a = document.createElement('a')
         a.href = URL.createObjectURL(blob)
-        a.download = `e2ee_${rid}.json`
+        a.download = `submission_${rid || ctx.responseId || 'e2ee'}.json`
         a.click(); URL.revokeObjectURL(a.href)
       } else {
         const data = await participantSelfExport(pid, token)
@@ -130,6 +145,8 @@ export function SelfManage() {
     )
   }
 
+  const isE2EEExportAvailable = !e2ee || !!ctx?.answers
+
   return (
     <div className="card span-12">
       <h3 style={{marginTop:0}}>{t('self.title')||'Manage My Data'}</h3>
@@ -141,7 +158,7 @@ export function SelfManage() {
           </div>
         </div>
         <div className="cta-row" style={{marginTop:8}}>
-          <button className="btn" disabled={downloading} onClick={doExport}>{t('self.export')||'Download (JSON)'}</button>
+          <button className="btn" disabled={downloading || !isE2EEExportAvailable} onClick={doExport}>{t('self.export')||'Download (JSON)'}</button>
           {!e2ee && <button className="btn" onClick={downloadDataPDF}>{t('survey.download_data_pdf')||'Download my data (PDF)'}</button>}
           {ctx?.consentEvidence && <button className="btn" onClick={downloadConsentPDF}>{t('survey.download_consent_pdf')||'Download consent (PDF)'}</button>}
           <button className="btn btn-ghost" disabled={deleting} onClick={doDelete}>{t('self.delete')||'Delete my data'}</button>

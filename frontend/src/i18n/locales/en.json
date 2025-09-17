@@ -241,7 +241,8 @@
       "export": "Download (JSON)",
       "delete": "Delete my data",
       "invalid": "Invalid or missing parameters.",
-      "manage_link": "Open management page"
+      "manage_link": "Open management page",
+      "e2ee_export_session_only": "Plaintext download is only available immediately after submission in this browser session."
     },
 
     "e2ee": {
