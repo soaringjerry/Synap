@@ -150,12 +150,12 @@ func (s *ResponseService) createParticipant(req BulkResponsesRequest, scaleID st
 }
 
 func buildResponseForItem(ans BulkAnswer, item *Item, scalePoints int, submittedAt time.Time, participantID string) *Response {
-	resp := &Response{ParticipantID: participantID, ItemID: ans.ItemID, SubmittedAt: submittedAt}
-	rawNum, hadNum := parseNumericAnswer(ans)
-	itemType := item.Type
-	if itemType == "" {
-		itemType = "likert"
-	}
+    resp := &Response{ParticipantID: participantID, ItemID: ans.ItemID, SubmittedAt: submittedAt}
+    rawNum, hadNum := parseNumericAnswer(ans)
+    itemType := item.Type
+    if itemType == "" {
+        itemType = "likert"
+    }
 	switch itemType {
 	case "likert":
 		if hadNum {
@@ -175,12 +175,87 @@ func buildResponseForItem(ans BulkAnswer, item *Item, scalePoints int, submitted
 		// non-numeric types keep zero scores and capture the raw payload below
 	}
 
-	if len(ans.Raw) > 0 {
-		resp.RawJSON = string(ans.Raw)
-	} else if hadNum {
-		resp.RawJSON = strconv.Itoa(rawNum)
-	}
-	return resp
+    if len(ans.Raw) > 0 {
+        // For non-numeric types, canonicalise to EN labels where possible so server-side exports are analysis-friendly.
+        if itemType != "likert" && itemType != "rating" && itemType != "slider" && itemType != "numeric" {
+            if norm := normalizeRawToEnglish(item, ans.Raw); norm != "" {
+                resp.RawJSON = norm
+            } else {
+                resp.RawJSON = string(ans.Raw)
+            }
+        } else {
+            resp.RawJSON = string(ans.Raw)
+        }
+    } else if hadNum {
+        resp.RawJSON = strconv.Itoa(rawNum)
+    }
+    return resp
+}
+
+// normalizeRawToEnglish tries to map textual option(s) provided by the client to English labels using OptionsI18n.
+// It supports both string and []string payloads. Returns empty string if no mapping was possible.
+func normalizeRawToEnglish(item *Item, raw json.RawMessage) string {
+    if item == nil || item.OptionsI18n == nil || len(raw) == 0 {
+        return ""
+    }
+    // Build option matrix and prefer English when available
+    opts := item.OptionsI18n
+    getEnglish := func(idx int) string {
+        if enList, ok := opts["en"]; ok && idx >= 0 && idx < len(enList) {
+            return enList[idx]
+        }
+        // Fallback: return first non-empty label across languages at this index
+        for _, list := range opts {
+            if idx >= 0 && idx < len(list) && strings.TrimSpace(list[idx]) != "" {
+                return list[idx]
+            }
+        }
+        return ""
+    }
+    findIndex := func(val string) int {
+        v := strings.TrimSpace(val)
+        for _, list := range opts {
+            for i, lab := range list {
+                if strings.EqualFold(strings.TrimSpace(lab), v) {
+                    return i
+                }
+            }
+        }
+        return -1
+    }
+    // Case 1: single string value
+    var sval string
+    if err := json.Unmarshal(raw, &sval); err == nil {
+        if idx := findIndex(sval); idx >= 0 {
+            if en := getEnglish(idx); en != "" {
+                b, _ := json.Marshal(en)
+                return string(b)
+            }
+        }
+        return ""
+    }
+    // Case 2: list of strings
+    var arr []string
+    if err := json.Unmarshal(raw, &arr); err == nil {
+        out := make([]string, 0, len(arr))
+        changed := false
+        for _, v := range arr {
+            if idx := findIndex(v); idx >= 0 {
+                if en := getEnglish(idx); en != "" {
+                    out = append(out, en)
+                    changed = true
+                    continue
+                }
+            }
+            out = append(out, v)
+        }
+        if changed {
+            b, _ := json.Marshal(out)
+            return string(b)
+        }
+        return ""
+    }
+    return ""
 }
 
 func parseNumericAnswer(ans BulkAnswer) (int, bool) {
