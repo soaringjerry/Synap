@@ -30,13 +30,13 @@ func (s *stubParticipantStore) GetParticipant(id string) (*Participant, error) {
 }
 
 func (s *stubParticipantStore) GetParticipantByEmail(email string) (*Participant, error) {
-    for _, p := range s.participants {
-        if p.Email == email {
-            copy := *p
-            return &copy, nil
-        }
-    }
-    return nil, nil
+	for _, p := range s.participants {
+		if p.Email == email {
+			copy := *p
+			return &copy, nil
+		}
+	}
+	return nil, nil
 }
 
 func (s *stubParticipantStore) ListResponsesByParticipant(id string) ([]*Response, error) {
