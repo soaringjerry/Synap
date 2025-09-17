@@ -96,7 +96,8 @@ export const ExportPanel: React.FC = () => {
           nonce: entry.nonce,
           enc_dek: entry.enc_dek || entry.EncDEK || [],
         })
-        out.push(plain)
+        const created = entry.created_at || entry.createdAt || entry.CreatedAt || ''
+        out.push({ ...plain, created_at: created })
       } catch (err) {
         console.warn('Failed to decrypt entry', err)
       }
@@ -259,6 +260,7 @@ export const ExportPanel: React.FC = () => {
                   const header = [
                     'response_index',
                     'email',
+                    'submitted_at',
       ...order.map(key => enMap[key] || key),
                     ...consentHeaders,
                   ]
@@ -267,7 +269,7 @@ export const ExportPanel: React.FC = () => {
                     const answers = entry.answers || {}
                     const email = entry.email || ''
                     const consent = entry.consent?.options || entry.consent_options || {}
-                    const row = [csvEsc(idx + 1), csvEsc(email)]
+                    const row = [csvEsc(idx + 1), csvEsc(email), csvEsc((entry as any).created_at || '')]
                     order.forEach(key => {
                       const item = itemsById[key]
                       const v = (answers as any)[key]
@@ -301,6 +303,7 @@ export const ExportPanel: React.FC = () => {
                   const header = [
                     'response_index',
                     'email',
+                    'submitted_at',
                     ...order.map(key => enMap[key] || key),
                     ...consentHeaders,
                   ]
@@ -309,7 +312,7 @@ export const ExportPanel: React.FC = () => {
                     const answers = entry.answers || {}
                     const email = entry.email || ''
                     const consent = entry.consent?.options || entry.consent_options || {}
-                    const row = [csvEsc(idx + 1), csvEsc(email)]
+                    const row = [csvEsc(idx + 1), csvEsc(email), csvEsc((entry as any).created_at || '')]
                     order.forEach(key => {
                       const item = itemsById[key]
                       const v = (answers as any)[key]
