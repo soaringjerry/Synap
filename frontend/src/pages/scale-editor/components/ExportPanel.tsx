@@ -123,6 +123,52 @@ export const ExportPanel: React.FC = () => {
     return { out, enMap, zhMap, consentCols }
   }
 
+  // Map textual options to English using item.options_i18n if possible.
+  const itemsById = useMemo(() => {
+    const m: Record<string, any> = {}
+    items.forEach(it => { m[it.id] = it })
+    return m
+  }, [items])
+
+  const normToEnglish = (item: any, val: any): any => {
+    if (!item || !item.options_i18n) return val
+    const opts = item.options_i18n as Record<string, string[]>
+    const findIndex = (s: string): number => {
+      const target = String(s).trim().toLowerCase()
+      for (const list of Object.values(opts)) {
+        for (let i = 0; i < list.length; i++) {
+          if (String(list[i] ?? '').trim().toLowerCase() === target) return i
+        }
+      }
+      return -1
+    }
+    const getEn = (idx: number): string => {
+      const en = (opts.en || [])[idx]
+      if (en && String(en).trim() !== '') return en
+      // fallback: first non-empty label at index across langs
+      for (const list of Object.values(opts)) {
+        const v = (list || [])[idx]
+        if (v && String(v).trim() !== '') return v
+      }
+      return ''
+    }
+    if (Array.isArray(val)) {
+      let changed = false
+      const out = val.map(v => {
+        const idx = findIndex(v)
+        if (idx >= 0) { changed = true; return getEn(idx) }
+        return v
+      })
+      return changed ? out : val
+    }
+    if (val != null && typeof val === 'string') {
+      const idx = findIndex(val)
+      if (idx >= 0) return getEn(idx)
+      return val
+    }
+    return val
+  }
+
   const download = (name: string, data: string, type: string) => {
     const blob = new Blob([data], { type })
     const link = document.createElement('a')
@@ -207,9 +253,9 @@ export const ExportPanel: React.FC = () => {
               onClick={async () => {
                 try {
                   setStatus('')
-    const { out, enMap, consentCols } = await decryptCurrentBundle()
-    const order = items.map((it: any) => it.id)
-    const consentHeaders = consentCols.map(col => col.en || col.zh || col.key)
+                  const { out, enMap, consentCols } = await decryptCurrentBundle()
+                  const order = items.map((it: any) => it.id)
+                  const consentHeaders = consentCols.map(col => col.en || col.zh || col.key)
                   const header = [
                     'response_index',
                     'email',
@@ -222,7 +268,12 @@ export const ExportPanel: React.FC = () => {
                     const email = entry.email || ''
                     const consent = entry.consent?.options || entry.consent_options || {}
                     const row = [csvEsc(idx + 1), csvEsc(email)]
-                    order.forEach(key => row.push(csvEsc((answers as any)[key])))
+                    order.forEach(key => {
+                      const item = itemsById[key]
+                      const v = (answers as any)[key]
+                      const enVal = normToEnglish(item, v)
+                      row.push(csvEsc(enVal))
+                    })
                   consentCols.forEach((col: ConsentColumn) => {
                     row.push(csvEsc(consent[col.key] ? 1 : 0))
                   })
@@ -259,7 +310,12 @@ export const ExportPanel: React.FC = () => {
                     const email = entry.email || ''
                     const consent = entry.consent?.options || entry.consent_options || {}
                     const row = [csvEsc(idx + 1), csvEsc(email)]
-                    order.forEach(key => row.push(csvEsc((answers as any)[key])))
+                    order.forEach(key => {
+                      const item = itemsById[key]
+                      const v = (answers as any)[key]
+                      const enVal = normToEnglish(item, v)
+                      row.push(csvEsc(enVal))
+                    })
                   consentCols.forEach((col: ConsentColumn) => {
                     row.push(csvEsc(consent[col.key] ? 1 : 0))
                   })
