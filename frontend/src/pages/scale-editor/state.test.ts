@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { createInitialState, scaleEditorReducer } from './state'
+import {
+  createInitialState,
+  deriveConsentFromScale,
+  scaleEditorReducer,
+} from './state'
 
 type State = ReturnType<typeof createInitialState>
 type TestItem = { id: string; [key: string]: unknown }
@@ -116,5 +120,17 @@ describe('scaleEditorReducer', () => {
     }
     const next = scaleEditorReducer(initial, { type: 'reorderItems', order: ['c', 'a'] })
     expect(next.items).toEqual([{ id: 'c' }, { id: 'a' }, { id: 'b' }])
+  })
+
+  it('derives consent state keeping signature_required=false from backend', () => {
+    const scale = {
+      consent_config: {
+        signature_required: false,
+        options: [],
+      },
+      consent_i18n: {},
+    }
+    const consent = deriveConsentFromScale(scale)
+    expect(consent.signatureRequired).toBe(false)
   })
 })
