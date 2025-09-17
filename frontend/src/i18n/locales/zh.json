@@ -210,6 +210,11 @@
       "show_advanced": "展开高级设置",
       "hide_advanced": "收起高级设置",
       "require_signature": "需要签名",
+      "mode": {
+        "off": "关闭",
+        "optional": "可选",
+        "required": "必选"
+      },
       "simple_hint": "以上为常见确认项；如需自定义条目，请点“高级设置”。",
       "advanced": {
         "version_hint": "内容改动时提升版本号，方便后续管理重新同意。",

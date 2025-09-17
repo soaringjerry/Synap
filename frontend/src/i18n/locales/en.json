@@ -330,6 +330,11 @@
       "show_advanced": "Show Advanced",
       "hide_advanced": "Hide Advanced",
       "require_signature": "Require signature",
+      "mode": {
+        "off": "Off",
+        "optional": "Optional",
+        "required": "Required"
+      },
       "simple_hint": "These are the common confirmations. Click “Advanced” to add your own items.",
       "advanced": {
         "version_hint": "Increase version when content changes; helps manage re‑consent later.",

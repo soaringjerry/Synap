@@ -1,10 +1,54 @@
 import { ScaleEditorView } from './types'
 
+export type CollectEmailMode = 'off' | 'optional' | 'required'
+
 export type LikertDefaults = {
   en: string
   zh: string
   showNumbers: boolean
   preset: string
+}
+
+export type ConsentOptionForm = {
+  key: string
+  required: boolean
+  en?: string
+  zh?: string
+  group?: number
+}
+
+export type ScaleEditorSettingsState = {
+  nameEn: string
+  nameZh: string
+  points: string
+  randomize: boolean
+  collectEmail: CollectEmailMode
+  region: string
+  turnstile: boolean
+  itemsPerPage: string
+  likertPreset: string
+  likertLabelsEn: string
+  likertLabelsZh: string
+  likertShowNumbers: boolean
+}
+
+export type ScaleEditorConsentState = {
+  version: string
+  signatureRequired: boolean
+  options: ConsentOptionForm[]
+  textEn: string
+  textZh: string
+  advancedOpen: boolean
+}
+
+export type ScaleEditorAIState = {
+  targets: string
+  preview: any | null
+  msg: string
+  ready: boolean
+  working: boolean
+  include: Record<string, boolean>
+  applying: boolean
 }
 
 export interface ScaleEditorState {
@@ -16,6 +60,9 @@ export interface ScaleEditorState {
   message: string
   likertDefaults: LikertDefaults
   loading: boolean
+  settings: ScaleEditorSettingsState
+  consent: ScaleEditorConsentState
+  ai: ScaleEditorAIState
 }
 
 export type ScaleEditorAction =
@@ -32,21 +79,47 @@ export type ScaleEditorAction =
   | { type: 'setLikertDefaults'; defaults: LikertDefaults }
   | { type: 'setLoading'; value: boolean }
   | { type: 'reorderItems'; order: string[] }
+  | { type: 'replaceSettings'; payload: ScaleEditorSettingsState }
+  | { type: 'setSettings'; payload: Partial<ScaleEditorSettingsState> }
+  | { type: 'replaceConsent'; payload: ScaleEditorConsentState }
+  | { type: 'setConsent'; payload: Partial<Omit<ScaleEditorConsentState, 'options'>> }
+  | { type: 'setConsentOptions'; options: ConsentOptionForm[] }
+  | { type: 'setAiState'; payload: Partial<ScaleEditorAIState> }
+  | { type: 'setAiInclude'; include: Record<string, boolean> }
+  | { type: 'updateAiPreview'; updater: (prev: any | null) => any | null }
 
-export const createInitialState = (): ScaleEditorState => ({
-  scale: null,
-  items: [],
-  analytics: null,
-  view: 'editor',
-  selectedItemId: null,
-  message: '',
-  likertDefaults: {
-    en: '',
-    zh: '',
-    showNumbers: true,
-    preset: 'numeric',
-  },
-  loading: false,
+const createEmptySettings = (): ScaleEditorSettingsState => ({
+  nameEn: '',
+  nameZh: '',
+  points: '5',
+  randomize: false,
+  collectEmail: 'off',
+  region: 'auto',
+  turnstile: false,
+  itemsPerPage: '0',
+  likertPreset: 'numeric',
+  likertLabelsEn: '',
+  likertLabelsZh: '',
+  likertShowNumbers: true,
+})
+
+const createEmptyConsent = (): ScaleEditorConsentState => ({
+  version: 'v1',
+  signatureRequired: true,
+  options: [],
+  textEn: '',
+  textZh: '',
+  advancedOpen: false,
+})
+
+export const createInitialAIState = (): ScaleEditorAIState => ({
+  targets: 'zh',
+  preview: null,
+  msg: '',
+  ready: false,
+  working: false,
+  include: {},
+  applying: false,
 })
 
 export const deriveLikertDefaults = (scale: any | null): LikertDefaults => {
@@ -58,6 +131,88 @@ export const deriveLikertDefaults = (scale: any | null): LikertDefaults => {
     zh,
     showNumbers: !!scale?.likert_show_numbers,
     preset: scale?.likert_preset || 'numeric',
+  }
+}
+
+export const deriveSettingsFromScale = (
+  scale: any | null,
+): ScaleEditorSettingsState => {
+  const settings = createEmptySettings()
+  if (!scale) return settings
+
+  const likert = deriveLikertDefaults(scale)
+  const collectEmail = (scale.collect_email as CollectEmailMode) || settings.collectEmail
+
+  return {
+    ...settings,
+    nameEn: scale.name_i18n?.en || '',
+    nameZh: scale.name_i18n?.zh || '',
+    points: typeof scale.points === 'number' ? String(scale.points) : settings.points,
+    randomize: !!scale.randomize,
+    collectEmail,
+    region: scale.region || settings.region,
+    turnstile: !!scale.turnstile_enabled,
+    itemsPerPage: typeof scale.items_per_page === 'number'
+      ? String(scale.items_per_page)
+      : settings.itemsPerPage,
+    likertPreset: likert.preset || settings.likertPreset,
+    likertLabelsEn: likert.en,
+    likertLabelsZh: likert.zh,
+    likertShowNumbers: likert.showNumbers,
+  }
+}
+
+export const deriveConsentFromScale = (
+  scale: any | null,
+): ScaleEditorConsentState => {
+  const consent = createEmptyConsent()
+  if (!scale) return consent
+
+  const config = scale.consent_config || {}
+  const options = Array.isArray(config.options)
+    ? config.options.map((option: any) => {
+        let group: number | undefined
+        if (typeof option.group === 'number') {
+          group = option.group
+        } else if (typeof option.group === 'string' && option.group.trim() !== '') {
+          const parsed = Number(option.group)
+          if (!Number.isNaN(parsed)) group = parsed
+        }
+        return {
+          key: option.key || '',
+          required: !!option.required,
+          en: option.label_i18n?.en,
+          zh: option.label_i18n?.zh,
+          group,
+        }
+      })
+    : []
+
+  return {
+    ...consent,
+    version: config.version || consent.version,
+    signatureRequired: config.signature_required ?? consent.signatureRequired,
+    options,
+    textEn: scale.consent_i18n?.en || '',
+    textZh: scale.consent_i18n?.zh || '',
+    advancedOpen: false,
+  }
+}
+
+export const createInitialState = (): ScaleEditorState => {
+  const likertDefaults = deriveLikertDefaults(null)
+  return {
+    scale: null,
+    items: [],
+    analytics: null,
+    view: 'editor',
+    selectedItemId: null,
+    message: '',
+    likertDefaults,
+    loading: false,
+    settings: deriveSettingsFromScale(null),
+    consent: deriveConsentFromScale(null),
+    ai: createInitialAIState(),
   }
 }
 
@@ -74,9 +229,10 @@ export const scaleEditorReducer = (
       return { ...state, scale: action.scale }
     case 'setItems': {
       const nextItems = Array.isArray(action.items) ? [...action.items] : []
-      const nextSelected = state.selectedItemId && nextItems.some(it => it?.id === state.selectedItemId)
-        ? state.selectedItemId
-        : null
+      const nextSelected =
+        state.selectedItemId && nextItems.some(it => it?.id === state.selectedItemId)
+          ? state.selectedItemId
+          : null
       return { ...state, items: nextItems, selectedItemId: nextSelected }
     }
     case 'selectItem':
@@ -125,6 +281,22 @@ export const scaleEditorReducer = (
       })
       return { ...state, items: nextItems }
     }
+    case 'replaceSettings':
+      return { ...state, settings: { ...action.payload } }
+    case 'setSettings':
+      return { ...state, settings: { ...state.settings, ...action.payload } }
+    case 'replaceConsent':
+      return { ...state, consent: { ...action.payload } }
+    case 'setConsent':
+      return { ...state, consent: { ...state.consent, ...action.payload } }
+    case 'setConsentOptions':
+      return { ...state, consent: { ...state.consent, options: [...action.options] } }
+    case 'setAiState':
+      return { ...state, ai: { ...state.ai, ...action.payload } }
+    case 'setAiInclude':
+      return { ...state, ai: { ...state.ai, include: { ...action.include } } }
+    case 'updateAiPreview':
+      return { ...state, ai: { ...state.ai, preview: action.updater(state.ai.preview) } }
     default:
       return state
   }

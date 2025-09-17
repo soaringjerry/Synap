@@ -12,8 +12,11 @@ import {
   adminGetScaleItems,
 } from '../../api/client'
 import {
+  createInitialAIState,
   createInitialState,
+  deriveConsentFromScale,
   deriveLikertDefaults,
+  deriveSettingsFromScale,
   scaleEditorReducer,
   ScaleEditorAction,
   ScaleEditorState,
@@ -49,6 +52,15 @@ export const ScaleEditorProvider: React.FC<{
         type: 'setLikertDefaults',
         defaults: deriveLikertDefaults(scaleRes),
       })
+      dispatch({
+        type: 'replaceSettings',
+        payload: deriveSettingsFromScale(scaleRes),
+      })
+      dispatch({
+        type: 'replaceConsent',
+        payload: deriveConsentFromScale(scaleRes),
+      })
+      dispatch({ type: 'setAiState', payload: createInitialAIState() })
       dispatch({ type: 'setItems', items: itemsRes.items || [] })
       try {
         const analyticsRes = await adminAnalyticsSummary(scaleId)
@@ -64,6 +76,15 @@ export const ScaleEditorProvider: React.FC<{
         type: 'setLikertDefaults',
         defaults: deriveLikertDefaults(null),
       })
+      dispatch({
+        type: 'replaceSettings',
+        payload: deriveSettingsFromScale(null),
+      })
+      dispatch({
+        type: 'replaceConsent',
+        payload: deriveConsentFromScale(null),
+      })
+      dispatch({ type: 'setAiState', payload: createInitialAIState() })
       dispatch({ type: 'setMessage', message: err?.message || String(err) })
     } finally {
       dispatch({ type: 'setLoading', value: false })

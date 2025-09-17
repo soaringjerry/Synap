@@ -6,6 +6,23 @@ import { mdToHtml } from '../utils/markdown'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../components/Toast'
 
+const isItemAnswered = (item: ItemOut, value: any): boolean => {
+  if (value === undefined || value === null) return false
+  const type = item.type || 'likert'
+  if (type === 'multiple') return Array.isArray(value) && value.length > 0
+  if (
+    type === 'single' ||
+    type === 'dropdown' ||
+    type === 'short_text' ||
+    type === 'long_text' ||
+    type === 'date' ||
+    type === 'time'
+  ) {
+    return String(value).trim().length > 0
+  }
+  return String(value).length > 0
+}
+
 export function Survey() {
   const { scaleId = '' } = useParams()
   const nav = useNavigate()
@@ -53,15 +70,8 @@ export function Survey() {
   // Validate current page — keep hook unconditionally at top level
   const validateCurrentPage = React.useCallback(() => {
     const missing: Record<string, boolean> = {}
-    const isAnswered = (item: ItemOut, value: any) => {
-      if (value === undefined || value === null) return false
-      const type = item.type || 'likert'
-      if (type === 'multiple') return Array.isArray(value) && value.length > 0
-      if (type === 'single' || type === 'dropdown' || type === 'short_text' || type === 'long_text' || type === 'date' || type === 'time') return String(value).trim().length > 0
-      return String(value).length > 0
-    }
     for (const item of visible) {
-      if (item.required && !isAnswered(item, answers[item.id])) {
+      if (item.required && !isItemAnswered(item, answers[item.id])) {
         missing[item.id] = true
       }
     }
@@ -72,6 +82,28 @@ export function Survey() {
     }
     return true
   }, [answers, toast, t, visible])
+
+  const validateAllRequired = React.useCallback(() => {
+    const missing: Record<string, boolean> = {}
+    let firstMissingIndex = -1
+    items.forEach((item, index) => {
+      if (item.required && !isItemAnswered(item, answers[item.id])) {
+        missing[item.id] = true
+        if (firstMissingIndex === -1) firstMissingIndex = index
+      }
+    })
+    if (Object.keys(missing).length === 0) {
+      setValidationErrors({})
+      return true
+    }
+    setValidationErrors(missing)
+    if (itemsPerPage && itemsPerPage > 0 && firstMissingIndex >= 0) {
+      const targetPage = Math.floor(firstMissingIndex / itemsPerPage) + 1
+      if (targetPage !== page) setPage(targetPage)
+    }
+    toast.error(t('survey.required_warning') || 'Please complete all required items')
+    return false
+  }, [answers, items, itemsPerPage, page, setPage, t, toast])
 
   // Lazy-load Turnstile JS
   function ensureTurnstile(): Promise<void> {
@@ -755,7 +787,7 @@ export function Survey() {
           </>
         )}
         <button className="btn btn-primary" style={{marginLeft:'auto'}} disabled={!items.length || progress<100 || (collectEmail==='required' && !email.trim()) || (turnstileEnabled && !!turnstileSitekey && !turnstileToken) || (pages>1 && page<pages)} onClick={async()=>{
-          if (!validateCurrentPage()) return
+          if (!validateAllRequired()) return
           try {
             if (e2ee) {
               const { keys } = await listProjectKeysPublic(scaleId)
