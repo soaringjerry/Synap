@@ -287,7 +287,7 @@
       "e2ee_export_session_only": "仅在提交后的本次浏览器会话中，可下载明文数据。若已关闭页面，请联系研究者协助。"
     },
 
-    "e2ee": {
+  "e2ee": {
       "title": "端到端加密",
       "desc": "在浏览器内对作答加密，服务器仅保存密文，无法读取内容。",
       "enable_label": "开启端到端加密（默认开启）",
@@ -463,6 +463,23 @@
     },
     "title": "Synap — 赛博问卷",
     "tagline": "霓虹氛围 · 轻微混乱 · 专注研究"
+  },
+  "label": {
+    "header_language": "表头语言",
+    "value_mode": "数值/文本",
+    "numeric": "数值",
+    "text_label": "文本标签",
+    "label_language": "标签语言",
+    "format": "格式",
+    "wide": "宽表",
+    "long": "长表",
+    "score": "得分",
+    "consent_header": "知情同意列"
+  },
+  "export": "导出",
+  "download": "下载",
+  "editor": {
+    "export_server_desc": "从服务器导出 CSV（非 E2EE 项目）。"
   },
   "auth": {
     "title_login": "登录",

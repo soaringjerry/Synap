@@ -245,7 +245,7 @@
       "e2ee_export_session_only": "Plaintext download is only available immediately after submission in this browser session."
     },
 
-    "e2ee": {
+  "e2ee": {
       "title": "End‑to‑end Encryption",
       "desc": "Encrypt answers in the browser. The server only stores ciphertext and cannot read your content.",
       "enable_label": "Enable end‑to‑end encryption (default on)",
@@ -460,6 +460,23 @@
     },
     "title": "Synap — Cyber Survey",
     "tagline": "Neon vibes · subtle chaos · focused research"
+  },
+  "label": {
+    "header_language": "Header language",
+    "value_mode": "Value mode",
+    "numeric": "Numeric",
+    "text_label": "Text label",
+    "label_language": "Label language",
+    "format": "Format",
+    "wide": "Wide",
+    "long": "Long",
+    "score": "Score",
+    "consent_header": "Consent header"
+  },
+  "export": "Export",
+  "download": "Download",
+  "editor": {
+    "export_server_desc": "Export CSV from server (plaintext projects)."
   },
   "auth": {
     "title_login": "Sign in",

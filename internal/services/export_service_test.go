@@ -146,3 +146,38 @@ func TestExportServiceRejectsE2EE(t *testing.T) {
 		t.Fatalf("expected error for E2EE scale")
 	}
 }
+
+func TestExportServiceWideLabelsZh(t *testing.T) {
+	store := newExportStubStore()
+	store.scale = &Scale{ID: "S1", LikertLabelsI18n: map[string][]string{
+		"en": {"Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"},
+		"zh": {"非常不同意", "不同意", "一般", "同意", "非常同意"},
+	}}
+	store.items = []*Item{
+		{ID: "I1", ScaleID: "S1", StemI18n: map[string]string{"en": "I enjoy coding", "zh": "我喜欢编程"}, Type: "likert"},
+	}
+	// RawValue=4 means "同意" in zh
+	store.responses = []*Response{
+		{ParticipantID: "P1", ItemID: "I1", RawValue: 4, ScoreValue: 4, SubmittedAt: time.Now()},
+	}
+	svc := NewExportService(store)
+	res, err := svc.ExportCSV(ExportParams{ScaleID: "S1", Format: "wide", HeaderLang: "zh", ValuesMode: "label", ValueLang: "zh"})
+	if err != nil {
+		t.Fatalf("ExportCSV error: %v", err)
+	}
+	recs, err := csv.NewReader(strings.NewReader(string(res.Data))).ReadAll()
+	if err != nil {
+		t.Fatalf("csv read: %v", err)
+	}
+	if len(recs) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(recs))
+	}
+	// header should contain zh stem
+	if recs[0][1] != "我喜欢编程" {
+		t.Fatalf("unexpected header: %v", recs[0])
+	}
+	// value should be zh label
+	if recs[1][1] != "同意" {
+		t.Fatalf("unexpected value: %v", recs[1])
+	}
+}

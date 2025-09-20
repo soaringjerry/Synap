@@ -34,6 +34,13 @@ export const ExportPanel: React.FC = () => {
   const { scale, items } = useScaleEditorState()
   const [passphrase, setPassphrase] = useState('')
   const [status, setStatus] = useState('')
+  // Advanced options
+  const [headerLang, setHeaderLang] = useState<'en'|'zh'>('en')
+  const [valuesMode, setValuesMode] = useState<'numeric'|'label'>('numeric')
+  const [labelLang, setLabelLang] = useState<'en'|'zh'>('en')
+  // Server export (non‑E2EE)
+  const [format, setFormat] = useState<'long'|'wide'|'score'>('wide')
+  const [consentHeader, setConsentHeader] = useState<'label_en'|'label_zh'|'key'>('label_en')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   if (!scale) return null
@@ -124,14 +131,14 @@ export const ExportPanel: React.FC = () => {
     return { out, enMap, zhMap, consentCols }
   }
 
-  // Map textual options to English using item.options_i18n if possible.
+  // Map textual options using item.options_i18n if possible.
   const itemsById = useMemo(() => {
     const m: Record<string, any> = {}
     items.forEach(it => { m[it.id] = it })
     return m
   }, [items])
 
-  const normToEnglish = (item: any, val: any): any => {
+  const normToLang = (item: any, val: any, lang: 'en'|'zh'): any => {
     if (!item || !item.options_i18n) return val
     const opts = item.options_i18n as Record<string, string[]>
     const findIndex = (s: string): number => {
@@ -143,10 +150,12 @@ export const ExportPanel: React.FC = () => {
       }
       return -1
     }
-    const getEn = (idx: number): string => {
+    const getLang = (idx: number): string => {
+      const arr = (opts[lang] || [])
+      const lab = arr[idx]
+      if (lab && String(lab).trim() !== '') return lab
       const en = (opts.en || [])[idx]
       if (en && String(en).trim() !== '') return en
-      // fallback: first non-empty label at index across langs
       for (const list of Object.values(opts)) {
         const v = (list || [])[idx]
         if (v && String(v).trim() !== '') return v
@@ -157,17 +166,31 @@ export const ExportPanel: React.FC = () => {
       let changed = false
       const out = val.map(v => {
         const idx = findIndex(v)
-        if (idx >= 0) { changed = true; return getEn(idx) }
+        if (idx >= 0) { changed = true; return getLang(idx) }
         return v
       })
       return changed ? out : val
     }
     if (val != null && typeof val === 'string') {
       const idx = findIndex(val)
-      if (idx >= 0) return getEn(idx)
+      if (idx >= 0) return getLang(idx)
       return val
     }
     return val
+  }
+
+  const mapLikertNumberToLabel = (item: any, num: number, lang: 'en'|'zh'): string => {
+    if (!num || num <= 0) return String(num || '')
+    // prefer item likert, fall back to scale likert
+    const labels = item?.likert_labels_i18n?.[lang]
+      || item?.likert_labels_i18n?.en
+      || scale?.likert_labels_i18n?.[lang]
+      || scale?.likert_labels_i18n?.en
+    if (Array.isArray(labels)) {
+      const idx = Math.max(0, Math.min(labels.length - 1, Math.floor(num) - 1))
+      return labels[idx] || String(num)
+    }
+    return String(num)
   }
 
   const download = (name: string, data: string, type: string) => {
@@ -179,12 +202,35 @@ export const ExportPanel: React.FC = () => {
     URL.revokeObjectURL(link.href)
   }
 
-  if (!isE2EE) return null
-
-  return (
+  const renderE2EE = () => (
     <>
       <h4 className="section-title" style={{ marginTop: 0 }}>{t('e2ee.export_title')}</h4>
       <div className="muted" style={{ marginBottom: 8 }}>{t('e2ee.local_export_desc')}</div>
+      <div className="row" style={{ gap: 8, margin: '8px 0' }}>
+        <div className="item">
+          <div className="label">{t('label.header_language')}</div>
+          <select className="input" value={headerLang} onChange={e => setHeaderLang(e.target.value as any)}>
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+          </select>
+        </div>
+        <div className="item">
+          <div className="label">{t('label.value_mode')}</div>
+          <select className="input" value={valuesMode} onChange={e => setValuesMode(e.target.value as any)}>
+            <option value="numeric">{t('label.numeric')}</option>
+            <option value="label">{t('label.text_label')}</option>
+          </select>
+        </div>
+        {valuesMode === 'label' && (
+          <div className="item">
+            <div className="label">{t('label.label_language')}</div>
+            <select className="input" value={labelLang} onChange={e => setLabelLang(e.target.value as any)}>
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+            </select>
+          </div>
+        )}
+      </div>
       <div className="row" style={{ marginTop: 8 }}>
         <div className="card span-12">
           <div className="item">
@@ -254,14 +300,14 @@ export const ExportPanel: React.FC = () => {
               onClick={async () => {
                 try {
                   setStatus('')
-                  const { out, enMap, consentCols } = await decryptCurrentBundle()
+                  const { out, enMap, zhMap, consentCols } = await decryptCurrentBundle()
                   const order = items.map((it: any) => it.id)
-                  const consentHeaders = consentCols.map(col => col.en || col.zh || col.key)
+                  const consentHeaders = consentCols.map(col => (headerLang === 'zh' ? (col.zh || col.en || col.key) : (col.en || col.zh || col.key)))
                   const header = [
                     'response_index',
                     'email',
                     'submitted_at',
-      ...order.map(key => enMap[key] || key),
+                    ...order.map(key => (headerLang === 'zh' ? (zhMap[key] || enMap[key] || key) : (enMap[key] || key))),
                     ...consentHeaders,
                   ]
                   const lines = [header.map(csvEsc).join(',')]
@@ -273,8 +319,20 @@ export const ExportPanel: React.FC = () => {
                     order.forEach(key => {
                       const item = itemsById[key]
                       const v = (answers as any)[key]
-                      const enVal = normToEnglish(item, v)
-                      row.push(csvEsc(enVal))
+                      let outVal: any = v
+                      if (valuesMode === 'label') {
+                        if (typeof v === 'number') {
+                          outVal = mapLikertNumberToLabel(item, v, labelLang)
+                        } else {
+                          outVal = normToLang(item, v, labelLang)
+                        }
+                      } else {
+                        // numeric mode: normalise textual options to English for consistency
+                        if (typeof v !== 'number') {
+                          outVal = normToLang(item, v, 'en')
+                        }
+                      }
+                      row.push(csvEsc(outVal))
                     })
                   consentCols.forEach((col: ConsentColumn) => {
                     row.push(csvEsc(consent[col.key] ? 1 : 0))
@@ -297,14 +355,14 @@ export const ExportPanel: React.FC = () => {
               onClick={async () => {
                 try {
                   setStatus('')
-    const { out, enMap, consentCols } = await decryptCurrentBundle()
-    const order = items.map((it: any) => it.id)
-    const consentHeaders = consentCols.map(col => col.en || col.zh || col.key)
+                  const { out, enMap, zhMap, consentCols } = await decryptCurrentBundle()
+                  const order = items.map((it: any) => it.id)
+                  const consentHeaders = consentCols.map(col => (headerLang === 'zh' ? (col.zh || col.en || col.key) : (col.en || col.zh || col.key)))
                   const header = [
                     'response_index',
                     'email',
                     'submitted_at',
-                    ...order.map(key => enMap[key] || key),
+                    ...order.map(key => (headerLang === 'zh' ? (zhMap[key] || enMap[key] || key) : (enMap[key] || key))),
                     ...consentHeaders,
                   ]
                   const lines = [header.map(csvEsc).join(',')]
@@ -316,8 +374,19 @@ export const ExportPanel: React.FC = () => {
                     order.forEach(key => {
                       const item = itemsById[key]
                       const v = (answers as any)[key]
-                      const enVal = normToEnglish(item, v)
-                      row.push(csvEsc(enVal))
+                      let outVal: any = v
+                      if (valuesMode === 'label') {
+                        if (typeof v === 'number') {
+                          outVal = mapLikertNumberToLabel(item, v, labelLang)
+                        } else {
+                          outVal = normToLang(item, v, labelLang)
+                        }
+                      } else {
+                        if (typeof v !== 'number') {
+                          outVal = normToLang(item, v, 'en')
+                        }
+                      }
+                      row.push(csvEsc(outVal))
                     })
                   consentCols.forEach((col: ConsentColumn) => {
                     row.push(csvEsc(consent[col.key] ? 1 : 0))
@@ -325,7 +394,7 @@ export const ExportPanel: React.FC = () => {
                     lines.push(row.join(','))
                   })
                   const csvText = '\uFEFF' + lines.join('\r\n') + '\r\n'
-                  download(`e2ee_${scaleId}_wide_en.csv`, csvText, 'text/csv;charset=utf-8')
+                  download(`e2ee_${scaleId}_wide_${headerLang}.csv`, csvText, 'text/csv;charset=utf-8')
                   setStatus(t('e2ee.local_csv_wide_ready'))
                 } catch (err: any) {
                   setStatus(err?.message || String(err))
@@ -338,6 +407,94 @@ export const ExportPanel: React.FC = () => {
           {status && <div className="muted" style={{ marginTop: 8 }}>{status}</div>}
         </div>
       </div>
+    </>
+  )
+
+  const renderServer = () => (
+    <>
+      <h4 className="section-title" style={{ marginTop: 0 }}>{t('export')}</h4>
+      <div className="muted" style={{ marginBottom: 8 }}>{t('editor.export_server_desc') || 'Export CSV from server (plaintext projects).'}</div>
+      <div className="row" style={{ gap: 8, margin: '8px 0' }}>
+        <div className="item">
+          <div className="label">{t('label.format')}</div>
+          <select className="input" value={format} onChange={e => setFormat(e.target.value as any)}>
+            <option value="wide">{t('label.wide')}</option>
+            <option value="long">{t('label.long')}</option>
+            <option value="score">{t('label.score')}</option>
+          </select>
+        </div>
+        <div className="item">
+          <div className="label">{t('label.header_language')}</div>
+          <select className="input" value={headerLang} onChange={e => setHeaderLang(e.target.value as any)}>
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+          </select>
+        </div>
+        <div className="item">
+          <div className="label">{t('label.value_mode')}</div>
+          <select className="input" value={valuesMode} onChange={e => setValuesMode(e.target.value as any)}>
+            <option value="numeric">{t('label.numeric')}</option>
+            <option value="label">{t('label.text_label')}</option>
+          </select>
+        </div>
+        {valuesMode === 'label' && (
+          <div className="item">
+            <div className="label">{t('label.label_language')}</div>
+            <select className="input" value={labelLang} onChange={e => setLabelLang(e.target.value as any)}>
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+            </select>
+          </div>
+        )}
+        <div className="item">
+          <div className="label">{t('label.consent_header')}</div>
+          <select className="input" value={consentHeader} onChange={e => setConsentHeader(e.target.value as any)}>
+            <option value="label_en">Consent (EN)</option>
+            <option value="label_zh">Consent (中文)</option>
+            <option value="key">consent.key</option>
+          </select>
+        </div>
+      </div>
+      <div className="cta-row" style={{ gap: 8 }}>
+        <button
+          className="btn"
+          type="button"
+          onClick={async () => {
+            try {
+              setStatus('')
+              const qs = new URLSearchParams({
+                scale_id: String(scaleId),
+                format,
+                consent_header: consentHeader,
+                header_lang: headerLang,
+                values: valuesMode,
+                label_lang: labelLang,
+              })
+              const base = (typeof window !== 'undefined' ? window.location.origin : '')
+              const url = `${base}/api/export?${qs.toString()}`
+              const res = await fetch(url, { credentials: 'include' })
+              if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+              const blob = await res.blob()
+              const link = document.createElement('a')
+              link.href = URL.createObjectURL(blob)
+              link.download = `export_${format}.csv`
+              link.click()
+              URL.revokeObjectURL(link.href)
+            } catch (err: any) {
+              setStatus(err?.message || String(err))
+            }
+          }}
+        >
+          {t('download')}
+        </button>
+      </div>
+      {status && <div className="muted" style={{ marginTop: 8 }}>{status}</div>}
+    </>
+  )
+
+  return (
+    <>
+      {isE2EE ? renderE2EE() : renderServer()}
     </>
   )
 }

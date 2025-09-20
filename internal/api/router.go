@@ -419,11 +419,14 @@ func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	scaleID := r.URL.Query().Get("scale_id")
 	format := r.URL.Query().Get("format")
 	consentHeader := r.URL.Query().Get("consent_header")
+	headerLang := r.URL.Query().Get("header_lang") // en|zh
+	valuesMode := r.URL.Query().Get("values")      // numeric|label
+	valueLang := r.URL.Query().Get("label_lang")   // en|zh
 	if consentHeader == "" {
 		// Default to English labels for consent columns for analysis friendliness
 		consentHeader = "label_en"
 	}
-	res, err := rt.exportSvc.ExportCSV(services.ExportParams{ScaleID: scaleID, Format: format, ConsentHeader: consentHeader})
+	res, err := rt.exportSvc.ExportCSV(services.ExportParams{ScaleID: scaleID, Format: format, ConsentHeader: consentHeader, HeaderLang: headerLang, ValuesMode: valuesMode, ValueLang: valueLang})
 	if err != nil {
 		rt.writeServiceError(w, err)
 		return

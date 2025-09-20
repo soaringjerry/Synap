@@ -76,6 +76,47 @@ func ExportWideCSV(inputs map[string]map[string]int) ([]byte, error) {
 	return buf.Bytes(), w.Error()
 }
 
+// ExportWideCSVStrings renders a wide-format CSV with string values per cell.
+// inputs is a map[participantID]map[itemHeader]string.
+func ExportWideCSVStrings(inputs map[string]map[string]string) ([]byte, error) {
+	// Determine item order (sorted for stable output).
+	itemSet := map[string]struct{}{}
+	for _, m := range inputs {
+		for itemID := range m {
+			itemSet[itemID] = struct{}{}
+		}
+	}
+	items := make([]string, 0, len(itemSet))
+	for id := range itemSet {
+		items = append(items, id)
+	}
+	sort.Strings(items)
+
+	// Participant order
+	pids := make([]string, 0, len(inputs))
+	for pid := range inputs {
+		pids = append(pids, pid)
+	}
+	sort.Strings(pids)
+
+	buf := &bytes.Buffer{}
+	w := csv.NewWriter(buf)
+	header := append([]string{"participant_id"}, items...)
+	_ = w.Write(header)
+	for _, pid := range pids {
+		row := make([]string, 0, 1+len(items))
+		row = append(row, pid)
+		for _, itemID := range items {
+			row = append(row, inputs[pid][itemID])
+		}
+		if err := w.Write(row); err != nil {
+			return nil, err
+		}
+	}
+	w.Flush()
+	return buf.Bytes(), w.Error()
+}
+
 // ExportScoreCSV renders total scores per participant.
 // inputs is a map[participantID][]scoreValues (or map[itemID]score, we accept slice summation version here).
 func ExportScoreCSV(inputs map[string][]int) ([]byte, error) {
