@@ -79,6 +79,11 @@ Future (planned):
 
 - 提交成功后，前端会把“本次提交的明文答案 + 题干 + 元数据”暂存到 `sessionStorage`（键名包含 `response_id` 与 `token`）。
 - 自助页仅在“本次浏览器会话中”提供明文 JSON 下载；刷新或更换设备后，该能力不可用，避免向服务器请求明文。
+
+## CSV 时间戳（本地导出）
+
+- 浏览器内解密生成的 CSV（长/宽）均包含 `submitted_at` 列，取自加密包条目的 `created_at`。
+- 非数值题的答案文本会按 `options_i18n` 在浏览器端映射为英文，便于统计分析；不改变密文与服务器侧数据。
 - Consent receipts: participants can download a PDF (browser print) as human‑readable copy. The print view opens via a blob URL for better stability; if blocked, an HTML fallback is downloaded.
 
 Planned UX:

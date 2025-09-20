@@ -74,6 +74,12 @@ cd frontend && npm run typecheck && npm run lint
   - 管理端导出通过前端 ExportPanel 浏览器内解密生成 CSV（英文表头）；本地私钥按 `synap_pmk_<scaleId>` 命名空间存储。
   - 参与者自服务页仅在提交会话内提供“明文导出”（读取 sessionStorage 缓存），刷新或换设备后按钮禁用并提示“仅会话内可用”。
 
+### 提交与防重复
+
+- 按钮级防抖：提交期间按钮进入 `submitting` 状态并禁用，防止双击。
+- 会话级防抖：写入 `sessionStorage: synap_submit_lock_<scaleId>`，在 15 秒内重复点击会被拦截（显示“正在提交…”）。
+- 锁的设置在所有校验通过后进行；出现错误或异常会清理锁，避免错误锁定。
+
 ## Commits & PRs
 - Conventional Commits; small, focused PRs with screenshots for UI
 - Update docs when behavior or endpoints change

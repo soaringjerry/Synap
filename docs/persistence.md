@@ -42,6 +42,18 @@ For details on how services consume the persistence layer, see `docs/architectur
 
 - Admin CSV 导出（long/wide/score）仅适用于非 E2EE 项目：当量表开启 E2EE 时，`ExportService` 会拒绝导出（返回错误）。
 - 宽表（wide）导出的列名统一为英文题干；若题干重复，会自动追加 `(2)`, `(3)` 等以保证唯一列名。知情同意列名默认使用英文标签（`consent_header=label_en`）。
+- 时间戳：
+  - 长表 `long` 已含 `submitted_at` 列。
+  - 宽表 `wide` 也包含 `submitted_at` 列（按参与者聚合的提交时间）。
 - E2EE 项目的导出通过浏览器内解密完成，不涉及服务端明文：
   - 管理端：在编辑器的“分享与结果”页使用“导出面板”，导入本地私钥并在浏览器生成 JSON/CSV（英文表头）。
   - 参与者自服务：提交之后，在同一会话中可下载明文 JSON；刷新或换设备后该能力不可用（不会向服务器请求明文）。
+
+## 提交时间戳（数据库）
+
+- 非 E2EE：表 `responses.submitted_at`（每题一条）记录提交时间（UTC）。
+  - 每个参与者的整份提交时间可取每人 `MIN(submitted_at)` 或 `MAX(submitted_at)`：
+    - `SELECT participant_id, MIN(submitted_at) AS first_submitted FROM responses WHERE scale_id=? GROUP BY participant_id;`
+    - `SELECT participant_id, MAX(submitted_at) AS last_submitted  FROM responses WHERE scale_id=? GROUP BY participant_id;`
+- E2EE：表 `e2ee_responses.created_at` 记录每条加密答卷的创建时间（提交时间，UTC）。
+- 历史数据无需迁移；字段已在最初设计中存在且默认填充。

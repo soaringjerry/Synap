@@ -29,3 +29,15 @@ English:
 - Our servers and databases are primarily located in Singapore, where personal data is stored and processed.
 - To improve global performance, we use Cloudflare for CDN and edge caching. Requests may pass through Cloudflare’s edge nodes during transmission, but survey data is stored only in our Singapore servers and not retained at the edge.
 - Cloudflare may temporarily process limited network metadata (e.g., IP addresses) for routing and security, not for advertising or unauthorized purposes. We ensure this processing remains compliant with GDPR and PDPA, and we have signed a DPA (see Cloudflare Customer DPA).
+## 如何在导出里看到提交时间？
+
+- 非 E2EE：
+  - 长表 `long` 已包含 `submitted_at` 列。
+  - 宽表 `wide` 也包含 `submitted_at` 列（每参与者一行）。
+- E2EE：
+  - 浏览器内解密生成的 CSV 同样包含 `submitted_at`，其值来自加密包条目的 `created_at`。
+
+## 为什么 CSV 里的文本总是英文？
+
+- 为便于分析，服务端导出（非 E2EE）会将非数值题的文本答案在保存时统一映射为英文（基于 `options_i18n`）。
+- E2EE 的浏览器端导出也会在本地对非数值题做相同的映射。题目列头与同意列名统一为英文，不影响 E2EE 安全性。
