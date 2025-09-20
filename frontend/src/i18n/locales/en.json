@@ -137,6 +137,7 @@
       "download_consent_html": "Download consent (HTML)"
     },
     "learn_more": "Learn more",
+    "download": "Download",
     "turnstile": {
       "enable_label": "Enable Cloudflare Turnstile"
     },
@@ -164,7 +165,17 @@
       "placeholder_en": "Placeholder (EN)",
       "placeholder_zh": "Placeholder (ZH)",
       "url": "URL",
-      "n": "N"
+      "n": "N",
+      "header_language": "Header language",
+      "value_mode": "Value mode",
+      "numeric": "Numeric",
+      "text_label": "Text label",
+      "label_language": "Label language",
+      "format": "Format",
+      "wide": "Wide",
+      "long": "Long",
+      "score": "Score",
+      "consent_header": "Consent header"
     },
     "action": {
       "apply": "Apply",
@@ -317,7 +328,8 @@
       "items_per_page": "Items per page",
       "copy_link": "Copy link",
       "no_data": "No data yet.",
-      "item_distributions": "Item distributions"
+      "item_distributions": "Item distributions",
+      "export_server_desc": "Export CSV from server (plaintext projects)."
     },
     "consent": {
       "inline_hint": "Insert [[CONSENT]] to render all interactive confirmations (options + signature) at the chosen position. If omitted, they appear after the text.",
@@ -461,23 +473,7 @@
     "title": "Synap — Cyber Survey",
     "tagline": "Neon vibes · subtle chaos · focused research"
   },
-  "label": {
-    "header_language": "Header language",
-    "value_mode": "Value mode",
-    "numeric": "Numeric",
-    "text_label": "Text label",
-    "label_language": "Label language",
-    "format": "Format",
-    "wide": "Wide",
-    "long": "Long",
-    "score": "Score",
-    "consent_header": "Consent header"
-  },
-  "export": "Export",
-  "download": "Download",
-  "editor": {
-    "export_server_desc": "Export CSV from server (plaintext projects)."
-  },
+  
   "auth": {
     "title_login": "Sign in",
     "title_register": "Create account"

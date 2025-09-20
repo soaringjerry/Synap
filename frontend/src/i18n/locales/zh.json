@@ -137,6 +137,7 @@
       "download_consent_html": "下载知情同意（HTML）"
     },
     "learn_more": "了解更多",
+    "download": "下载",
     "turnstile": {
       "enable_label": "开启 Cloudflare Turnstile"
     },
@@ -168,7 +169,17 @@
       "placeholder_en": "占位文案（英文）",
       "placeholder_zh": "占位文案（中文）",
       "url": "URL",
-      "n": "N"
+      "n": "N",
+      "header_language": "表头语言",
+      "value_mode": "数值/文本",
+      "numeric": "数值",
+      "text_label": "文本标签",
+      "label_language": "标签语言",
+      "format": "格式",
+      "wide": "宽表",
+      "long": "长表",
+      "score": "得分",
+      "consent_header": "知情同意列"
     },
     "action": {
       "apply": "应用",
@@ -359,7 +370,8 @@
       "items_per_page": "每页条目数",
       "copy_link": "复制链接",
       "no_data": "暂无数据",
-      "item_distributions": "题目分布"
+      "item_distributions": "题目分布",
+      "export_server_desc": "从服务器导出 CSV（非 E2EE 项目）。"
     },
 
     "cookie": {
@@ -463,23 +475,6 @@
     },
     "title": "Synap — 赛博问卷",
     "tagline": "霓虹氛围 · 轻微混乱 · 专注研究"
-  },
-  "label": {
-    "header_language": "表头语言",
-    "value_mode": "数值/文本",
-    "numeric": "数值",
-    "text_label": "文本标签",
-    "label_language": "标签语言",
-    "format": "格式",
-    "wide": "宽表",
-    "long": "长表",
-    "score": "得分",
-    "consent_header": "知情同意列"
-  },
-  "export": "导出",
-  "download": "下载",
-  "editor": {
-    "export_server_desc": "从服务器导出 CSV（非 E2EE 项目）。"
   },
   "auth": {
     "title_login": "登录",
