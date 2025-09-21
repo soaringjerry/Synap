@@ -39,6 +39,7 @@
     "export_long_csv": "Export Long CSV",
     "export_wide_csv": "Export Wide CSV",
     "export_score_csv": "Export Score CSV",
+    "export_items_csv": "Export Items CSV",
     "create": "Create",
     "add": "Add",
     "new_editor": "New Editor",
@@ -208,6 +209,17 @@
     
     "consent_settings": "Consent Settings",
     "admin": {
+      "ops_title": "Operations",
+      "ops_sub": "Tenant-scoped audit and collaboration",
+      "audit_log": "Audit Log",
+      "audit_filter": "Filter by Scale",
+      "audit_all_scales": "All scales",
+      "audit_time": "Time (UTC)",
+      "audit_actor": "Actor",
+      "audit_action": "Action",
+      "audit_target": "Target",
+      "audit_note": "Note",
+      "audit_empty": "No audit entries",
       "create_after_title": "After creation",
       "create_after_hint": "Advanced consent text, interactive confirmations, pagination, and email collection now live in the new editor. Finish the basics here, then open Settings → Consent/Security to customise.",
       "after_consent": "Consent text & confirmations: Settings → Consent",
@@ -241,6 +253,7 @@
     "share": "Share",
     "export": "Export",
     "copy": "Copy",
+    "import_success": "Imported",
     "settings": {
       "nav": {
         "general": "General",
@@ -344,6 +357,7 @@
       "create_error_name": "Please enter at least one name.",
       "create_error_points": "Points must be a positive integer.",
       "save_order": "Save order",
+      "import_csv": "Import CSV",
       "edit_item": "Edit item",
       "select_item_to_edit": "Select an item from the left to edit, or click \"Add item\".",
       "basic_info": "Basic Info",

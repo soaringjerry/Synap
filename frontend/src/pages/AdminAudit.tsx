@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { adminListScales } from '../api/client'
 
 type AuditEntry = { time: string; actor: string; action: string; target: string; note?: string }
 
 export function AdminAudit() {
+  const { t } = useTranslation()
   const [entries, setEntries] = useState<AuditEntry[]>([])
   const [scaleId, setScaleId] = useState<string>('')
   const [scales, setScales] = useState<{ id: string; name_i18n?: Record<string,string> }[]>([])
@@ -47,9 +49,10 @@ export function AdminAudit() {
 
   const title = useMemo(()=>{
     const s = scales.find(s=> s.id===scaleId)
-    if (!s) return 'Audit Log'
+    const base = t('admin.audit_log') || 'Audit Log'
+    if (!s) return base
     const name = s.name_i18n?.en || s.name_i18n?.zh || s.id
-    return `Audit Log · ${name}`
+    return `${base} · ${name}`
   }, [scales, scaleId])
 
   return (
@@ -59,9 +62,9 @@ export function AdminAudit() {
         <section className="card span-12">
           <div style={{display:'flex', gap:12, alignItems:'center'}}>
             <label>
-              <span style={{marginRight:8}}>Filter by Scale</span>
+              <span style={{marginRight:8}}>{t('admin.audit_filter')||'Filter by Scale'}</span>
               <select className="input" value={scaleId} onChange={onFilter}>
-                <option value="">All scales</option>
+                <option value="">{t('admin.audit_all_scales')||'All scales'}</option>
                 {scales.map(s=> <option key={s.id} value={s.id}>{s.id}</option>)}
               </select>
             </label>
@@ -71,11 +74,11 @@ export function AdminAudit() {
             <table className="table" style={{width:'100%'}}>
               <thead>
                 <tr>
-                  <th style={{textAlign:'left'}}>Time (UTC)</th>
-                  <th style={{textAlign:'left'}}>Actor</th>
-                  <th style={{textAlign:'left'}}>Action</th>
-                  <th style={{textAlign:'left'}}>Target</th>
-                  <th style={{textAlign:'left'}}>Note</th>
+                  <th style={{textAlign:'left'}}>{t('admin.audit_time')||'Time (UTC)'}</th>
+                  <th style={{textAlign:'left'}}>{t('admin.audit_actor')||'Actor'}</th>
+                  <th style={{textAlign:'left'}}>{t('admin.audit_action')||'Action'}</th>
+                  <th style={{textAlign:'left'}}>{t('admin.audit_target')||'Target'}</th>
+                  <th style={{textAlign:'left'}}>{t('admin.audit_note')||'Note'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,7 +92,7 @@ export function AdminAudit() {
                   </tr>
                 ))}
                 {entries.length===0 && !loading && (
-                  <tr><td colSpan={5} className="muted">No audit entries</td></tr>
+                  <tr><td colSpan={5} className="muted">{t('admin.audit_empty')||'No audit entries'}</td></tr>
                 )}
               </tbody>
             </table>
@@ -100,4 +103,3 @@ export function AdminAudit() {
     </div>
   )
 }
-

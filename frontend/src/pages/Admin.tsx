@@ -141,11 +141,11 @@ export function Admin() {
         <section className="card span-12">
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
             <div>
-              <b>Operations</b>
-              <div className="muted">Tenant-scoped audit and collaboration</div>
+              <b>{t('admin.ops_title')||'Operations'}</b>
+              <div className="muted">{t('admin.ops_sub')||'Tenant-scoped audit and collaboration'}</div>
             </div>
             <div style={{display:'flex', gap:8}}>
-              <Link className="btn" to="/admin/audit">Audit Log</Link>
+              <Link className="btn" to="/admin/audit">{t('admin.audit_log')||'Audit Log'}</Link>
             </div>
           </div>
         </section>
