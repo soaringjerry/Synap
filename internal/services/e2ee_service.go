@@ -120,7 +120,12 @@ func (s *E2EEService) WithSigner(fn ExportSigner) {
 }
 
 func randomID(n int) string {
-	r := randomBytes(n * 2)
+	// generate n bytes; base64url-encode yields length >= n for any n
+	r := randomBytes(n)
+	if len(r) < n {
+		// very unlikely, but guard to avoid panic if encoder returns shorter than expected
+		return r
+	}
 	return r[:n]
 }
 
