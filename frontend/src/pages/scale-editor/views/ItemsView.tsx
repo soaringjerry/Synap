@@ -166,6 +166,7 @@ const ItemsView: React.FC = () => {
           <div className="section-title">{t('your_items')}</div>
           <div className="cta-row">
             <button type="button" className="btn" onClick={saveOrder}>{t('editor.save_order')}</button>
+            <a className="btn" href={`/api/export?format=items&scale_id=${encodeURIComponent(scaleId)}`} target="_blank" rel="noreferrer">{t('export_items_csv')||'Export Items CSV'}</a>
             <label className="btn" style={{cursor:'pointer'}}>
               {t('editor.import_csv')||'Import CSV'}
               <input type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={async e=>{
