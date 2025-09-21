@@ -946,6 +946,12 @@ func (s *memoryStore) AddTenant(t *Tenant) {
 	s.tenants[t.ID] = t
 	s.saveLocked()
 }
+func (s *memoryStore) DeleteTenant(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.tenants, id)
+	s.saveLocked()
+}
 func (s *memoryStore) AddUser(u *User) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

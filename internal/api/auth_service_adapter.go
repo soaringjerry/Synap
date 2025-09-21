@@ -1,6 +1,9 @@
 package api
 
-import "github.com/soaringjerry/Synap/internal/services"
+import (
+	"github.com/soaringjerry/Synap/internal/services"
+	"strings"
+)
 
 type authStoreAdapter struct {
 	store Store
@@ -31,6 +34,14 @@ func (a *authStoreAdapter) AddTenant(t *services.Tenant) error {
 		return services.NewInvalidError("tenant required")
 	}
 	a.store.AddTenant(&Tenant{ID: t.ID, Name: t.Name})
+	return nil
+}
+
+func (a *authStoreAdapter) DeleteTenant(id string) error {
+	if strings.TrimSpace(id) == "" {
+		return services.NewInvalidError("tenant id required")
+	}
+	a.store.DeleteTenant(id)
 	return nil
 }
 

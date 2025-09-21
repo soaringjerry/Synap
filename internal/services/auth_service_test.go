@@ -38,6 +38,11 @@ func (s *authStubStore) AddTenant(t *Tenant) error {
 	return nil
 }
 
+func (s *authStubStore) DeleteTenant(id string) error {
+	delete(s.tenants, id)
+	return nil
+}
+
 func TestAuthRegisterAndLogin(t *testing.T) {
 	store := newAuthStubStore()
 	svc := NewAuthService(store, func(uid, tid, email string, ttl time.Duration) (string, error) {
@@ -88,5 +93,19 @@ func TestAuthValidation(t *testing.T) {
 	}
 	if _, err := svc.Login("", ""); err == nil {
 		t.Fatalf("expected validation error on login")
+	}
+}
+
+func TestAuthRegisterStrengthAndEmail(t *testing.T) {
+	store := newAuthStubStore()
+	svc := NewAuthService(store, func(uid, tid, email string, ttl time.Duration) (string, error) { return "tok", nil })
+	if _, err := svc.Register("invalid-email", "Secret123", "Acme"); err == nil {
+		t.Fatalf("expected invalid email format error")
+	}
+	if _, err := svc.Register("user@example.com", "weak", "Acme"); err == nil {
+		t.Fatalf("expected weak password error")
+	}
+	if _, err := svc.Register("user@example.com", "Strong123", "Acme"); err != nil {
+		t.Fatalf("unexpected error for valid creds: %v", err)
 	}
 }

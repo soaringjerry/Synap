@@ -1231,6 +1231,16 @@ func (s *SQLiteStore) AddTenant(t *api.Tenant) {
 	s.logErr("AddTenant", s.q.CreateTenant(contextBg(), params))
 }
 
+func (s *SQLiteStore) DeleteTenant(id string) {
+	if strings.TrimSpace(id) == "" {
+		return
+	}
+	// best-effort; rely on FK to cascade/deny depending on schema; here expected to be orphan-only cleanup
+	if _, err := s.db.Exec(`DELETE FROM tenants WHERE id = ?`, id); err != nil {
+		s.logErr("DeleteTenant", err)
+	}
+}
+
 func (s *SQLiteStore) AddUser(u *api.User) {
 	if u == nil {
 		return

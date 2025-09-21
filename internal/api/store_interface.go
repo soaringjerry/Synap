@@ -53,6 +53,7 @@ type Store interface {
 	UpsertAIConfig(cfg *TenantAIConfig)
 
 	AddTenant(t *Tenant)
+	DeleteTenant(id string)
 	AddUser(u *User)
 	FindUserByEmail(email string) *User
 

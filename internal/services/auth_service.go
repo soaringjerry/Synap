@@ -11,6 +11,7 @@ type AuthStore interface {
 	FindUserByEmail(email string) (*User, error)
 	AddUser(u *User) error
 	AddTenant(t *Tenant) error
+	DeleteTenant(id string) error
 }
 
 type TokenSigner func(uid, tid, email string, ttl time.Duration) (string, error)
@@ -44,6 +45,12 @@ func (s *AuthService) Register(email, password, tenantName string) (*AuthResult,
 	if email == "" || strings.TrimSpace(password) == "" {
 		return nil, NewInvalidError("email/password required")
 	}
+	if !isValidEmail(email) {
+		return nil, NewInvalidError("invalid email format")
+	}
+	if !isStrongPassword(password) {
+		return nil, NewInvalidError("weak password")
+	}
 	existing, err := s.store.FindUserByEmail(email)
 	if err != nil {
 		return nil, err
@@ -62,6 +69,8 @@ func (s *AuthService) Register(email, password, tenantName string) (*AuthResult,
 	userID := s.idGen("u", 7)
 	now := s.now()
 	if err := s.store.AddUser(&User{ID: userID, Email: email, PassHash: hash, TenantID: tenantID, CreatedAt: now}); err != nil {
+		// best-effort rollback of orphan tenant to keep DB consistent
+		_ = s.store.DeleteTenant(tenantID)
 		return nil, err
 	}
 	if s.signToken == nil {
@@ -137,4 +146,49 @@ func (s *AuthService) Login(email, password string) (*AuthResult, error) {
 
 func (s *AuthService) TokenTTL() time.Duration {
 	return s.tokenTTL
+}
+
+// isValidEmail performs a basic RFC5322-like validation suitable for server-side checks.
+func isValidEmail(email string) bool {
+	// very small, pragmatic regex; avoids overly permissive matches
+	// local@domain.tld with at least one dot in domain
+	// note: further normalization (lowercasing) handled by store
+	var (
+		hasAt = strings.Count(email, "@") == 1
+		parts = strings.Split(email, "@")
+	)
+	if !hasAt {
+		return false
+	}
+	local := strings.TrimSpace(parts[0])
+	domain := strings.TrimSpace(parts[1])
+	if local == "" || domain == "" {
+		return false
+	}
+	if strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") || !strings.Contains(domain, ".") {
+		return false
+	}
+	return true
+}
+
+// isStrongPassword enforces minimal strength: length>=8 and contains letters and digits.
+func isStrongPassword(pw string) bool {
+	if len(pw) < 8 {
+		return false
+	}
+	hasLetter := false
+	hasDigit := false
+	for _, r := range pw {
+		switch {
+		case r >= 'a' && r <= 'z':
+			hasLetter = true
+		case r >= 'A' && r <= 'Z':
+			hasLetter = true
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		default:
+			// allow symbols without requiring
+		}
+	}
+	return hasLetter && hasDigit
 }
