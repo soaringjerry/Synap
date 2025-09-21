@@ -56,7 +56,7 @@ export interface ScaleEditorState {
   items: any[]
   analytics: any | null
   view: ScaleEditorView
-  settingsTab: 'general' | 'security' | 'consent' | 'ai' | 'team' | 'danger'
+  settingsTab: 'general' | 'security' | 'consent' | 'exports' | 'ai' | 'team' | 'danger'
   selectedItemId: string | null
   message: string
   likertDefaults: LikertDefaults

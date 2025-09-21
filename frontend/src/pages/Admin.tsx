@@ -231,27 +231,11 @@ export function Admin() {
             <div key={s.id} className="item" style={{display:'flex',justifyContent:'space-between', alignItems:'center'}}>
               <div><b>{s.id}</b> · {(s.name_i18n?.en||'')}{s.name_i18n?.zh?` / ${s.name_i18n.zh}`:''}</div>
               <div style={{display:'flex',gap:8}}>
-                {!s.e2ee_enabled ? (
-                  <>
-                    <a className="neon-btn" href={`/api/export?format=long&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_long_csv')}</a>
-                    <a className="neon-btn" href={`/api/export?format=wide&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_wide_csv')}</a>
-                    <a className="neon-btn" href={`/api/export?format=score&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_score_csv')}</a>
-                    <a className="neon-btn" href={`/api/export?format=items&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_items_csv')||'Export Items CSV'}</a>
-                  </>
-                ) : (
-                  <>
-                    <div className="muted" title={t('e2ee.csv_disabled_title')||'CSV exports are disabled when end‑to‑end encryption is ON'}>{t('e2ee.csv_disabled')||'CSV disabled (end‑to‑end encryption)'}</div>
-                    <a className="neon-btn" href={`/api/export?format=items&scale_id=${encodeURIComponent(s.id)}`} target="_blank">{t('export_items_csv')||'Export Items CSV'}</a>
-                  </>
-                )}
                 <button className="btn" onClick={()=>copyLink(s.id)}>{t('share')}</button>
                 <a className="btn btn-ghost" href={shareLink(s.id)} target="_blank" rel="noreferrer">{t('open')}</a>
                 <Link className="btn btn-primary" to={`/admin/scale/${encodeURIComponent(s.id)}`}>{t('manage')||'Manage'}</Link>
                 <Link className="btn" to={`/admin/scale/${encodeURIComponent(s.id)}/legacy`}>{t('editor.legacy_view')||'旧版视图'}</Link>
-                <button className="btn btn-ghost" onClick={async()=>{
-                  if (!confirm(t('confirm_delete_scale')||'Delete this scale and all its items/responses?')) return
-                  try { await adminDeleteScale(s.id); setMsg(t('deleted') as string); toast.success(t('delete_success')||t('deleted')||'Deleted'); loadScales() } catch(e:any) { setMsg(e.message||String(e)); toast.error(e.message||String(e)) }
-                }}>{t('delete')||'Delete'}</button>
+                {/* Exports and destructive actions moved into Settings (Exports/Danger tabs) to avoid misclicks */}
               </div>
             </div>
           ))}

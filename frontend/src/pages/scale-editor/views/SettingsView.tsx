@@ -7,6 +7,7 @@ import ConsentSettings from './settings/ConsentSettings'
 import AISettings from './settings/AISettings'
 import CollaboratorsPanel from '../components/CollaboratorsPanel'
 import DangerZone from '../components/DangerZone'
+import ExportSettings from './settings/ExportSettings'
 
 const SettingsView: React.FC = () => {
   const { t } = useTranslation()
@@ -23,6 +24,7 @@ const SettingsView: React.FC = () => {
           { key:'general', label:'settings.nav.general' },
           { key:'security', label:'settings.nav.security' },
           { key:'consent', label:'settings.nav.consent' },
+          { key:'exports', label:'settings.nav.exports' },
           { key:'ai', label:'settings.nav.ai' },
           { key:'team', label:'settings.nav.team' },
           { key:'danger', label:'settings.nav.danger' },
@@ -33,6 +35,7 @@ const SettingsView: React.FC = () => {
       {tab==='general' && <GeneralSettings />}
       {tab==='security' && <SecuritySettings />}
       {tab==='consent' && <ConsentSettings />}
+      {tab==='exports' && <ExportSettings />}
       {tab==='ai' && <AISettings />}
       {tab==='team' && (<div className="row"><CollaboratorsPanel /></div>)}
       {tab==='danger' && <DangerZone />}
@@ -41,4 +44,3 @@ const SettingsView: React.FC = () => {
 }
 
 export default SettingsView
-
