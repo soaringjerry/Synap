@@ -97,6 +97,7 @@ func (rt *Router) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/auth/register", rt.handleRegister)
 	mux.HandleFunc("/api/auth/login", rt.handleLogin)
 	mux.HandleFunc("/api/auth/logout", rt.handleLogout)
+	mux.Handle("/api/auth/me", middleware.WithAuth(http.HandlerFunc(rt.handleAuthMe)))
 	mux.Handle("/api/admin/scales", middleware.WithAuth(http.HandlerFunc(rt.handleAdminScales)))
 	mux.Handle("/api/admin/stats", middleware.WithAuth(http.HandlerFunc(rt.handleAdminStats)))
 	mux.Handle("/api/admin/analytics/summary", middleware.WithAuth(http.HandlerFunc(rt.handleAdminAnalyticsSummary)))
@@ -1337,4 +1338,19 @@ func (rt *Router) handleSelfDeleteE2EE(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
+// GET /api/auth/me — return current authenticated user info (requires valid token)
+func (rt *Router) handleAuthMe(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// Require claims
+	if c, ok := middleware.ClaimsFromContext(r.Context()); ok {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"user_id": c.UID, "tenant_id": c.TID, "email": c.Email})
+		return
+	}
+	http.Error(w, "unauthorized", http.StatusUnauthorized)
 }

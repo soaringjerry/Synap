@@ -18,17 +18,29 @@ import React from 'react'
 import { ToastProvider } from './components/Toast'
 import { useTranslation } from 'react-i18next'
 
-function useAuthStatus() {
-  const [authed, setAuthed] = React.useState<boolean>(() => !!localStorage.getItem('token'))
+function useServerAuth() {
+  const [authed, setAuthed] = React.useState<boolean>(false)
+  const [loading, setLoading] = React.useState(true)
+  const [user, setUser] = React.useState<{user_id:string;tenant_id:string;email:string}|null>(null)
   const loc = useLocation()
   React.useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'token') setAuthed(!!e.newValue) }
-    window.addEventListener('storage', onStorage)
-    // Also refresh auth state on route changes (same‑tab login/logout)
-    setAuthed(!!localStorage.getItem('token'))
-    return () => window.removeEventListener('storage', onStorage)
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const res = await fetch('/api/auth/me', { headers: { 'Accept': 'application/json' } })
+        if (!res.ok) { setAuthed(false); setUser(null); return }
+        const data = await res.json()
+        if (!cancelled) { setUser(data); setAuthed(true) }
+      } catch {
+        if (!cancelled) { setAuthed(false); setUser(null) }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [loc.pathname])
-  return { authed, setAuthed }
+  return { authed, loading, user, setAuthed }
 }
 
 async function logout(setAuthed: (b:boolean)=>void, navigate: (path:string)=>void) {
@@ -39,7 +51,7 @@ async function logout(setAuthed: (b:boolean)=>void, navigate: (path:string)=>voi
 }
 
 function RootLayout() {
-  const { authed, setAuthed } = useAuthStatus()
+  const { authed, setAuthed } = useServerAuth() as any
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -105,9 +117,10 @@ function RootLayout() {
 }
 
 function Protected({ children }: { children: React.ReactNode }) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const { authed, loading } = useServerAuth()
   const loc = useLocation()
-  if (!token) return <Navigate to="/auth" replace state={{ from: loc.pathname }} />
+  if (loading) return <div style={{padding:24}}>Loading…</div>
+  if (!authed) return <Navigate to="/auth" replace state={{ from: loc.pathname }} />
   return <>{children}</>
 }
 

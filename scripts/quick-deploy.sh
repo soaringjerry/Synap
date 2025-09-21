@@ -37,10 +37,16 @@ done
 echo "[synap] owner=$OWNER channel=$CHANNEL domain=${DOMAIN:-<none>} edge=$EDGE port=$PORT front-port=$FRONT_PORT watch-interval=${WATCH_INTERVAL}s target=$TARGET_DIR"
 
 need_root() {
-  if [[ $EUID -ne 0 ]]; then
-    echo "Please run as root (use sudo)." >&2
-    exit 1
+  if [[ $EUID -eq 0 ]]; then return; fi
+  # Allow non-root if docker is usable by current user
+  if command -v docker >/dev/null 2>&1; then
+    if docker ps >/dev/null 2>&1; then
+      echo "[synap] running without root; docker permissions detected."
+      return
+    fi
   fi
+  echo "Please run as root (sudo) or ensure your user is in the docker group and can run 'docker ps'." >&2
+  exit 1
 }
 
 install_docker() {

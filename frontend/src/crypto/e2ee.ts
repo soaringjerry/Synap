@@ -108,6 +108,7 @@ export async function decryptSingleWithX25519(privRawB64: string, rec: { ciphert
   await sodium.ready
   const priv = b642ab(privRawB64)
   let dek: Uint8Array | null = null
+  let firstErr: any = null
   for (const envStr of rec.enc_dek) {
     try {
       const env = JSON.parse(envStr)
@@ -121,9 +122,15 @@ export async function decryptSingleWithX25519(privRawB64: string, rec: { ciphert
       const wrapped = b642ab(env.ct)
       dek = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, wrapped, null, n2, kek)
       if (dek) break
-    } catch {}
+    } catch (e) {
+      if (!firstErr) firstErr = e
+      continue
+    }
   }
-  if (!dek) throw new Error('No matching envelope for provided private key')
+  if (!dek) {
+    const reason = firstErr ? (firstErr.message || String(firstErr)) : 'no matching envelope'
+    throw new Error('Failed to unwrap DEK with provided private key: ' + reason)
+  }
   const nonce = b642ab(rec.nonce)
   const ct = b642ab(rec.ciphertext)
   const plain = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ct, null, nonce, dek)

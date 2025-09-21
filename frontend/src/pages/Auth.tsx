@@ -30,7 +30,7 @@ export function Auth() {
         const msg = (data && (data.error || data.message)) || res.statusText
         throw new Error(msg)
       }
-      localStorage.setItem('token', data.token)
+      // token is set via HttpOnly cookie by server; avoid localStorage to reduce XSS risk
       nav('/admin')
     } catch (e: any) {
       setMsg(e.message || String(e))
