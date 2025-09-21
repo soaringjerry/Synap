@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Noto+Sans+SC:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap');
 
 :root {
   color-scheme: dark;
@@ -44,7 +44,7 @@ body {
     radial-gradient(80vw 80vh at 50% 100%, rgba(163, 230, 53, 0.08) 0%, rgba(163, 230, 53, 0.00) 65%),
     linear-gradient(180deg, var(--bg-0) 0%, #0e152d 100%);
   color: var(--text);
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif;
+  font-family: Inter, 'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
