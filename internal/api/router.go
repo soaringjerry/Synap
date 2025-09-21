@@ -1007,46 +1007,8 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 	id := parts[0]
 	// collaborators subresource
 	if len(parts) >= 2 && parts[1] == "collaborators" {
-		// invite endpoint: /api/admin/scales/{id}/collaborators/invite
 		if len(parts) >= 3 && parts[2] == "invite" {
-			if r.Method != http.MethodPost {
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			tenantID, ok := middleware.TenantIDFromContext(r.Context())
-			if !ok {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-			sc := rt.store.GetScale(id)
-			if sc == nil || sc.TenantID != tenantID {
-				http.Error(w, "forbidden", http.StatusForbidden)
-				return
-			}
-			var in struct {
-				Email string `json:"email"`
-				Role  string `json:"role"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			// generate a short URL-safe token
-			token := strings.ReplaceAll(base64.StdEncoding.EncodeToString([]byte(time.Now().Format(time.RFC3339Nano)+":"+id+":"+in.Email)), "=", "")
-			if len(token) > 32 {
-				token = token[:32]
-			}
-			inv := &ScaleInvite{Token: token, TenantID: sc.TenantID, ScaleID: id, Email: strings.TrimSpace(in.Email), Role: strings.TrimSpace(in.Role), CreatedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(7 * 24 * time.Hour)}
-			if _, err := rt.store.CreateInvite(inv); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"token":      token,
-				"expires_at": inv.ExpiresAt.Format(time.RFC3339),
-				"invite_url": "/auth?invite=" + token + "&email=" + inv.Email,
-			})
+			rt.handleAdminScaleInvite(w, r, id)
 			return
 		}
 		rt.handleAdminScaleCollaborators(w, r, id)
@@ -1057,47 +1019,7 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(parts) == 3 && parts[1] == "items" && parts[2] == "import" && r.Method == http.MethodPost {
-		// Import items CSV (tenant-scoped)
-		tid, ok := middleware.TenantIDFromContext(r.Context())
-		if !ok {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		// Accept multipart/form-data file or raw text/csv
-		var data []byte
-		ct := r.Header.Get("Content-Type")
-		if strings.HasPrefix(ct, "multipart/form-data") {
-			if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			file, _, err := r.FormFile("file")
-			if err != nil {
-				http.Error(w, "file required", http.StatusBadRequest)
-				return
-			}
-			defer file.Close()
-			b, err := io.ReadAll(file)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			data = b
-		} else {
-			b, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			data = b
-		}
-		count, err := rt.scaleSvc.ImportItemsCSV(tid, id, data)
-		if err != nil {
-			rt.writeServiceError(w, err)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "count": count})
+		rt.handleAdminScaleImportItems(w, r, id)
 		return
 	}
 	switch r.Method {
@@ -1432,4 +1354,81 @@ func (rt *Router) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "unauthorized", http.StatusUnauthorized)
+}
+
+// Helper: invite collaborator
+func (rt *Router) handleAdminScaleInvite(w http.ResponseWriter, r *http.Request, id string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tenantID, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	sc := rt.store.GetScale(id)
+	if sc == nil || sc.TenantID != tenantID {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	var in struct{ Email, Role string }
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	token := strings.ReplaceAll(base64.StdEncoding.EncodeToString([]byte(time.Now().Format(time.RFC3339Nano)+":"+id+":"+in.Email)), "=", "")
+	if len(token) > 32 {
+		token = token[:32]
+	}
+	inv := &ScaleInvite{Token: token, TenantID: sc.TenantID, ScaleID: id, Email: strings.TrimSpace(in.Email), Role: strings.TrimSpace(in.Role), CreatedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(7 * 24 * time.Hour)}
+	if _, err := rt.store.CreateInvite(inv); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"token": token, "expires_at": inv.ExpiresAt.Format(time.RFC3339), "invite_url": "/auth?invite=" + token + "&email=" + inv.Email})
+}
+
+// Helper: import items CSV
+func (rt *Router) handleAdminScaleImportItems(w http.ResponseWriter, r *http.Request, id string) {
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var data []byte
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, "file required", http.StatusBadRequest)
+			return
+		}
+		defer func() { _ = file.Close() }()
+		b, err := io.ReadAll(file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		data = b
+	} else {
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		data = b
+	}
+	count, err := rt.scaleSvc.ImportItemsCSV(tid, id, data)
+	if err != nil {
+		rt.writeServiceError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "count": count})
 }

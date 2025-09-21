@@ -218,6 +218,161 @@ func (s *ScaleService) DeleteScaleResponses(tenantID, scaleID, actor string) (in
 	return removed, nil
 }
 
+// --- CSV import helpers ---
+type itemsCSVHeader struct {
+	itemID, pos, typ, req, rev, min, max, step                     int
+	stemEn, stemZh, optsEn, optsZh, phEn, phZh, lkEn, lkZh, lkShow int
+}
+
+func indexOfInsensitive(header []string, name string) int {
+	for i, h := range header {
+		if strings.EqualFold(strings.TrimSpace(h), name) {
+			return i
+		}
+	}
+	return -1
+}
+
+func buildItemsHeaderIdx(header []string) itemsCSVHeader {
+	return itemsCSVHeader{
+		itemID: indexOfInsensitive(header, "item_id"),
+		pos:    indexOfInsensitive(header, "position"),
+		typ:    indexOfInsensitive(header, "type"),
+		req:    indexOfInsensitive(header, "required"),
+		rev:    indexOfInsensitive(header, "reverse_scored"),
+		min:    indexOfInsensitive(header, "min"),
+		max:    indexOfInsensitive(header, "max"),
+		step:   indexOfInsensitive(header, "step"),
+		stemEn: indexOfInsensitive(header, "stem_en"),
+		stemZh: indexOfInsensitive(header, "stem_zh"),
+		optsEn: indexOfInsensitive(header, "options_en"),
+		optsZh: indexOfInsensitive(header, "options_zh"),
+		phEn:   indexOfInsensitive(header, "placeholder_en"),
+		phZh:   indexOfInsensitive(header, "placeholder_zh"),
+		lkEn:   indexOfInsensitive(header, "likert_labels_en"),
+		lkZh:   indexOfInsensitive(header, "likert_labels_zh"),
+		lkShow: indexOfInsensitive(header, "likert_show_numbers"),
+	}
+}
+
+func csvParseBool(s string) bool {
+	ss := strings.ToLower(strings.TrimSpace(s))
+	return ss == "1" || ss == "true" || ss == "yes" || ss == "y"
+}
+
+func csvParseInt(s string) int { n, _ := strconv.Atoi(strings.TrimSpace(s)); return n }
+
+func csvSplitList(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	if strings.Contains(s, "|") {
+		parts := strings.Split(s, "|")
+		out := make([]string, 0, len(parts))
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func buildItemFromRow(row []string, h itemsCSVHeader, scaleID string) (*Item, error) {
+	get := func(i int) string {
+		if i >= 0 && i < len(row) {
+			return row[i]
+		}
+		return ""
+	}
+	it := &Item{ScaleID: scaleID}
+	if id := strings.TrimSpace(get(h.itemID)); id != "" {
+		it.ID = id
+	}
+	if it.ID == "" {
+		it.ID = shortID(8)
+	}
+	if h.pos >= 0 {
+		it.Order = csvParseInt(get(h.pos))
+	}
+	if t := strings.TrimSpace(get(h.typ)); t != "" {
+		it.Type = t
+	} else {
+		it.Type = "likert"
+	}
+	if h.req >= 0 {
+		it.Required = csvParseBool(get(h.req))
+	}
+	if h.rev >= 0 {
+		it.ReverseScored = csvParseBool(get(h.rev))
+	}
+	if h.min >= 0 {
+		it.Min = csvParseInt(get(h.min))
+	}
+	if h.max >= 0 {
+		it.Max = csvParseInt(get(h.max))
+	}
+	if h.step >= 0 {
+		it.Step = csvParseInt(get(h.step))
+	}
+	stemEn := strings.TrimSpace(get(h.stemEn))
+	stemZh := strings.TrimSpace(get(h.stemZh))
+	if stemEn != "" || stemZh != "" {
+		it.StemI18n = map[string]string{}
+		if stemEn != "" {
+			it.StemI18n["en"] = stemEn
+		}
+		if stemZh != "" {
+			it.StemI18n["zh"] = stemZh
+		}
+	}
+	if it.StemI18n == nil || (it.StemI18n["en"] == "" && it.StemI18n["zh"] == "") {
+		return nil, NewInvalidError("stem required in at least one language")
+	}
+	if en := strings.TrimSpace(get(h.optsEn)); en != "" || strings.TrimSpace(get(h.optsZh)) != "" {
+		it.OptionsI18n = map[string][]string{}
+		if en != "" {
+			it.OptionsI18n["en"] = csvSplitList(en)
+		}
+		if zh := strings.TrimSpace(get(h.optsZh)); zh != "" {
+			it.OptionsI18n["zh"] = csvSplitList(zh)
+		}
+	}
+	if pe := strings.TrimSpace(get(h.phEn)); pe != "" || strings.TrimSpace(get(h.phZh)) != "" {
+		it.PlaceholderI18n = map[string]string{}
+		if pe != "" {
+			it.PlaceholderI18n["en"] = pe
+		}
+		if pz := strings.TrimSpace(get(h.phZh)); pz != "" {
+			it.PlaceholderI18n["zh"] = pz
+		}
+	}
+	if le := strings.TrimSpace(get(h.lkEn)); le != "" || strings.TrimSpace(get(h.lkZh)) != "" {
+		it.LikertLabelsI18n = map[string][]string{}
+		if le != "" {
+			it.LikertLabelsI18n["en"] = csvSplitList(le)
+		}
+		if lz := strings.TrimSpace(get(h.lkZh)); lz != "" {
+			it.LikertLabelsI18n["zh"] = csvSplitList(lz)
+		}
+	}
+	if h.lkShow >= 0 {
+		it.LikertShowNumbers = csvParseBool(get(h.lkShow))
+	}
+	return it, nil
+}
+
 // ImportItemsCSV parses a CSV (as produced by ExportItemsCSV) and appends items to the scale.
 // It validates tenant scope and creates new items with provided fields. Missing item_id results in a generated ID.
 func (s *ScaleService) ImportItemsCSV(tenantID, scaleID string, data []byte) (int, error) {
@@ -247,155 +402,17 @@ func (s *ScaleService) ImportItemsCSV(tenantID, scaleID string, data []byte) (in
 	if len(rows) == 0 {
 		return 0, NewInvalidError("empty csv")
 	}
-	header := rows[0]
-	idx := func(name string) int {
-		for i, h := range header {
-			if strings.EqualFold(strings.TrimSpace(h), name) {
-				return i
-			}
-		}
-		return -1
-	}
-
-	// Header indices (best-effort; optional columns allowed)
-	iItemID := idx("item_id")
-	iPos := idx("position")
-	iType := idx("type")
-	iReq := idx("required")
-	iRev := idx("reverse_scored")
-	iMin := idx("min")
-	iMax := idx("max")
-	iStep := idx("step")
-	iStemEn := idx("stem_en")
-	iStemZh := idx("stem_zh")
-	iOptsEn := idx("options_en")
-	iOptsZh := idx("options_zh")
-	iPhEn := idx("placeholder_en")
-	iPhZh := idx("placeholder_zh")
-	iLkEn := idx("likert_labels_en")
-	iLkZh := idx("likert_labels_zh")
-	iLkShow := idx("likert_show_numbers")
-
-	parseBool := func(s string) bool {
-		ss := strings.ToLower(strings.TrimSpace(s))
-		return ss == "1" || ss == "true" || ss == "yes" || ss == "y"
-	}
-	parseInt := func(s string) int { n, _ := strconv.Atoi(strings.TrimSpace(s)); return n }
-	splitList := func(s string) []string {
-		s = strings.TrimSpace(s)
-		if s == "" {
-			return nil
-		}
-		// split on pipe with optional spaces, or comma fallback
-		if strings.Contains(s, "|") {
-			parts := strings.Split(s, "|")
-			out := make([]string, 0, len(parts))
-			for _, p := range parts {
-				p = strings.TrimSpace(p)
-				if p != "" {
-					out = append(out, p)
-				}
-			}
-			return out
-		}
-		parts := strings.Split(s, ",")
-		out := make([]string, 0, len(parts))
-		for _, p := range parts {
-			p = strings.TrimSpace(p)
-			if p != "" {
-				out = append(out, p)
-			}
-		}
-		return out
-	}
+	hdr := buildItemsHeaderIdx(rows[0])
 
 	created := 0
 	for _, row := range rows[1:] {
 		if len(strings.TrimSpace(strings.Join(row, ""))) == 0 {
 			continue
 		}
-		get := func(i int) string {
-			if i >= 0 && i < len(row) {
-				return row[i]
-			}
-			return ""
+		item, ierr := buildItemFromRow(row, hdr, scaleID)
+		if ierr != nil {
+			return 0, ierr
 		}
-		item := &Item{ScaleID: scaleID}
-		if id := strings.TrimSpace(get(iItemID)); id != "" {
-			item.ID = id
-		}
-		if item.ID == "" {
-			item.ID = shortID(8)
-		}
-		if iPos >= 0 {
-			item.Order = parseInt(get(iPos))
-		}
-		if t := strings.TrimSpace(get(iType)); t != "" {
-			item.Type = t
-		} else {
-			item.Type = "likert"
-		}
-		if iReq >= 0 {
-			item.Required = parseBool(get(iReq))
-		}
-		if iRev >= 0 {
-			item.ReverseScored = parseBool(get(iRev))
-		}
-		if iMin >= 0 {
-			item.Min = parseInt(get(iMin))
-		}
-		if iMax >= 0 {
-			item.Max = parseInt(get(iMax))
-		}
-		if iStep >= 0 {
-			item.Step = parseInt(get(iStep))
-		}
-		stemEn := strings.TrimSpace(get(iStemEn))
-		stemZh := strings.TrimSpace(get(iStemZh))
-		if stemEn != "" || stemZh != "" {
-			item.StemI18n = map[string]string{}
-			if stemEn != "" {
-				item.StemI18n["en"] = stemEn
-			}
-			if stemZh != "" {
-				item.StemI18n["zh"] = stemZh
-			}
-		}
-		if item.StemI18n == nil || (item.StemI18n["en"] == "" && item.StemI18n["zh"] == "") {
-			// require at least one stem
-			return 0, NewInvalidError("stem required in at least one language")
-		}
-		if en := strings.TrimSpace(get(iOptsEn)); en != "" || strings.TrimSpace(get(iOptsZh)) != "" {
-			item.OptionsI18n = map[string][]string{}
-			if en != "" {
-				item.OptionsI18n["en"] = splitList(en)
-			}
-			if zh := strings.TrimSpace(get(iOptsZh)); zh != "" {
-				item.OptionsI18n["zh"] = splitList(zh)
-			}
-		}
-		if pe := strings.TrimSpace(get(iPhEn)); pe != "" || strings.TrimSpace(get(iPhZh)) != "" {
-			item.PlaceholderI18n = map[string]string{}
-			if pe != "" {
-				item.PlaceholderI18n["en"] = pe
-			}
-			if pz := strings.TrimSpace(get(iPhZh)); pz != "" {
-				item.PlaceholderI18n["zh"] = pz
-			}
-		}
-		if le := strings.TrimSpace(get(iLkEn)); le != "" || strings.TrimSpace(get(iLkZh)) != "" {
-			item.LikertLabelsI18n = map[string][]string{}
-			if le != "" {
-				item.LikertLabelsI18n["en"] = splitList(le)
-			}
-			if lz := strings.TrimSpace(get(iLkZh)); lz != "" {
-				item.LikertLabelsI18n["zh"] = splitList(lz)
-			}
-		}
-		if iLkShow >= 0 {
-			item.LikertShowNumbers = parseBool(get(iLkShow))
-		}
-
 		if _, err := s.store.InsertItem(item); err != nil {
 			return created, err
 		}
