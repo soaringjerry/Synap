@@ -233,7 +233,11 @@ func (s *SQLiteStore) ListScaleCollaborators(scaleID string) []api.ScaleCollabor
 		s.logErr("ListScaleCollaborators: query", err)
 		return nil
 	}
-	defer rows.Close()
+	defer func() {
+		if cerr := rows.Close(); cerr != nil {
+			s.logErr("ListScaleCollaborators: rows.Close", cerr)
+		}
+	}()
 	out := []api.ScaleCollaborator{}
 	for rows.Next() {
 		var c api.ScaleCollaborator
@@ -244,6 +248,9 @@ func (s *SQLiteStore) ListScaleCollaborators(scaleID string) []api.ScaleCollabor
 			}
 			out = append(out, c)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		s.logErr("ListScaleCollaborators: rows.Err", err)
 	}
 	return out
 }
