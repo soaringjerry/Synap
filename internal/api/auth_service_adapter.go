@@ -1,8 +1,9 @@
 package api
 
 import (
-	"github.com/soaringjerry/Synap/internal/services"
 	"strings"
+
+	"github.com/soaringjerry/Synap/internal/services"
 )
 
 type authStoreAdapter struct {
