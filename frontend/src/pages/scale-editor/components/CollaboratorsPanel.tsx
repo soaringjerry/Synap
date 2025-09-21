@@ -15,6 +15,7 @@ export const CollaboratorsPanel: React.FC = () => {
   const [role, setRole] = useState<'editor'|'viewer'>('editor')
   const [loading, setLoading] = useState(false)
   const [inviteEmail, setInviteEmail] = useState<string | null>(null)
+  const [inviteLink, setInviteLink] = useState<string | null>(null)
 
   const load = useMemo(() => async () => {
     try {
@@ -79,13 +80,34 @@ export const CollaboratorsPanel: React.FC = () => {
           {roles.map(r => <option key={r} value={r}>{t(`team.role_${r}`)}</option>)}
         </select>
       </div>
-      <div className="cta-row" style={{ gap: 8 }}>
+      <div className="cta-row" style={{ gap: 8, flexWrap:'wrap' }}>
         <button className="btn" onClick={add} disabled={loading || !email.trim()}>{t('team.add')}</button>
         {inviteEmail && (
-          <span className="muted">
-            {t('team.user_not_found')}{' '}
-            <a href={`/auth`} target="_blank" rel="noreferrer">{t('team.invite_register')}</a>
-          </span>
+          <>
+            <span className="muted">{t('team.user_not_found')}</span>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={async () => {
+                try {
+                  setInviteLink(null)
+                  const authHeader = (() => { const t = localStorage.getItem('token'); return t ? { Authorization: `Bearer ${t}` } : {} as Record<string,string> })()
+                  const res = await fetch(`/api/admin/scales/${encodeURIComponent(scaleId)}/collaborators/invite`, {
+                    method: 'POST', headers: { 'Content-Type':'application/json', ...authHeader },
+                    body: JSON.stringify({ email: inviteEmail, role })
+                  })
+                  const data = await res.json()
+                  if (!res.ok) throw new Error(data?.error || res.statusText)
+                  setInviteLink(data.invite_url as string)
+                } catch (e: any) {
+                  toast.error(e?.message || String(e))
+                }
+              }}
+            >{t('team.invite_register')}</button>
+            {inviteLink && (
+              <a className="btn btn-ghost" href={inviteLink} target="_blank" rel="noreferrer">{inviteLink}</a>
+            )}
+          </>
         )}
       </div>
 
@@ -117,4 +139,3 @@ export const CollaboratorsPanel: React.FC = () => {
 }
 
 export default CollaboratorsPanel
-

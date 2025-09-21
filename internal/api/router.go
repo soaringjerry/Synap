@@ -808,11 +808,46 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": "method not allowed"})
 		return
 	}
-	var req struct{ Email, Password, TenantName string }
+	var req struct {
+		Email, Password, TenantName string
+		InviteToken                 string `json:"invite_token"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		return
+	}
+	// If invite token is provided and valid, register into inviter's tenant and auto-add collaborator
+	if strings.TrimSpace(req.InviteToken) != "" {
+		inv := rt.store.GetInvite(strings.TrimSpace(req.InviteToken))
+		if inv == nil || inv.ExpiresAt.Before(time.Now().UTC()) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "invalid or expired invite"})
+			return
+		}
+		// Email must match
+		if !strings.EqualFold(strings.TrimSpace(req.Email), strings.TrimSpace(inv.Email)) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "invite email mismatch"})
+			return
+		}
+		res, err := rt.authSvc.RegisterWithTenant(req.Email, req.Password, inv.TenantID)
+		if err != nil {
+			rt.writeAuthJSONError(w, err)
+			return
+		}
+		_ = rt.store.MarkInviteAccepted(inv.Token)
+		// Auto-add collaborator
+		if _, addErr := rt.teamSvc.Add(inv.TenantID, inv.ScaleID, inv.Email, inv.Role, "system:invite"); addErr != nil {
+			log.Printf("invite: add collaborator error: %v", addErr)
+		}
+		maxAge := int(rt.authSvc.TokenTTL().Seconds())
+		http.SetCookie(w, &http.Cookie{Name: "synap_token", Value: res.Token, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Path: "/", MaxAge: maxAge})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"token": res.Token, "tenant_id": res.TenantID, "user_id": res.UserID})
 		return
 	}
 	res, err := rt.authSvc.Register(req.Email, req.Password, req.TenantName)
@@ -936,6 +971,46 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 	id := parts[0]
 	// collaborators subresource
 	if len(parts) >= 2 && parts[1] == "collaborators" {
+		// invite endpoint: /api/admin/scales/{id}/collaborators/invite
+		if len(parts) >= 3 && parts[2] == "invite" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			tenantID, ok := middleware.TenantIDFromContext(r.Context())
+			if !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			sc := rt.store.GetScale(id)
+			if sc == nil || sc.TenantID != tenantID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			var in struct {
+				Email string `json:"email"`
+				Role  string `json:"role"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+            // generate a short URL-safe token
+            token := strings.ReplaceAll(base64.StdEncoding.EncodeToString([]byte(time.Now().Format(time.RFC3339Nano)+":"+id+":"+in.Email)), "=", "")
+            if len(token) > 32 { token = token[:32] }
+			inv := &ScaleInvite{Token: token, TenantID: sc.TenantID, ScaleID: id, Email: strings.TrimSpace(in.Email), Role: strings.TrimSpace(in.Role), CreatedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(7 * 24 * time.Hour)}
+			if _, err := rt.store.CreateInvite(inv); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"token":      token,
+				"expires_at": inv.ExpiresAt.Format(time.RFC3339),
+				"invite_url": "/auth?invite=" + token + "&email=" + inv.Email,
+			})
+			return
+		}
 		rt.handleAdminScaleCollaborators(w, r, id)
 		return
 	}

@@ -60,6 +60,11 @@ type Store interface {
 	AddScaleCollaborator(scaleID, userID, role string) bool
 	RemoveScaleCollaborator(scaleID, userID string) bool
 	ListScaleCollaborators(scaleID string) []ScaleCollaborator
+
+	// Collaborator invitations
+	CreateInvite(inv *ScaleInvite) (*ScaleInvite, error)
+	GetInvite(token string) *ScaleInvite
+	MarkInviteAccepted(token string) bool
 }
 
 var _ Store = (*memoryStore)(nil)

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -10,6 +10,7 @@ export function Auth() {
   const [password, setPassword] = useState('')
   const [tenant, setTenant] = useState('')
   const [msg, setMsg] = useState('')
+  const [invite, setInvite] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function submit() {
@@ -18,7 +19,10 @@ export function Auth() {
       setLoading(true)
       const url = mode === 'register' ? '/api/auth/register' : '/api/auth/login'
       const body: any = { email, password }
-      if (mode === 'register') body.tenant_name = tenant
+      if (mode === 'register') {
+        body.tenant_name = tenant
+        if (invite) body.invite_token = invite
+      }
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       let data: any = null
       try { data = await res.json() } catch {}
@@ -34,6 +38,15 @@ export function Auth() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const usp = new URLSearchParams(location.search)
+    const inv = usp.get('invite')
+    const em = usp.get('email')
+    if (inv) setInvite(inv)
+    if (em && !email) setEmail(em)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="container">
@@ -58,6 +71,9 @@ export function Auth() {
             <div className="item"><div className="label">{t('tenant_name')}</div>
               <input className="input" value={tenant} onChange={e=>setTenant(e.target.value)} placeholder="Lab / Team" />
             </div>
+          )}
+          {invite && (
+            <div className="muted" style={{ marginTop: 8 }}>{t('team.manage_hint')}</div>
           )}
           <div style={{ height: 12 }} />
           <button className="neon-btn" onClick={submit} disabled={loading}>{mode==='register'?t('create_account'):t('login')}</button>

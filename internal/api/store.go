@@ -143,6 +143,18 @@ type ScaleCollaborator struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// ScaleInvite represents a pending invitation for a collaborator to join a tenant/scale.
+type ScaleInvite struct {
+    Token      string    `json:"token"`
+    TenantID   string    `json:"tenant_id"`
+    ScaleID    string    `json:"scale_id"`
+    Email      string    `json:"email"`
+    Role       string    `json:"role"`
+    CreatedAt  time.Time `json:"created_at"`
+    ExpiresAt  time.Time `json:"expires_at"`
+    AcceptedAt time.Time `json:"accepted_at,omitempty"`
+}
+
 type memoryStore struct {
 	e2ee         []*E2EEResponse
 	mu           sync.RWMutex
@@ -166,6 +178,7 @@ type memoryStore struct {
 
 	consents []*ConsentRecord
 	collabs  map[string]map[string]*ScaleCollaborator // scale_id -> user_id -> collab
+	invites  map[string]*ScaleInvite
 }
 
 func (s *memoryStore) buildSnapshot() *LegacySnapshot {
@@ -254,6 +267,44 @@ func (s *memoryStore) ListScaleCollaborators(scaleID string) []ScaleCollaborator
 	return out
 }
 
+// --- Invitations (memory) ---
+func (s *memoryStore) CreateInvite(inv *ScaleInvite) (*ScaleInvite, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if inv == nil || strings.TrimSpace(inv.Token) == "" {
+		return nil, errors.New("invalid invite")
+	}
+	if s.invites == nil {
+		s.invites = map[string]*ScaleInvite{}
+	}
+	cp := *inv
+	s.invites[cp.Token] = &cp
+	return &cp, nil
+}
+
+func (s *memoryStore) GetInvite(token string) *ScaleInvite {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.invites == nil {
+		return nil
+	}
+	if v, ok := s.invites[token]; ok {
+		cp := *v
+		return &cp
+	}
+	return nil
+}
+
+func (s *memoryStore) MarkInviteAccepted(token string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if v, ok := s.invites[token]; ok {
+		v.AcceptedAt = time.Now().UTC()
+		return true
+	}
+	return false
+}
+
 // MemoryStoreSnapshot returns a clone of all legacy data when backed by memoryStore.
 func MemoryStoreSnapshot(st Store) *LegacySnapshot {
 	ms, ok := st.(*memoryStore)
@@ -283,6 +334,7 @@ func newMemoryStore(path string) *memoryStore {
 		lastExport:   map[string]time.Time{},
 		consents:     []*ConsentRecord{},
 		collabs:      map[string]map[string]*ScaleCollaborator{},
+		invites:      map[string]*ScaleInvite{},
 	}
 }
 

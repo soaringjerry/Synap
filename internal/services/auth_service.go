@@ -74,6 +74,42 @@ func (s *AuthService) Register(email, password, tenantName string) (*AuthResult,
 	return &AuthResult{Token: token, TenantID: tenantID, UserID: userID}, nil
 }
 
+// RegisterWithTenant creates a user under an existing tenant (used for invitations).
+// It does not create a new tenant.
+func (s *AuthService) RegisterWithTenant(email, password, tenantID string) (*AuthResult, error) {
+	email = strings.TrimSpace(email)
+	if email == "" || strings.TrimSpace(password) == "" {
+		return nil, NewInvalidError("email/password required")
+	}
+	if strings.TrimSpace(tenantID) == "" {
+		return nil, NewInvalidError("tenant required")
+	}
+	existing, err := s.store.FindUserByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, NewConflictError("email exists")
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	userID := s.idGen("u", 7)
+	now := s.now()
+	if err := s.store.AddUser(&User{ID: userID, Email: email, PassHash: hash, TenantID: tenantID, CreatedAt: now}); err != nil {
+		return nil, err
+	}
+	if s.signToken == nil {
+		return nil, NewInvalidError("token signer not configured")
+	}
+	token, err := s.signToken(userID, tenantID, email, s.tokenTTL)
+	if err != nil {
+		return nil, err
+	}
+	return &AuthResult{Token: token, TenantID: tenantID, UserID: userID}, nil
+}
+
 func (s *AuthService) Login(email, password string) (*AuthResult, error) {
 	email = strings.TrimSpace(email)
 	if email == "" || strings.TrimSpace(password) == "" {

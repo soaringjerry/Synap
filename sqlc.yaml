@@ -4,6 +4,7 @@ sql:
     schema:
       - "internal/db/migrations/0001_initial_schema.sql"
       - "internal/db/migrations/0002_scale_collaborators.sql"
+      - "internal/db/migrations/0003_scale_invites.sql"
     queries: "internal/db/query.sql"
     gen:
       go:

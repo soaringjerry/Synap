@@ -255,6 +255,53 @@ func (s *SQLiteStore) ListScaleCollaborators(scaleID string) []api.ScaleCollabor
 	return out
 }
 
+// --- Invitations (sqlite) ---
+func (s *SQLiteStore) CreateInvite(inv *api.ScaleInvite) (*api.ScaleInvite, error) {
+	if inv == nil || strings.TrimSpace(inv.Token) == "" {
+		return nil, errors.New("invalid invite")
+	}
+	_, err := s.db.Exec(`INSERT INTO scale_invites (token, tenant_id, scale_id, email, role, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)`, inv.Token, inv.TenantID, inv.ScaleID, inv.Email, inv.Role, inv.CreatedAt.UTC().Format(time.RFC3339Nano), inv.ExpiresAt.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return nil, err
+	}
+	return inv, nil
+}
+
+func (s *SQLiteStore) GetInvite(token string) *api.ScaleInvite {
+	row := s.db.QueryRow(`SELECT token, tenant_id, scale_id, email, role, created_at, expires_at, accepted_at FROM scale_invites WHERE token = ?`, token)
+	var inv api.ScaleInvite
+	var created, expires, accepted sql.NullString
+	if err := row.Scan(&inv.Token, &inv.TenantID, &inv.ScaleID, &inv.Email, &inv.Role, &created, &expires, &accepted); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			s.logErr("GetInvite", err)
+		}
+		return nil
+	}
+	if created.Valid {
+		if t, err := time.Parse(time.RFC3339Nano, created.String); err == nil {
+			inv.CreatedAt = t
+		}
+	}
+	if expires.Valid {
+		if t, err := time.Parse(time.RFC3339Nano, expires.String); err == nil {
+			inv.ExpiresAt = t
+		}
+	}
+	if accepted.Valid {
+		if t, err := time.Parse(time.RFC3339Nano, accepted.String); err == nil {
+			inv.AcceptedAt = t
+		}
+	}
+	return &inv
+}
+
+func (s *SQLiteStore) MarkInviteAccepted(token string) bool {
+	_, err := s.db.Exec(`UPDATE scale_invites SET accepted_at = CURRENT_TIMESTAMP WHERE token = ?`, token)
+	s.logErr("MarkInviteAccepted", err)
+	return err == nil
+}
+
 func convertItem(rec sq.Item) *api.Item {
 	return &api.Item{
 		ID:                rec.ID,
