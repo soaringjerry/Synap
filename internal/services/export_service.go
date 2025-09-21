@@ -50,14 +50,7 @@ func (s *ExportService) ExportCSV(params ExportParams) (*ExportResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if sc != nil && sc.E2EEEnabled {
-		return nil, NewInvalidError("CSV exports are disabled for E2EE projects")
-	}
 	items, err := s.store.ListItems(params.ScaleID)
-	if err != nil {
-		return nil, err
-	}
-	rs, err := s.store.ListResponsesByScale(params.ScaleID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +66,21 @@ func (s *ExportService) ExportCSV(params ExportParams) (*ExportResult, error) {
 	}
 
 	switch format {
+	case "items":
+		// Allow exporting item definitions even for E2EE projects (metadata only).
+		b, err := ExportItemsCSV(items)
+		if err != nil {
+			return nil, err
+		}
+		return &ExportResult{Filename: "items.csv", ContentType: "text/csv; charset=utf-8", Data: b}, nil
 	case "long":
+		if sc != nil && sc.E2EEEnabled {
+			return nil, NewInvalidError("CSV exports are disabled for E2EE projects")
+		}
+		rs, err := s.store.ListResponsesByScale(params.ScaleID)
+		if err != nil {
+			return nil, err
+		}
 		rows := buildLongRows(rs)
 		if err := s.appendConsentLong(&rows, rs, params.ScaleID, params.ConsentHeader); err != nil {
 			return nil, err
@@ -84,6 +91,13 @@ func (s *ExportService) ExportCSV(params ExportParams) (*ExportResult, error) {
 		}
 		return &ExportResult{Filename: "long.csv", ContentType: "text/csv; charset=utf-8", Data: b}, nil
 	case "wide":
+		if sc != nil && sc.E2EEEnabled {
+			return nil, NewInvalidError("CSV exports are disabled for E2EE projects")
+		}
+		rs, err := s.store.ListResponsesByScale(params.ScaleID)
+		if err != nil {
+			return nil, err
+		}
 		if params.ValuesMode == "label" {
 			// Build string-valued wide table with item headers in desired language
 			strMp, err := s.buildWideMapStrings(rs, items, sc, valueLang, headerLang)
@@ -111,6 +125,13 @@ func (s *ExportService) ExportCSV(params ExportParams) (*ExportResult, error) {
 		}
 		return &ExportResult{Filename: "wide.csv", ContentType: "text/csv; charset=utf-8", Data: b}, nil
 	case "score":
+		if sc != nil && sc.E2EEEnabled {
+			return nil, NewInvalidError("CSV exports are disabled for E2EE projects")
+		}
+		rs, err := s.store.ListResponsesByScale(params.ScaleID)
+		if err != nil {
+			return nil, err
+		}
 		totals := buildTotals(items, rs)
 		b, err := ExportScoreCSV(totals)
 		if err != nil {

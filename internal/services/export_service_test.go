@@ -147,6 +147,30 @@ func TestExportServiceRejectsE2EE(t *testing.T) {
 	}
 }
 
+func TestExportItemsCSVAllowsE2EE(t *testing.T) {
+	store := newExportStubStore()
+	store.scale = &Scale{ID: "S1", E2EEEnabled: true}
+	store.items = []*Item{
+		{ID: "I1", ScaleID: "S1", Order: 1, Type: "likert", StemI18n: map[string]string{"en": "A", "zh": "甲"}, OptionsI18n: map[string][]string{"en": {"No", "Yes"}, "zh": {"否", "是"}}, Required: true},
+		{ID: "I2", ScaleID: "S1", Order: 2, Type: "short_text", PlaceholderI18n: map[string]string{"en": "Your answer", "zh": "你的答案"}},
+	}
+	svc := NewExportService(store)
+	res, err := svc.ExportCSV(ExportParams{ScaleID: "S1", Format: "items"})
+	if err != nil {
+		t.Fatalf("items export error: %v", err)
+	}
+	recs, err := csv.NewReader(strings.NewReader(string(res.Data))).ReadAll()
+	if err != nil {
+		t.Fatalf("csv read: %v", err)
+	}
+	if len(recs) != 3 {
+		t.Fatalf("expected 3 rows (header+2), got %d", len(recs))
+	}
+	if recs[1][0] != "I1" || recs[2][0] != "I2" {
+		t.Fatalf("unexpected order: %v %v", recs[1][0], recs[2][0])
+	}
+}
+
 func TestExportServiceWideLabelsZh(t *testing.T) {
 	store := newExportStubStore()
 	store.scale = &Scale{ID: "S1", LikertLabelsI18n: map[string][]string{

@@ -166,3 +166,77 @@ func itoa(i int) string {
 	}
 	return string(b[bp:])
 }
+
+// ExportItemsCSV renders a CSV of item definitions to aid analysis and review.
+// Columns include ids, order, type, required flags, ranges and i18n text.
+func ExportItemsCSV(items []*Item) ([]byte, error) {
+	// Ensure stable ordering by Order then ID
+	sort.SliceStable(items, func(i, j int) bool {
+		if items[i].Order == items[j].Order {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].Order < items[j].Order
+	})
+	buf := &bytes.Buffer{}
+	w := csv.NewWriter(buf)
+	_ = w.Write([]string{
+		"item_id", "position", "type", "required", "reverse_scored", "min", "max", "step",
+		"stem_en", "stem_zh", "options_en", "options_zh", "placeholder_en", "placeholder_zh",
+		"likert_labels_en", "likert_labels_zh", "likert_show_numbers",
+	})
+	join := func(ss []string) string {
+		if len(ss) == 0 {
+			return ""
+		}
+		// Use pipe as a human-friendly internal separator; csv.Writer will quote if needed
+		out := make([]byte, 0, 16*len(ss))
+		for i, s := range ss {
+			if i > 0 {
+				out = append(out, ' ', '|', ' ')
+			}
+			out = append(out, []byte(s)...)
+		}
+		return string(out)
+	}
+	for _, it := range items {
+		stemEn := ""
+		stemZh := ""
+		if it.StemI18n != nil {
+			stemEn = it.StemI18n["en"]
+			stemZh = it.StemI18n["zh"]
+		}
+		optsEn := ""
+		optsZh := ""
+		if it.OptionsI18n != nil {
+			optsEn = join(it.OptionsI18n["en"])
+			optsZh = join(it.OptionsI18n["zh"])
+		}
+		phEn := ""
+		phZh := ""
+		if it.PlaceholderI18n != nil {
+			phEn = it.PlaceholderI18n["en"]
+			phZh = it.PlaceholderI18n["zh"]
+		}
+		lkEn := ""
+		lkZh := ""
+		if it.LikertLabelsI18n != nil {
+			lkEn = join(it.LikertLabelsI18n["en"])
+			lkZh = join(it.LikertLabelsI18n["zh"])
+		}
+		rec := []string{
+			it.ID,
+			itoa(it.Order),
+			it.Type,
+			map[bool]string{true: "true", false: "false"}[it.Required],
+			map[bool]string{true: "true", false: "false"}[it.ReverseScored],
+			itoa(it.Min), itoa(it.Max), itoa(it.Step),
+			stemEn, stemZh, optsEn, optsZh, phEn, phZh, lkEn, lkZh,
+			map[bool]string{true: "true", false: "false"}[it.LikertShowNumbers],
+		}
+		if err := w.Write(rec); err != nil {
+			return nil, err
+		}
+	}
+	w.Flush()
+	return buf.Bytes(), w.Error()
+}

@@ -417,7 +417,7 @@ func (rt *Router) handleBulkResponses(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /api/export?scale_id=...&format=long|wide|score
+// GET /api/export?scale_id=...&format=long|wide|score|items
 func (rt *Router) handleExport(w http.ResponseWriter, r *http.Request) {
 	scaleID := r.URL.Query().Get("scale_id")
 	format := r.URL.Query().Get("format")
