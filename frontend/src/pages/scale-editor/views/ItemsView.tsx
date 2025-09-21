@@ -13,6 +13,7 @@ import {
   adminReorderItems,
   adminUpdateItem,
 } from '../../../api/client'
+import { adminGetScaleItems, adminImportItemsCSV } from '../../../api/client'
 import { useScaleEditor } from '../ScaleEditorContext'
 import { LIKERT_PRESETS } from '../constants'
 
@@ -165,6 +166,21 @@ const ItemsView: React.FC = () => {
           <div className="section-title">{t('your_items')}</div>
           <div className="cta-row">
             <button type="button" className="btn" onClick={saveOrder}>{t('editor.save_order')}</button>
+            <label className="btn" style={{cursor:'pointer'}}>
+              {t('editor.import_csv')||'Import CSV'}
+              <input type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={async e=>{
+                try {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  const text = await f.text()
+                  await adminImportItemsCSV(scaleId, text)
+                  const res = await adminGetScaleItems(scaleId)
+                  dispatch({ type: 'setItems', items: res.items })
+                  toast.success(t('import_success')||'Imported')
+                  ;(e.target as HTMLInputElement).value = ''
+                } catch(err:any) { setMessage(err.message||String(err)); toast.error(err.message||String(err)) }
+              }} />
+            </label>
             <button type="button" className="btn btn-primary" onClick={()=> { setNewOpen(true); setSelectedItem(null) }}>{t('add_item')}</button>
           </div>
         </div>

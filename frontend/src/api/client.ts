@@ -73,6 +73,10 @@ export async function adminGetScaleItems(id: string) {
   const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(id)}/items`, { headers: authHeaders() })
   return j<{ items: any[] }>(res)
 }
+export async function adminImportItemsCSV(scaleId: string, csv: string) {
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(scaleId)}/items/import`, { method:'POST', headers: { 'Content-Type':'text/csv', ...authHeaders() }, body: csv })
+  return j<{ ok: boolean; count: number }>(res)
+}
 export async function adminReorderItems(scaleId: string, order: string[]) {
   const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(scaleId)}/items/reorder`, { method:'PUT', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ order }) })
   return j<{ ok: boolean }>(res)

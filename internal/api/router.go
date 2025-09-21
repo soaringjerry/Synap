@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -1053,6 +1054,50 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(parts) == 3 && parts[1] == "items" && parts[2] == "reorder" && r.Method == http.MethodPut {
 		rt.handleAdminScaleReorderItems(w, r, id)
+		return
+	}
+	if len(parts) == 3 && parts[1] == "items" && parts[2] == "import" && r.Method == http.MethodPost {
+		// Import items CSV (tenant-scoped)
+		tid, ok := middleware.TenantIDFromContext(r.Context())
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		// Accept multipart/form-data file or raw text/csv
+		var data []byte
+		ct := r.Header.Get("Content-Type")
+		if strings.HasPrefix(ct, "multipart/form-data") {
+			if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			file, _, err := r.FormFile("file")
+			if err != nil {
+				http.Error(w, "file required", http.StatusBadRequest)
+				return
+			}
+			defer file.Close()
+			b, err := io.ReadAll(file)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			data = b
+		} else {
+			b, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			data = b
+		}
+		count, err := rt.scaleSvc.ImportItemsCSV(tid, id, data)
+		if err != nil {
+			rt.writeServiceError(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "count": count})
 		return
 	}
 	switch r.Method {
