@@ -56,6 +56,7 @@ export interface ScaleEditorState {
   items: any[]
   analytics: any | null
   view: ScaleEditorView
+  settingsTab: 'general' | 'security' | 'consent' | 'ai' | 'team' | 'danger'
   selectedItemId: string | null
   message: string
   likertDefaults: LikertDefaults
@@ -68,6 +69,7 @@ export interface ScaleEditorState {
 export type ScaleEditorAction =
   | { type: 'reset' }
   | { type: 'setView'; view: ScaleEditorView }
+  | { type: 'setSettingsTab'; tab: ScaleEditorState['settingsTab'] }
   | { type: 'setScale'; scale: any | null }
   | { type: 'setItems'; items: any[] }
   | { type: 'selectItem'; itemId: string | null }
@@ -216,6 +218,7 @@ export const createInitialState = (): ScaleEditorState => {
     items: [],
     analytics: null,
     view: 'editor',
+    settingsTab: 'general',
     selectedItemId: null,
     message: '',
     likertDefaults,
@@ -233,6 +236,8 @@ export const scaleEditorReducer = (
   switch (action.type) {
     case 'setView':
       return { ...state, view: action.view }
+    case 'setSettingsTab':
+      return { ...state, settingsTab: action.tab }
     case 'reset':
       return createInitialState()
     case 'setScale':

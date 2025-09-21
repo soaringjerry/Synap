@@ -241,6 +241,16 @@
     "share": "Share",
     "export": "Export",
     "copy": "Copy",
+    "settings": {
+      "nav": {
+        "general": "General",
+        "security": "Security",
+        "consent": "Consent",
+        "ai": "AI",
+        "team": "Team",
+        "danger": "Danger"
+      }
+    },
     "team": {
       "title": "Team & Collaborators",
       "email": "Collaborator email",

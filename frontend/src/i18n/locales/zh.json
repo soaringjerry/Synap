@@ -283,6 +283,16 @@
     "share": "分享",
     "export": "导出",
     "copy": "复制",
+    "settings": {
+      "nav": {
+        "general": "通用",
+        "security": "安全",
+        "consent": "知情同意",
+        "ai": "AI",
+        "team": "协作者",
+        "danger": "危险操作"
+      }
+    },
     "team": {
       "title": "团队与协作者",
       "email": "协作者邮箱",
