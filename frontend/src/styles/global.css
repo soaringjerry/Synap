@@ -303,7 +303,7 @@ a:hover, a:focus { text-decoration: none; }
 .muted { color: var(--muted); }
 
 /* Buttons */
-.neon-btn, .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 16px; border: 1px solid var(--border); color: var(--text); cursor: pointer; transition: all 140ms ease; background: rgba(255,255,255,0.04); position: relative; line-height: 1; white-space: nowrap; -webkit-tap-highlight-color: transparent; overflow: hidden; }
+.neon-btn, .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 16px; border: 1px solid var(--border); color: var(--text); cursor: pointer; transition: all 140ms ease; background: rgba(255,255,255,0.04); position: relative; line-height: 1; white-space: nowrap; -webkit-tap-highlight-color: transparent; overflow: hidden; font-synthesis: none; }
 .btn-primary { color: #0a0a12; border: 0; background: transparent; box-shadow: 0 6px 20px rgba(125,211,252,0.22); }
 .btn-primary::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent-grad); z-index: -1; }
 .btn-primary:hover { filter: brightness(1.03); transform: translateY(-1px); }

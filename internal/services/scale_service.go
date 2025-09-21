@@ -289,86 +289,130 @@ func csvSplitList(s string) []string {
 	return out
 }
 
-func buildItemFromRow(row []string, h itemsCSVHeader, scaleID string) (*Item, error) {
-	get := func(i int) string {
-		if i >= 0 && i < len(row) {
-			return row[i]
-		}
-		return ""
+// --- Row field helpers ---
+func getCell(row []string, i int) string {
+	if i >= 0 && i < len(row) {
+		return row[i]
 	}
+	return ""
+}
+
+func pickItemType(row []string, h itemsCSVHeader) string {
+	t := strings.TrimSpace(getCell(row, h.typ))
+	if t == "" {
+		return "likert"
+	}
+	return t
+}
+
+func parseStem(row []string, h itemsCSVHeader) (map[string]string, error) {
+	en := strings.TrimSpace(getCell(row, h.stemEn))
+	zh := strings.TrimSpace(getCell(row, h.stemZh))
+	if en == "" && zh == "" {
+		return nil, NewInvalidError("stem required in at least one language")
+	}
+	m := map[string]string{}
+	if en != "" {
+		m["en"] = en
+	}
+	if zh != "" {
+		m["zh"] = zh
+	}
+	return m, nil
+}
+
+func parseOptions(row []string, h itemsCSVHeader) map[string][]string {
+	en := strings.TrimSpace(getCell(row, h.optsEn))
+	zh := strings.TrimSpace(getCell(row, h.optsZh))
+	if en == "" && zh == "" {
+		return nil
+	}
+	m := map[string][]string{}
+	if en != "" {
+		m["en"] = csvSplitList(en)
+	}
+	if zh != "" {
+		m["zh"] = csvSplitList(zh)
+	}
+	return m
+}
+
+func parsePlaceholder(row []string, h itemsCSVHeader) map[string]string {
+	en := strings.TrimSpace(getCell(row, h.phEn))
+	zh := strings.TrimSpace(getCell(row, h.phZh))
+	if en == "" && zh == "" {
+		return nil
+	}
+	m := map[string]string{}
+	if en != "" {
+		m["en"] = en
+	}
+	if zh != "" {
+		m["zh"] = zh
+	}
+	return m
+}
+
+func parseLikertLabels(row []string, h itemsCSVHeader) map[string][]string {
+	en := strings.TrimSpace(getCell(row, h.lkEn))
+	zh := strings.TrimSpace(getCell(row, h.lkZh))
+	if en == "" && zh == "" {
+		return nil
+	}
+	m := map[string][]string{}
+	if en != "" {
+		m["en"] = csvSplitList(en)
+	}
+	if zh != "" {
+		m["zh"] = csvSplitList(zh)
+	}
+	return m
+}
+
+func buildItemFromRow(row []string, h itemsCSVHeader, scaleID string) (*Item, error) {
 	it := &Item{ScaleID: scaleID}
-	if id := strings.TrimSpace(get(h.itemID)); id != "" {
+	if id := strings.TrimSpace(getCell(row, h.itemID)); id != "" {
 		it.ID = id
 	}
 	if it.ID == "" {
 		it.ID = shortID(8)
 	}
 	if h.pos >= 0 {
-		it.Order = csvParseInt(get(h.pos))
+		it.Order = csvParseInt(getCell(row, h.pos))
 	}
-	if t := strings.TrimSpace(get(h.typ)); t != "" {
-		it.Type = t
-	} else {
-		it.Type = "likert"
-	}
+	it.Type = pickItemType(row, h)
 	if h.req >= 0 {
-		it.Required = csvParseBool(get(h.req))
+		it.Required = csvParseBool(getCell(row, h.req))
 	}
 	if h.rev >= 0 {
-		it.ReverseScored = csvParseBool(get(h.rev))
+		it.ReverseScored = csvParseBool(getCell(row, h.rev))
 	}
 	if h.min >= 0 {
-		it.Min = csvParseInt(get(h.min))
+		it.Min = csvParseInt(getCell(row, h.min))
 	}
 	if h.max >= 0 {
-		it.Max = csvParseInt(get(h.max))
+		it.Max = csvParseInt(getCell(row, h.max))
 	}
 	if h.step >= 0 {
-		it.Step = csvParseInt(get(h.step))
+		it.Step = csvParseInt(getCell(row, h.step))
 	}
-	stemEn := strings.TrimSpace(get(h.stemEn))
-	stemZh := strings.TrimSpace(get(h.stemZh))
-	if stemEn != "" || stemZh != "" {
-		it.StemI18n = map[string]string{}
-		if stemEn != "" {
-			it.StemI18n["en"] = stemEn
-		}
-		if stemZh != "" {
-			it.StemI18n["zh"] = stemZh
-		}
+
+	stem, err := parseStem(row, h)
+	if err != nil {
+		return nil, err
 	}
-	if it.StemI18n == nil || (it.StemI18n["en"] == "" && it.StemI18n["zh"] == "") {
-		return nil, NewInvalidError("stem required in at least one language")
+	it.StemI18n = stem
+	if opts := parseOptions(row, h); opts != nil {
+		it.OptionsI18n = opts
 	}
-	if en := strings.TrimSpace(get(h.optsEn)); en != "" || strings.TrimSpace(get(h.optsZh)) != "" {
-		it.OptionsI18n = map[string][]string{}
-		if en != "" {
-			it.OptionsI18n["en"] = csvSplitList(en)
-		}
-		if zh := strings.TrimSpace(get(h.optsZh)); zh != "" {
-			it.OptionsI18n["zh"] = csvSplitList(zh)
-		}
+	if ph := parsePlaceholder(row, h); ph != nil {
+		it.PlaceholderI18n = ph
 	}
-	if pe := strings.TrimSpace(get(h.phEn)); pe != "" || strings.TrimSpace(get(h.phZh)) != "" {
-		it.PlaceholderI18n = map[string]string{}
-		if pe != "" {
-			it.PlaceholderI18n["en"] = pe
-		}
-		if pz := strings.TrimSpace(get(h.phZh)); pz != "" {
-			it.PlaceholderI18n["zh"] = pz
-		}
-	}
-	if le := strings.TrimSpace(get(h.lkEn)); le != "" || strings.TrimSpace(get(h.lkZh)) != "" {
-		it.LikertLabelsI18n = map[string][]string{}
-		if le != "" {
-			it.LikertLabelsI18n["en"] = csvSplitList(le)
-		}
-		if lz := strings.TrimSpace(get(h.lkZh)); lz != "" {
-			it.LikertLabelsI18n["zh"] = csvSplitList(lz)
-		}
+	if lk := parseLikertLabels(row, h); lk != nil {
+		it.LikertLabelsI18n = lk
 	}
 	if h.lkShow >= 0 {
-		it.LikertShowNumbers = csvParseBool(get(h.lkShow))
+		it.LikertShowNumbers = csvParseBool(getCell(row, h.lkShow))
 	}
 	return it, nil
 }
