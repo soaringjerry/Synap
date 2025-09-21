@@ -145,14 +145,14 @@ type ScaleCollaborator struct {
 
 // ScaleInvite represents a pending invitation for a collaborator to join a tenant/scale.
 type ScaleInvite struct {
-    Token      string    `json:"token"`
-    TenantID   string    `json:"tenant_id"`
-    ScaleID    string    `json:"scale_id"`
-    Email      string    `json:"email"`
-    Role       string    `json:"role"`
-    CreatedAt  time.Time `json:"created_at"`
-    ExpiresAt  time.Time `json:"expires_at"`
-    AcceptedAt time.Time `json:"accepted_at,omitempty"`
+	Token      string    `json:"token"`
+	TenantID   string    `json:"tenant_id"`
+	ScaleID    string    `json:"scale_id"`
+	Email      string    `json:"email"`
+	Role       string    `json:"role"`
+	CreatedAt  time.Time `json:"created_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	AcceptedAt time.Time `json:"accepted_at,omitempty"`
 }
 
 type memoryStore struct {

@@ -995,9 +995,11 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-            // generate a short URL-safe token
-            token := strings.ReplaceAll(base64.StdEncoding.EncodeToString([]byte(time.Now().Format(time.RFC3339Nano)+":"+id+":"+in.Email)), "=", "")
-            if len(token) > 32 { token = token[:32] }
+			// generate a short URL-safe token
+			token := strings.ReplaceAll(base64.StdEncoding.EncodeToString([]byte(time.Now().Format(time.RFC3339Nano)+":"+id+":"+in.Email)), "=", "")
+			if len(token) > 32 {
+				token = token[:32]
+			}
 			inv := &ScaleInvite{Token: token, TenantID: sc.TenantID, ScaleID: id, Email: strings.TrimSpace(in.Email), Role: strings.TrimSpace(in.Role), CreatedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(7 * 24 * time.Hour)}
 			if _, err := rt.store.CreateInvite(inv); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
