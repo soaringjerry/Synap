@@ -788,7 +788,8 @@ func (rt *Router) handleAudit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Optional: filter by scale_id
-	filterScaleID := strings.TrimSpace(r.URL.Query().Get("scale_id"))
+    filterScaleID := strings.TrimSpace(r.URL.Query().Get("scale_id"))
+    source := strings.TrimSpace(r.URL.Query().Get("source")) // "admin" | "participant" | ""
 	var allowedScales map[string]bool
 	if filterScaleID != "" {
 		sc := rt.store.GetScale(filterScaleID)
@@ -805,16 +806,30 @@ func (rt *Router) handleAudit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	raw := rt.store.ListAudit()
-	out := make([]AuditEntry, 0, len(raw))
-	for _, e := range raw {
-		if allowedScales[e.Target] {
-			out = append(out, e)
-		}
-		if len(out) >= 500 {
-			break
-		}
-	}
+    raw := rt.store.ListAudit()
+    out := make([]AuditEntry, 0, len(raw))
+    for _, e := range raw {
+        // Filter by source type when requested
+        if source == "admin" && strings.EqualFold(e.Actor, "participant") {
+            continue
+        }
+        if source == "participant" && !strings.EqualFold(e.Actor, "participant") {
+            continue
+        }
+        // Tenant scoping: prefer matching target scale; for participant scope also try E2EE response -> scale mapping
+        if allowedScales[e.Target] {
+            out = append(out, e)
+        } else if source == "participant" && e.Target != "" {
+            if er := rt.store.GetE2EEResponse(e.Target); er != nil {
+                if allowedScales[er.ScaleID] {
+                    out = append(out, e)
+                }
+            }
+        }
+        if len(out) >= 500 {
+            break
+        }
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)
 }

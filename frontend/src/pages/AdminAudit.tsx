@@ -19,11 +19,17 @@ export function AdminAudit() {
     } catch (e:any) { setErr(e.message||String(e)) }
   }
 
-  async function loadAudit(sel?: string) {
+  const [source, setSource] = useState<'all'|'admin'|'participant'>('all')
+
+  async function loadAudit(sel?: string, src?: 'all'|'admin'|'participant') {
     setLoading(true)
     setErr('')
     try {
-      const url = sel ? `/api/admin/audit?scale_id=${encodeURIComponent(sel)}` : '/api/admin/audit'
+      const params = new URLSearchParams()
+      if (sel) params.set('scale_id', sel)
+      if (src && src !== 'all') params.set('source', src)
+      const qs = params.toString()
+      const url = qs ? `/api/admin/audit?${qs}` : '/api/admin/audit'
       const res = await fetch(url)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || res.statusText)
@@ -39,12 +45,17 @@ export function AdminAudit() {
     } finally { setLoading(false) }
   }
 
-  useEffect(()=>{ loadScales(); loadAudit('') },[])
+  useEffect(()=>{ loadScales(); loadAudit('', source) },[])
 
   const onFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const sel = e.target.value
     setScaleId(sel)
-    loadAudit(sel)
+    loadAudit(sel, source)
+  }
+  const onSource = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = (e.target.value as any) as 'all'|'admin'|'participant'
+    setSource(val)
+    loadAudit(scaleId, val)
   }
 
   const title = useMemo(()=>{
@@ -66,6 +77,14 @@ export function AdminAudit() {
               <select className="input" value={scaleId} onChange={onFilter}>
                 <option value="">{t('admin.audit_all_scales')||'All scales'}</option>
                 {scales.map(s=> <option key={s.id} value={s.id}>{s.id}</option>)}
+              </select>
+            </label>
+            <label>
+              <span style={{marginRight:8}}>{t('admin.audit_source')||'Source'}</span>
+              <select className="input" value={source} onChange={onSource}>
+                <option value="all">{t('admin.audit_src_all')||'All'}</option>
+                <option value="admin">{t('admin.audit_src_admin')||'Admin'}</option>
+                <option value="participant">{t('admin.audit_src_participant')||'Participant'}</option>
               </select>
             </label>
             {loading && <div className="muted">Loading…</div>}
