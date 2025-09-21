@@ -166,3 +166,40 @@ func TestProcessBulkResponsesScaleMissing(t *testing.T) {
 		t.Fatalf("expected scale not found error, got %v", err)
 	}
 }
+
+func TestNumericRangeValidation(t *testing.T) {
+	store := &stubBulkStore{
+		scale: &Scale{ID: "S1", Points: 5},
+		items: map[string]*Item{
+			"L1": {ID: "L1", Type: "likert"},
+			"N1": {ID: "N1", Type: "numeric", Min: 10, Max: 20},
+		},
+		consents: map[string]*ConsentRecord{"C1": {ID: "C1", ScaleID: "S1"}},
+	}
+	svc := NewResponseService(store)
+	svc.idGenerator = func() string { return "PID" }
+
+	outOfRange := 7 // likert > 5
+	belowMin := 5   // numeric < 10
+
+	_, err := svc.ProcessBulkResponses(BulkResponsesRequest{
+		ScaleID:   "S1",
+		ConsentID: "C1",
+		Answers: []BulkAnswer{
+			{ItemID: "L1", RawInt: &outOfRange},
+			{ItemID: "N1", RawInt: &belowMin},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.responses) != 2 {
+		t.Fatalf("responses stored=%d, want 2", len(store.responses))
+	}
+	if store.responses[0].RawValue != 0 || store.responses[0].ScoreValue != 0 || store.responses[0].RawJSON != "7" {
+		t.Fatalf("likert out-of-range not preserved as raw json; got (%d,%d,%q)", store.responses[0].RawValue, store.responses[0].ScoreValue, store.responses[0].RawJSON)
+	}
+	if store.responses[1].RawValue != 0 || store.responses[1].ScoreValue != 0 || store.responses[1].RawJSON != "5" {
+		t.Fatalf("numeric out-of-range not preserved as raw json; got (%d,%d,%q)", store.responses[1].RawValue, store.responses[1].ScoreValue, store.responses[1].RawJSON)
+	}
+}

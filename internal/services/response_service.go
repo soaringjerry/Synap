@@ -159,17 +159,29 @@ func buildResponseForItem(ans BulkAnswer, item *Item, scalePoints int, submitted
 	switch itemType {
 	case "likert":
 		if hadNum {
-			resp.RawValue = rawNum
-			score := rawNum
-			if item.ReverseScored {
-				score = ReverseScore(score, scalePoints)
+			// Likert scores must be within [1, scalePoints]
+			if rawNum >= 1 && rawNum <= scalePoints {
+				resp.RawValue = rawNum
+				score := rawNum
+				if item.ReverseScored {
+					score = ReverseScore(score, scalePoints)
+				}
+				resp.ScoreValue = score
+			} else {
+				// out-of-range numeric: preserve as raw json string, but do not score
+				resp.RawJSON = strconv.Itoa(rawNum)
 			}
-			resp.ScoreValue = score
 		}
 	case "rating", "slider", "numeric":
 		if hadNum {
-			resp.RawValue = rawNum
-			resp.ScoreValue = rawNum
+			// Enforce min/max when provided (non-zero)
+			min, max := item.Min, item.Max
+			if (min == 0 && max == 0) || (min <= rawNum && (max == 0 || rawNum <= max)) {
+				resp.RawValue = rawNum
+				resp.ScoreValue = rawNum
+			} else {
+				resp.RawJSON = strconv.Itoa(rawNum)
+			}
 		}
 	default:
 		// non-numeric types keep zero scores and capture the raw payload below
@@ -178,11 +190,7 @@ func buildResponseForItem(ans BulkAnswer, item *Item, scalePoints int, submitted
 	if len(ans.Raw) > 0 {
 		// For non-numeric types, canonicalise to EN labels where possible so server-side exports are analysis-friendly.
 		if itemType != "likert" && itemType != "rating" && itemType != "slider" && itemType != "numeric" {
-			if norm := normalizeRawToEnglish(item, ans.Raw); norm != "" {
-				resp.RawJSON = norm
-			} else {
-				resp.RawJSON = string(ans.Raw)
-			}
+			resp.RawJSON = normalizeRawToEnglish(item, ans.Raw)
 		} else {
 			resp.RawJSON = string(ans.Raw)
 		}
@@ -196,7 +204,7 @@ func buildResponseForItem(ans BulkAnswer, item *Item, scalePoints int, submitted
 // It supports both string and []string payloads. Returns empty string if no mapping was possible.
 func normalizeRawToEnglish(item *Item, raw json.RawMessage) string {
 	if item == nil || item.OptionsI18n == nil || len(raw) == 0 {
-		return ""
+		return string(raw)
 	}
 	// Build option matrix and prefer English when available
 	opts := item.OptionsI18n
@@ -232,7 +240,7 @@ func normalizeRawToEnglish(item *Item, raw json.RawMessage) string {
 				return string(b)
 			}
 		}
-		return ""
+		return string(raw)
 	}
 	// Case 2: list of strings
 	var arr []string
@@ -253,9 +261,9 @@ func normalizeRawToEnglish(item *Item, raw json.RawMessage) string {
 			b, _ := json.Marshal(out)
 			return string(b)
 		}
-		return ""
+		return string(raw)
 	}
-	return ""
+	return string(raw)
 }
 
 func parseNumericAnswer(ans BulkAnswer) (int, bool) {
