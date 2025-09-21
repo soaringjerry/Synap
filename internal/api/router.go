@@ -1017,84 +1017,16 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(parts) == 3 && parts[1] == "items" && parts[2] == "reorder" && r.Method == http.MethodPut {
-		tid, ok := middleware.TenantIDFromContext(r.Context())
-		if !ok {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		var in struct {
-			Order []string `json:"order"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		count, err := rt.scaleSvc.ReorderItems(tid, id, in.Order)
-		if err != nil {
-			rt.writeServiceError(w, err)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "count": count})
+		rt.handleAdminScaleReorderItems(w, r, id)
 		return
 	}
 	switch r.Method {
 	case http.MethodGet:
-		if len(parts) == 2 && parts[1] == "items" {
-			items, err := rt.scaleSvc.ListItems(id)
-			if err != nil {
-				rt.writeServiceError(w, err)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
-			return
-		}
-		sc, err := rt.scaleSvc.GetScale(id)
-		if err != nil {
-			rt.writeServiceError(w, err)
-			return
-		}
-		if sc == nil {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(sc)
+		rt.handleAdminScaleGet(w, r, id, parts)
 	case http.MethodDelete:
-		if len(parts) == 2 && parts[1] == "responses" {
-			tid, ok := middleware.TenantIDFromContext(r.Context())
-			if !ok {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-			removed, err := rt.scaleSvc.DeleteScaleResponses(tid, id, actorEmail(r))
-			if err != nil {
-				rt.writeServiceError(w, err)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "removed": removed})
-			return
-		}
-		if err := rt.scaleSvc.DeleteScale(id, actorEmail(r)); err != nil {
-			rt.writeServiceError(w, err)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		rt.handleAdminScaleDelete(w, r, id, parts)
 	case http.MethodPut:
-		var raw map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if err := rt.scaleSvc.UpdateScale(id, raw, actorEmail(r)); err != nil {
-			rt.writeServiceError(w, err)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		rt.handleAdminScaleUpdate(w, r, id)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -1148,6 +1080,94 @@ func (rt *Router) handleAdminScaleCollaborators(w http.ResponseWriter, r *http.R
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// Helper: reorder items under a scale
+func (rt *Router) handleAdminScaleReorderItems(w http.ResponseWriter, r *http.Request, scaleID string) {
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var in struct {
+		Order []string `json:"order"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	count, err := rt.scaleSvc.ReorderItems(tid, scaleID, in.Order)
+	if err != nil {
+		rt.writeServiceError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "count": count})
+}
+
+// Helper: GET scale or items
+func (rt *Router) handleAdminScaleGet(w http.ResponseWriter, r *http.Request, scaleID string, parts []string) {
+	if len(parts) == 2 && parts[1] == "items" {
+		items, err := rt.scaleSvc.ListItems(scaleID)
+		if err != nil {
+			rt.writeServiceError(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+		return
+	}
+	sc, err := rt.scaleSvc.GetScale(scaleID)
+	if err != nil {
+		rt.writeServiceError(w, err)
+		return
+	}
+	if sc == nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(sc)
+}
+
+// Helper: DELETE scale or responses
+func (rt *Router) handleAdminScaleDelete(w http.ResponseWriter, r *http.Request, scaleID string, parts []string) {
+	if len(parts) == 2 && parts[1] == "responses" {
+		tid, ok := middleware.TenantIDFromContext(r.Context())
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		removed, err := rt.scaleSvc.DeleteScaleResponses(tid, scaleID, actorEmail(r))
+		if err != nil {
+			rt.writeServiceError(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "removed": removed})
+		return
+	}
+	if err := rt.scaleSvc.DeleteScale(scaleID, actorEmail(r)); err != nil {
+		rt.writeServiceError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
+// Helper: PUT update scale
+func (rt *Router) handleAdminScaleUpdate(w http.ResponseWriter, r *http.Request, scaleID string) {
+	var raw map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := rt.scaleSvc.UpdateScale(scaleID, raw, actorEmail(r)); err != nil {
+		rt.writeServiceError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
 
 func actorEmail(r *http.Request) string {
