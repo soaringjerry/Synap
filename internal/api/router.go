@@ -780,8 +780,42 @@ func (rt *Router) handleAdminAITranslatePreview(w http.ResponseWriter, r *http.R
 
 // GET /api/admin/audit
 func (rt *Router) handleAudit(w http.ResponseWriter, r *http.Request) {
+	// Require tenant auth and filter to tenant-owned resources
+	tid, ok := middleware.TenantIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	// Optional: filter by scale_id
+	filterScaleID := strings.TrimSpace(r.URL.Query().Get("scale_id"))
+	var allowedScales map[string]bool
+	if filterScaleID != "" {
+		sc := rt.store.GetScale(filterScaleID)
+		if sc == nil || sc.TenantID != tid {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		allowedScales = map[string]bool{filterScaleID: true}
+	} else {
+		// Build allow-list from tenant scales
+		allowedScales = map[string]bool{}
+		for _, sc := range rt.store.ListScalesByTenant(tid) {
+			allowedScales[sc.ID] = true
+		}
+	}
+
+	raw := rt.store.ListAudit()
+	out := make([]AuditEntry, 0, len(raw))
+	for _, e := range raw {
+		if allowedScales[e.Target] {
+			out = append(out, e)
+		}
+		if len(out) >= 500 {
+			break
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(rt.store.ListAudit())
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 // GET /api/metrics/alpha?scale_id=...

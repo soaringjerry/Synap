@@ -6,6 +6,7 @@ import { CookieBanner } from './components/CookieBanner'
 import { Privacy } from './pages/Privacy'
 import { Terms } from './pages/Terms'
 import { Admin } from './pages/Admin'
+import { AdminAudit } from './pages/AdminAudit'
 import { Auth } from './pages/Auth'
 import { Survey } from './pages/Survey'
 import { AdminScale } from './pages/AdminScale'
@@ -128,6 +129,7 @@ const router = createBrowserRouter([
   { element: <RootLayout/>, children: [
     { path: '/', element: <Home/> },
     { path: '/admin', element: <Protected><Admin/></Protected> },
+    { path: '/admin/audit', element: <Protected><AdminAudit/></Protected> },
     { path: '/admin/keys', element: <Protected><AdminKeys/></Protected> },
     { path: '/admin/ai', element: <Protected><AdminAI/></Protected> },
     { path: '/admin/scale/:id', element: <Protected><ScaleEditor/></Protected> },

@@ -139,6 +139,19 @@ export function Admin() {
       </div>
       <div className="row">
         <section className="card span-12">
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <div>
+              <b>Operations</b>
+              <div className="muted">Tenant-scoped audit and collaboration</div>
+            </div>
+            <div style={{display:'flex', gap:8}}>
+              <Link className="btn" to="/admin/audit">Audit Log</Link>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div className="row">
+        <section className="card span-12">
           <h3 style={{marginTop:0}}>{t('create_scale')}</h3>
           <div className="row">
             <div className="card span-6">
