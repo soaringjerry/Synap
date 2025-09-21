@@ -45,7 +45,7 @@ const GeneralSettings: React.FC = () => {
 
   return (
     <div className="row">
-      <div className="card span-6">
+      <div className="card span-6" style={{ display:'flex', flexDirection:'column' }}>
         <h4 className="section-title" style={{ marginTop: 0 }}>{t('editor.basic_info')}</h4>
         <div className="item"><div className="label">{t('name_en')}</div>
           <input className="input" value={settings.nameEn} onChange={e=> update({ nameEn: e.target.value })} />
@@ -56,8 +56,11 @@ const GeneralSettings: React.FC = () => {
         <div className="item"><div className="label">{t('points')}</div>
           <input className="input" type="number" min={1} value={settings.points} onChange={e=> update({ points: e.target.value })} />
         </div>
+        <div className="cta-row" style={{ gap:8, justifyContent:'flex-end', marginTop: 12 }}>
+          <button className="btn btn-primary" type="button" onClick={save}>{t('save')}</button>
+        </div>
       </div>
-      <div className="card span-6">
+      <div className="card span-6" style={{ display:'flex', flexDirection:'column' }}>
         <h4 className="section-title" style={{ marginTop: 0 }}>{t('likert.defaults')}</h4>
         <div className="muted" style={{ marginBottom: 6 }}>{t('likert.apply_hint')}</div>
         <div className="item"><div className="label">{t('likert.presets.title')}</div>
@@ -80,13 +83,12 @@ const GeneralSettings: React.FC = () => {
           <input className="checkbox" type="checkbox" checked={settings.likertShowNumbers} onChange={e=> update({ likertShowNumbers: e.target.checked })} />
           <span>{t('likert.show_numbers')}</span>
         </label>
-      </div>
-      <div className="cta-row" style={{ gap: 8 }}>
-        <button className="btn btn-primary" type="button" onClick={save}>{t('save')}</button>
+        <div className="cta-row" style={{ gap:8, justifyContent:'flex-end', marginTop: 12 }}>
+          <button className="btn btn-primary" type="button" onClick={save}>{t('save')}</button>
+        </div>
       </div>
     </div>
   )
 }
 
 export default GeneralSettings
-

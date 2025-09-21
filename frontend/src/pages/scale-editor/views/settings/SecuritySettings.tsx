@@ -34,7 +34,7 @@ const SecuritySettings: React.FC = () => {
 
   return (
     <div className="row">
-      <div className="card span-6">
+      <div className="card span-6" style={{ display:'flex', flexDirection:'column' }}>
         <h4 className="section-title" style={{ marginTop: 0 }}>{t('editor.security')}</h4>
         <div className="item"><div className="label">{t('region')}</div>
           <select className="input" value={settings.region} onChange={e=> update({ region: e.target.value })}>
@@ -59,13 +59,12 @@ const SecuritySettings: React.FC = () => {
         <div className="item"><div className="label">{t('editor.items_per_page')}</div>
           <input className="input" type="number" min={0} value={settings.itemsPerPage} onChange={e=> update({ itemsPerPage: e.target.value })} placeholder="0 = all" />
         </div>
-      </div>
-      <div className="cta-row" style={{ gap:8 }}>
-        <button className="btn btn-primary" type="button" onClick={save}>{t('save')}</button>
+        <div className="cta-row" style={{ gap:8, justifyContent:'flex-end', marginTop: 12 }}>
+          <button className="btn btn-primary" type="button" onClick={save}>{t('save')}</button>
+        </div>
       </div>
     </div>
   )
 }
 
 export default SecuritySettings
-
