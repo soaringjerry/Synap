@@ -49,6 +49,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Prefer CJK font for Chinese locales to harmonize mixed scripts (e.g., “导入 CSV”) */
+html:lang(zh), body:lang(zh), [lang^="zh"] {
+  font-family: 'Noto Sans SC', Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif;
+}
+
+/* Ensure buttons inherit the locale-specific stack */
+button, .btn { font-family: inherit; }
+
 /* Dithered noise overlay to reduce gradient banding */
 body::before {
   content: "";
