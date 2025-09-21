@@ -203,6 +203,51 @@ func convertScale(rec sq.Scale) *api.Scale {
 	}
 }
 
+// --- Collaborators (sqlite) ---
+func (s *SQLiteStore) AddScaleCollaborator(scaleID, userID, role string) bool {
+	if strings.TrimSpace(scaleID) == "" || strings.TrimSpace(userID) == "" {
+		return false
+	}
+	if strings.TrimSpace(role) == "" {
+		role = "editor"
+	}
+	_, err := s.db.Exec(`INSERT INTO scale_collaborators (scale_id, user_id, role) VALUES (?, ?, ?)
+      ON CONFLICT(scale_id, user_id) DO UPDATE SET role = excluded.role`, scaleID, userID, role)
+	s.logErr("AddScaleCollaborator", err)
+	return err == nil
+}
+
+func (s *SQLiteStore) RemoveScaleCollaborator(scaleID, userID string) bool {
+	if strings.TrimSpace(scaleID) == "" || strings.TrimSpace(userID) == "" {
+		return false
+	}
+	_, err := s.db.Exec(`DELETE FROM scale_collaborators WHERE scale_id = ? AND user_id = ?`, scaleID, userID)
+	s.logErr("RemoveScaleCollaborator", err)
+	return err == nil
+}
+
+func (s *SQLiteStore) ListScaleCollaborators(scaleID string) []api.ScaleCollaborator {
+	rows, err := s.db.Query(`SELECT sc.scale_id, sc.user_id, u.email, sc.role, sc.created_at
+      FROM scale_collaborators sc JOIN users u ON u.id = sc.user_id WHERE sc.scale_id = ? ORDER BY u.email ASC`, scaleID)
+	if err != nil {
+		s.logErr("ListScaleCollaborators: query", err)
+		return nil
+	}
+	defer rows.Close()
+	out := []api.ScaleCollaborator{}
+	for rows.Next() {
+		var c api.ScaleCollaborator
+		var created string
+		if err := rows.Scan(&c.ScaleID, &c.UserID, &c.Email, &c.Role, &created); err == nil {
+			if t, perr := time.Parse(time.RFC3339Nano, created); perr == nil {
+				c.CreatedAt = t
+			}
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 func convertItem(rec sq.Item) *api.Item {
 	return &api.Item{
 		ID:                rec.ID,

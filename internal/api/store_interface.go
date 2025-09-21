@@ -55,6 +55,11 @@ type Store interface {
 	AddTenant(t *Tenant)
 	AddUser(u *User)
 	FindUserByEmail(email string) *User
+
+	// Team collaborators per scale
+	AddScaleCollaborator(scaleID, userID, role string) bool
+	RemoveScaleCollaborator(scaleID, userID string) bool
+	ListScaleCollaborators(scaleID string) []ScaleCollaborator
 }
 
 var _ Store = (*memoryStore)(nil)

@@ -134,6 +134,15 @@ type ProjectKey struct {
 	Disabled    bool      `json:"disabled"`
 }
 
+// ScaleCollaborator defines a user who can manage a given scale.
+type ScaleCollaborator struct {
+	ScaleID   string    `json:"scale_id"`
+	UserID    string    `json:"user_id"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type memoryStore struct {
 	e2ee         []*E2EEResponse
 	mu           sync.RWMutex
@@ -156,6 +165,7 @@ type memoryStore struct {
 	lastExport map[string]time.Time // per-tenant last export time
 
 	consents []*ConsentRecord
+	collabs  map[string]map[string]*ScaleCollaborator // scale_id -> user_id -> collab
 }
 
 func (s *memoryStore) buildSnapshot() *LegacySnapshot {
@@ -198,6 +208,52 @@ func (s *memoryStore) buildSnapshot() *LegacySnapshot {
 	return snap
 }
 
+// --- Collaborators (memory) ---
+func (s *memoryStore) AddScaleCollaborator(scaleID, userID, role string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.collabs == nil {
+		s.collabs = map[string]map[string]*ScaleCollaborator{}
+	}
+	if s.collabs[scaleID] == nil {
+		s.collabs[scaleID] = map[string]*ScaleCollaborator{}
+	}
+	// attempt to find user email from usersByEmail map
+	var email string
+	for e, u := range s.usersByEmail {
+		if u != nil && u.ID == userID {
+			email = e
+			break
+		}
+	}
+	s.collabs[scaleID][userID] = &ScaleCollaborator{ScaleID: scaleID, UserID: userID, Email: email, Role: role, CreatedAt: time.Now().UTC()}
+	return true
+}
+
+func (s *memoryStore) RemoveScaleCollaborator(scaleID, userID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if m := s.collabs[scaleID]; m != nil {
+		delete(m, userID)
+		return true
+	}
+	return false
+}
+
+func (s *memoryStore) ListScaleCollaborators(scaleID string) []ScaleCollaborator {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	m := s.collabs[scaleID]
+	if m == nil {
+		return nil
+	}
+	out := make([]ScaleCollaborator, 0, len(m))
+	for _, c := range m {
+		out = append(out, *c)
+	}
+	return out
+}
+
 // MemoryStoreSnapshot returns a clone of all legacy data when backed by memoryStore.
 func MemoryStoreSnapshot(st Store) *LegacySnapshot {
 	ms, ok := st.(*memoryStore)
@@ -226,6 +282,7 @@ func newMemoryStore(path string) *memoryStore {
 		exportJobs:   map[string]*ExportJob{},
 		lastExport:   map[string]time.Time{},
 		consents:     []*ConsentRecord{},
+		collabs:      map[string]map[string]*ScaleCollaborator{},
 	}
 }
 

@@ -224,3 +224,21 @@ ON CONFLICT(tenant_id) DO UPDATE SET
   allow_external = excluded.allow_external,
   store_logs = excluded.store_logs,
   updated_at = CURRENT_TIMESTAMP;
+
+-- Team collaborators
+-- name: InsertScaleCollaborator :exec
+INSERT INTO scale_collaborators (scale_id, user_id, role, created_at)
+VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
+ON CONFLICT(scale_id, user_id) DO UPDATE SET
+  role = excluded.role,
+  created_at = CASE WHEN scale_collaborators.created_at IS NULL THEN excluded.created_at ELSE scale_collaborators.created_at END;
+
+-- name: DeleteScaleCollaborator :exec
+DELETE FROM scale_collaborators WHERE scale_id = ? AND user_id = ?;
+
+-- name: ListScaleCollaborators :many
+SELECT sc.scale_id, sc.user_id, u.email, sc.role, sc.created_at
+FROM scale_collaborators sc
+JOIN users u ON u.id = sc.user_id
+WHERE sc.scale_id = ?
+ORDER BY u.email ASC;

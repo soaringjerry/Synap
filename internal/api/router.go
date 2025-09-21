@@ -30,6 +30,7 @@ type Router struct {
 	e2eeSvc        *services.E2EEService
 	analyticsSvc   *services.AnalyticsService
 	consentSvc     *services.ConsentService
+	teamSvc        *services.TeamService
 }
 
 func NewRouterWithStore(store Store) *Router {
@@ -56,6 +57,7 @@ func NewRouterWithStore(store Store) *Router {
 	}
 	ert.analyticsSvc = services.NewAnalyticsService(newAnalyticsStoreAdapter(store))
 	ert.consentSvc = services.NewConsentService(newConsentStoreAdapter(store))
+	ert.teamSvc = services.NewTeamService(newTeamStoreAdapter(store))
 	return ert
 }
 
@@ -932,6 +934,58 @@ func (rt *Router) handleAdminScaleOps(w http.ResponseWriter, r *http.Request) {
 	}
 	parts := strings.Split(rest, "/")
 	id := parts[0]
+	// collaborators subresource
+	if len(parts) >= 2 && parts[1] == "collaborators" {
+		tenantID, ok := middleware.TenantIDFromContext(r.Context())
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			list, err := rt.teamSvc.List(tenantID, id)
+			if err != nil {
+				rt.writeServiceError(w, err)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"collaborators": list})
+			return
+		case http.MethodPost:
+			var in struct {
+				Email string `json:"email"`
+				Role  string `json:"role"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			c, err := rt.teamSvc.Add(tenantID, id, strings.TrimSpace(in.Email), strings.TrimSpace(in.Role), actorEmail(r))
+			if err != nil {
+				rt.writeServiceError(w, err)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(c)
+			return
+		case http.MethodDelete:
+			userID := strings.TrimSpace(r.URL.Query().Get("user_id"))
+			if userID == "" {
+				http.Error(w, "user_id required", http.StatusBadRequest)
+				return
+			}
+			if err := rt.teamSvc.Remove(tenantID, id, userID, actorEmail(r)); err != nil {
+				rt.writeServiceError(w, err)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+			return
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+	}
 	if len(parts) == 3 && parts[1] == "items" && parts[2] == "reorder" && r.Method == http.MethodPut {
 		tid, ok := middleware.TenantIDFromContext(r.Context())
 		if !ok {
