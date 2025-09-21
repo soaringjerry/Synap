@@ -9,11 +9,19 @@ Thanks for your interest! This guide explains how to propose changes and contrib
 - Frontend: `cd frontend && npm ci && npm run dev`
 - Dev image (optional): `docker run -it --rm -p 8080:8080 -p 5173:5173 ghcr.io/soaringjerry/synap-dev:latest`
 
+### Architecture Philosophy (Read Me First)
+
+We use a layered backend (API → Services → Store) and a componentized frontend with centralized state where appropriate. Keep API handlers thin, put domain logic in services, and express persistence via small interfaces implemented by SQLite (`sqlc`). On the frontend, split large views into focused subviews and use the Scale Editor Context + Reducer for shared state.
+
+See the detailed guide: `docs/development_patterns.md`.
+
 ## Code Style
 
 - Go: `gofmt`, `go vet`, `golangci-lint`
 - TS/JS: `eslint`, `tsc --noEmit`
 - Commits: Conventional Commits (e.g., `feat:`, `fix:`, `docs:`, `chore:`)
+
+All code MUST pass: `gofmt`, `golangci-lint`, `go vet`, `go test ./...`, `eslint`, `tsc --noEmit`, `vitest`.
 
 ## Tests
 
@@ -34,4 +42,3 @@ Thanks for your interest! This guide explains how to propose changes and contrib
 ## Security
 
 - Please report vulnerabilities via `SECURITY.md` process — do not open public issues.
-
