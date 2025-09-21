@@ -196,3 +196,18 @@ export async function getScalePublicMeta(id: string) {
   const res = await fetch(`${base}/api/scale/${encodeURIComponent(id)}`)
   return j<any>(res)
 }
+
+// --- Team collaborators ---
+export type Collaborator = { user_id: string; email: string; role: 'editor'|'viewer' }
+export async function adminListCollaborators(scaleId: string) {
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(scaleId)}/collaborators`, { headers: authHeaders() })
+  return j<{ collaborators: Collaborator[] }>(res)
+}
+export async function adminAddCollaborator(scaleId: string, input: { email: string; role?: 'editor'|'viewer' }) {
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(scaleId)}/collaborators`, { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify(input) })
+  return j<Collaborator>(res)
+}
+export async function adminRemoveCollaborator(scaleId: string, userId: string) {
+  const res = await fetch(`${base}/api/admin/scales/${encodeURIComponent(scaleId)}/collaborators?user_id=${encodeURIComponent(userId)}`, { method: 'DELETE', headers: authHeaders() })
+  return j<{ ok: boolean }>(res)
+}

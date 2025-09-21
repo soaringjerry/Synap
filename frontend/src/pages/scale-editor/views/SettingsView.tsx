@@ -9,6 +9,7 @@ import {
   adminUpdateScale,
 } from '../../../api/client'
 import DangerZone from '../components/DangerZone'
+import CollaboratorsPanel from '../components/CollaboratorsPanel'
 import { LIKERT_PRESETS } from '../constants'
 import { useScaleEditor } from '../ScaleEditorContext'
 import {
@@ -1006,6 +1007,9 @@ const SettingsView: React.FC = () => {
           )}
           {ai.msg && <div className="muted" style={{ marginTop: 6 }}>{ai.msg}</div>}
         </div>
+      </div>
+      <div className="row">
+        <CollaboratorsPanel />
       </div>
       <DangerZone />
     </>

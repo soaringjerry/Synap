@@ -241,6 +241,19 @@
     "share": "Share",
     "export": "Export",
     "copy": "Copy",
+    "team": {
+      "title": "Team & Collaborators",
+      "email": "Collaborator email",
+      "role": "Role",
+      "role_editor": "Editor",
+      "role_viewer": "Viewer",
+      "add": "Add collaborator",
+      "added": "Collaborator added",
+      "empty": "No collaborators yet.",
+      "invite_register": "Invite to register",
+      "user_not_found": "User not found in this tenant.",
+      "manage_hint": "Collaborators can edit this scale depending on role."
+    },
     
     "open": "Open",
     "participant_link": "Participant Link",
