@@ -185,7 +185,8 @@ const ItemsView: React.FC = () => {
           </div>
         </div>
         {items.length===0 && <div className="muted">{t('no_items')}</div>}
-        <div style={{marginTop:8}}>
+        {/* Scrollable items list: constrained height with independent vertical scroll */}
+        <div style={{ marginTop:8, maxHeight:'70vh', overflowY:'auto', paddingRight:4 }}>
           {items.map((it:any, idx:number)=> (
             <div key={it.id} className="tile" style={{padding:10, marginTop:8, border: selectedItemId===it.id? '1px solid var(--accent)' : '1px solid transparent'}}>
               <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center'}}>
