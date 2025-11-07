@@ -84,7 +84,7 @@ Future (planned):
 
 - 浏览器内解密生成的 CSV（长/宽）均包含 `submitted_at` 列，取自加密包条目的 `created_at`。
 - 非数值题的答案文本会按 `options_i18n` 在浏览器端映射为英文，便于统计分析；不改变密文与服务器侧数据。
-- Consent receipts: participants can download a PDF (browser print) as human‑readable copy. The print view opens via a blob URL for better stability; if blocked, an HTML fallback is downloaded.
+- Consent receipts: participants can download a PDF (browser print) as human‑readable copy. The receipt now includes the full consent document (custom Markdown if provided, otherwise default sections), an overall consent status (computed from required items and signature requirement), and per‑option statuses for both required and optional confirmations. The print view opens via a blob URL for better stability; if blocked, an HTML fallback is downloaded.
 
 Planned UX:
 - Strong red warning + audit when turning E2EE OFF (especially gdpr/pipl projects)
