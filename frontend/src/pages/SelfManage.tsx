@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { participantSelfExport, participantSelfDelete, e2eeSelfDelete } from '../api/client'
 import { useToast } from '../components/Toast'
+import { mdToHtml } from '../utils/markdown'
 
 export function SelfManage() {
   const [sp] = useSearchParams()
@@ -58,15 +59,38 @@ export function SelfManage() {
     const ev = ctx.consentEvidence
     const idText = rid || pid
     const title = (lang==='zh' ? '知情同意凭证' : 'Consent Receipt') + (idText? ` · ${idText}` : '')
+    // Required & labels if provided in evidence
+    const requiredMap: Record<string, boolean> = (ev.summary?.options_required)||{}
+    const labelMap: Record<string, string> = (ev.summary?.option_labels)||{}
     const labelOf = (k: string) => {
+      const v = labelMap[k]
+      if (v) return v
       const fb = (lang==='zh'? '我理解/同意' : 'Confirm')
       return (k==='withdrawal')? (lang==='zh'?'我理解我可以随时撤回':'I understand I can withdraw at any time')
         : (k==='data_use')? (lang==='zh'?'我理解我的数据仅用于学术/汇总用途':'I understand my data is for academic/aggregate use only')
         : (k==='recording')? (lang==='zh'?'我同意在适用时进行录音/录像':'I consent to audio/video recording where applicable')
         : `${fb}: ${k}`
     }
-    const rows = Object.entries(ev.options||{}).map(([k,v])=> `<tr><td>${labelOf(k)}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`).join('')
-    const body = `<h1>${title}</h1><div class="meta">${idText? `ID: ${idText}`:''}</div><table><thead><tr><th>${lang==='zh'?'条目':'Item'}</th><th>${lang==='zh'?'选择':'Choice'}</th></tr></thead><tbody>${rows}</tbody></table>`
+    const overall = typeof ev.summary?.overall_agreed === 'boolean'
+      ? !!ev.summary?.overall_agreed
+      : (Object.entries(requiredMap).every(([k, req])=> !req || !!(ev.options||{})[k]) && (ev.signature?.required? ((ev.signature?.kind||'none')!=='none') : true))
+    const rows = Object.entries(ev.options||{})
+      .map(([k,v])=> `<tr><td>${labelOf(k)}${requiredMap[k]? ' *':''}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`)
+      .join('')
+    // Full document: prefer evidence markdown
+    const sanitizeTemplate = (s: string) => s
+      .replace(/\[\[CONSENT(?::[^\]]*)?\]\]/g, '')
+      .replace(/\[\[CONSENT\d+\]\]/g, '')
+    const documentHtml = ev.document_md ? (window as any).DOMPurify? (window as any).DOMPurify.sanitize(mdToHtml(sanitizeTemplate(ev.document_md))) : mdToHtml(sanitizeTemplate(ev.document_md)) : ''
+    const body = `
+      <h1>${title}</h1>
+      <div class="meta">${idText? `ID: ${idText}`:''}</div>
+      <h2>${lang==='zh'?'同意状态':'Agreement Status'}</h2>
+      <div>${lang==='zh'?'整体同意':'Overall consent'}：${overall? (lang==='zh'?'是':'Yes') : (lang==='zh'?'否':'No')}</div>
+      <h2>${lang==='zh'?'确认选项':'Confirmations'}</h2>
+      <table><thead><tr><th>${lang==='zh'?'条目':'Item'}</th><th>${lang==='zh'?'选择':'Choice'}</th></tr></thead><tbody>${rows}</tbody></table>
+      ${documentHtml? `<h2>${lang==='zh'?'知情同意书全文':'Consent Document'}</h2><div>${documentHtml}</div>` : ''}
+    `
     openPrintWindow(title, body)
   }
 

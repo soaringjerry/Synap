@@ -15,7 +15,16 @@ func (a *consentStoreAdapter) GetScale(id string) (*services.Scale, error) {
 }
 
 func (a *consentStoreAdapter) AddConsentRecord(cr *services.ConsentRecord) error {
-	a.store.AddConsentRecord(&ConsentRecord{ID: cr.ID, ScaleID: cr.ScaleID, Choices: cr.Choices, Locale: cr.Locale, SignedAt: cr.SignedAt})
+	// Persist full consent record details including version and hash when available
+	a.store.AddConsentRecord(&ConsentRecord{
+		ID:       cr.ID,
+		ScaleID:  cr.ScaleID,
+		Version:  cr.Version,
+		Choices:  cr.Choices,
+		Locale:   cr.Locale,
+		SignedAt: cr.SignedAt,
+		Hash:     cr.Hash,
+	})
 	return nil
 }
 

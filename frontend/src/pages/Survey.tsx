@@ -323,6 +323,26 @@ export function Survey() {
 
   async function handleConsentAgree() {
     // Build evidence JSON
+    const optionRequired: Record<string, boolean> = Object.fromEntries(((consentConfig?.options||[]) as any[]).map((o:any)=> [o.key, !!o.required]))
+    const optionLabel: Record<string, string> = Object.fromEntries(((consentConfig?.options||[]) as any[]).map((o:any)=> {
+      const label = o?.label_i18n ? (o.label_i18n[lang] || o.label_i18n['en'] || o.key) : ((t(`survey.consent_opt.${o.key}`) as string) || o.key)
+      return [o.key, label]
+    }))
+    const overallAgreed = Object.entries(optionRequired).every(([k,req])=> !req || !!consentChoices[k]) && (
+      (consentConfig?.signature_required? (sigChecked || !!sigImage) : true)
+    )
+    const documentMd = (() => {
+      if (consentCustom && consentCustom.trim()) return consentCustom
+      // Compose default sections from i18n
+      const sec = (k:string)=> `\n\n## ${t(`${k}_title`)}\n\n${t(`${k}_body`)}`
+      return `# ${t('survey.consent_title')}`
+        + sec('survey.sec_purpose')
+        + sec('survey.sec_risk')
+        + sec('survey.sec_withdrawal')
+        + sec('survey.sec_datause')
+        + sec('survey.sec_anonymity')
+        + sec('survey.sec_contact')
+    })()
     const evidence = {
       scale_id: scaleId,
       locale: lang,
@@ -332,6 +352,14 @@ export function Survey() {
       signature: { kind: sigImage ? 'draw' : (sigChecked ? 'click' : 'none'), image: sigImage || undefined, required: !!consentConfig?.signature_required },
       ts: new Date().toISOString(),
       ua: (typeof navigator!=='undefined'? navigator.userAgent : '')
+      ,
+      // Enrich evidence for download: full document + summary
+      document_md: documentMd,
+      summary: {
+        overall_agreed: overallAgreed,
+        options_required: optionRequired,
+        option_labels: optionLabel,
+      }
     }
     try {
       const res = await postConsentSign({ scale_id: scaleId, version: consentConfig?.version || 'v1', locale: lang, choices: consentChoices, signed_at: evidence.ts, signature_kind: evidence.signature.kind, evidence: JSON.stringify(evidence) })
@@ -386,27 +414,56 @@ export function Survey() {
     const ev = consentEvidence
     const idText = (selfManage?.rid || selfManage?.pid || (ev as any)?.consent_record_id || '')
     const title = (lang==='zh' ? '知情同意凭证' : 'Consent Receipt') + (idText? ` · ${idText}` : '')
-    // Map key -> human label based on current consentConfig
+    // Helper: label map and required map
+    const list = (consentConfig?.options||[]) as any[]
+    const requiredMap: Record<string, boolean> = Object.fromEntries(list.map((o:any)=> [o.key, !!o.required]))
     const labelOf = (key: string) => {
-      const list = (consentConfig?.options||[]) as any[]
       const found = list.find(o => o.key === key)
-      if (found && found.label_i18n) {
-        return found.label_i18n[lang] || found.label_i18n['en'] || key
-      }
+      if (found && found.label_i18n) return found.label_i18n[lang] || found.label_i18n['en'] || key
       const fb = t(`survey.consent_opt.${key}`) as string
       return (fb && !String(fb).startsWith('survey.consent_opt.')) ? fb : key
     }
-    const opts = Object.entries(ev.options||{})
-      .map(([k, v])=> `<tr><td>${mdToHtml(labelOf(k))}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`)
+    // Compute overall agreed: all required options true and signature if required
+    const reqOK = Object.entries(requiredMap).every(([k, req])=> !req || !!(ev.options||{})[k])
+    const sigReq = !!ev.signature?.required
+    const sigOK = sigReq ? ((ev.signature?.kind||'none') !== 'none') : true
+    const overall = reqOK && sigOK
+    // Build options table
+    const optsRows = Object.entries(ev.options||{})
+      .map(([k, v])=> `<tr><td>${mdToHtml(labelOf(k))}${requiredMap[k]? ' *':''}</td><td>${v? (lang==='zh'?'已同意':'Yes') : (lang==='zh'?'不同意':'No')}</td></tr>`)
       .join('')
+    // Build full document HTML (custom or default)
+    const sanitizeTemplate = (s: string) => s
+      .replace(/\[\[CONSENT(?::[^\]]*)?\]\]/g, '')
+      .replace(/\[\[CONSENT\d+\]\]/g, '')
+    const documentHtml = (() => {
+      // Prefer evidence-provided markdown (if present)
+      const md = (ev as any).document_md as string | undefined
+      if (md && md.trim()) return mdToHtml(sanitizeTemplate(md))
+      if (consentCustom && consentCustom.trim()) return mdToHtml(sanitizeTemplate(consentCustom))
+      // Default sections via i18n
+      const section = (tkey: string) => `<h2>${t(`${tkey}_title`)}</h2><div>${t(`${tkey}_body`)}</div>`
+      return [
+        section('survey.sec_purpose'),
+        section('survey.sec_risk'),
+        section('survey.sec_withdrawal'),
+        section('survey.sec_datause'),
+        section('survey.sec_anonymity'),
+        section('survey.sec_contact'),
+      ].join('')
+    })()
     const sigBlock = ev.signature?.image ? `<img alt="signature" src="${ev.signature.image}" style="max-width:100%; max-height:120px; border:1px solid #ddd;"/>` : `<div class="sig">${lang==='zh'?'（无手写签名）':'(No drawn signature)'} · ${ev.signature?.kind||'none'}</div>`
     const body = `
       <h1>${title}</h1>
       <div class="meta">${lang==='zh'?'版本':'Version'} ${ev.version} · ${lang==='zh'?'语言':'Locale'} ${ev.locale} · ${new Date(ev.ts).toLocaleString()}</div>
+      <h2>${lang==='zh'?'同意状态':'Agreement Status'}</h2>
+      <div>${lang==='zh'?'整体同意':'Overall consent'}：${overall? (lang==='zh'?'是':'Yes') : (lang==='zh'?'否':'No')}${sigReq? ` · ${lang==='zh'?'需要签名':'Signature required'}`:''}</div>
       <h2>${lang==='zh'?'确认选项':'Confirmations'}</h2>
-      <table><thead><tr><th>${lang==='zh'?'键名':'Key'}</th><th>${lang==='zh'?'选择':'Choice'}</th></tr></thead><tbody>${opts}</tbody></table>
+      <table><thead><tr><th>${lang==='zh'?'条目':'Item'}</th><th>${lang==='zh'?'选择':'Choice'}</th></tr></thead><tbody>${optsRows}</tbody></table>
       <h2>${lang==='zh'?'签名':'Signature'}</h2>
       ${sigBlock}
+      <h2>${lang==='zh'?'知情同意书全文':'Consent Document'}</h2>
+      <div>${documentHtml}</div>
       <div class="muted" style="margin-top:12px">${lang==='zh'?'本文件用于参与者留存，非技术格式。':'This receipt is for participant records (human‑readable).'}${idText? ` · ID: ${idText}`:''}</div>
     `
     openPrintWindow(title, body)
