@@ -20,3 +20,21 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
   </html>
+<!-- SVG filter defs for optional glass effects -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none">
+  <defs>
+    <filter id="fractal-glass">
+      <feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="1" result="warp">
+        <animate attributeName="baseFrequency" dur="24s" values="0.08;0.12;0.08" repeatCount="indefinite" />
+      </feTurbulence>
+      <feDisplacementMap xChannelSelector="R" yChannelSelector="G" scale="24" in="SourceGraphic" in2="warp" />
+    </filter>
+    <filter id="ambilight">
+      <feOffset in="SourceGraphic" result="source-copy"></feOffset>
+      <feColorMatrix in="source-copy" type="saturate" values="1.3" result="sat"></feColorMatrix>
+      <feMorphology in="sat" operator="dilate" radius="6" result="spread"></feMorphology>
+      <feGaussianBlur in="spread" stdDeviation="28" result="glow"></feGaussianBlur>
+      <feComposite in="SourceGraphic" in2="glow" operator="over"></feComposite>
+    </filter>
+  </defs>
+</svg>
